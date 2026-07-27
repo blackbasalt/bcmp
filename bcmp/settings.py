@@ -42,6 +42,10 @@ INSTALLED_APPS = [
     'django_extensions',
 
     'dictionary',
+    'building_passport',
+    'parties',
+    'zones',
+    'engineering_systems',
 ]
 
 MIDDLEWARE = [

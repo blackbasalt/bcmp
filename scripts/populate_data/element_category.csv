@@ -1,0 +1,102 @@
+name,short_name,code,description
+code,name_ru,group_code,normative_life_years
+foundation_pile,Фундамент свайный,structure,100
+foundation_slab,Фундамент плитный,structure,100
+foundation_strip,Фундамент ленточный,structure,100
+foundation_grillage,Ростверк,structure,80
+basement_wall,Стены подвала,structure,80
+structure_frame_rc,Каркас монолитный железобетонный,structure,100
+structure_frame_precast,Каркас сборный железобетонный,structure,80
+structure_frame_steel,Каркас металлический,structure,80
+column,Колонны,structure,80
+beam,Ригели и балки,structure,80
+slab_monolithic,Перекрытия монолитные,structure,80
+slab_precast,Перекрытия сборные железобетонные,structure,70
+bearing_wall_concrete,Стены несущие железобетонные,structure,80
+bearing_wall_brick,Стены несущие кирпичные,structure,100
+diaphragm_stiffness,Диафрагмы жёсткости,structure,80
+expansion_joint,Деформационные швы,structure,20
+attic_floor,Чердачное перекрытие,structure,60
+stairs_rc,Лестничные марши и площадки железобетонные,structure,60
+stairs_steel,Лестницы металлические внутренние,structure,40
+balcony,Балконы и лоджии,structure,40
+canopy,Козырьки и навесы над входами,structure,25
+parapet,Парапеты,structure,30
+retaining_wall,Подпорные стены,structure,40
+roof_membrane_pvc,Кровля из ПВХ-мембраны,envelope,20
+roof_membrane_tpo,Кровля из ТПО-мембраны,envelope,25
+roof_bitumen,Кровля рулонная битумно-полимерная,envelope,15
+roof_metal_seam,Кровля фальцевая металлическая,envelope,30
+roof_inversion,Кровля инверсионная,envelope,25
+roof_green,Кровля озеленённая,envelope,20
+roof_insulation,Утеплитель кровли,envelope,25
+roof_vapor_barrier,Пароизоляция кровли,envelope,20
+roof_skylight,Зенитные фонари и световые люки,envelope,25
+roof_drainage_internal,"Внутренние водостоки: воронки, трапы",envelope,20
+roof_drainage_external,Наружные водостоки и желоба,envelope,15
+waterproofing_foundation,Гидроизоляция фундамента,envelope,25
+waterproofing_basement,Гидроизоляция подвала и приямков,envelope,20
+waterproofing_wet_rooms,Гидроизоляция мокрых зон,envelope,15
+waterproofing_parking,Гидроизоляция паркинга,envelope,15
+facade_ventilated,Фасад навесной вентилируемый,envelope,30
+facade_wet,Фасад штукатурный «мокрый»,envelope,20
+facade_panel_composite,Облицовка композитными панелями,envelope,25
+facade_stone,Облицовка натуральным камнем,envelope,50
+facade_brick,Облицовка лицевым кирпичом,envelope,50
+facade_insulation,Утеплитель наружных стен,envelope,25
+facade_plaster,Штукатурка фасадная,envelope,15
+facade_paint,Окраска фасада,envelope,8
+facade_sealant,Герметизация швов фасада,envelope,10
+facade_sunshade,Солнцезащитные элементы фасада,envelope,15
+curtain_wall,Витражное остекление стоечно-ригельное,envelope,30
+curtain_wall_structural,Остекление структурное,envelope,25
+glass_unit,Стеклопакеты,envelope,20
+window_pvc,Окна ПВХ,envelope,25
+window_aluminium,Окна алюминиевые,envelope,30
+door_entrance_alu,Входные группы алюминиевые,envelope,20
+door_automatic,Двери автоматические раздвижные,envelope,12
+door_interior,Двери внутренние,envelope,15
+door_metal,Двери металлические технические,envelope,20
+door_fire,Двери противопожарные,envelope,15
+gate_sectional,Ворота секционные,envelope,12
+gate_rolling,Ворота рулонные и роллеты,envelope,10
+gate_fire,Ворота и шторы противопожарные,envelope,15
+partition_gypsum,Перегородки из ГКЛ,finish,25
+partition_brick,Перегородки кирпичные,finish,50
+partition_glass,Перегородки стеклянные офисные,finish,20
+partition_sanitary,Санитарные перегородки,finish,12
+floor_screed,Стяжка пола,finish,30
+floor_raised,Фальшполы,finish,20
+floor_tile,Полы из керамогранита,finish,20
+floor_stone,Полы каменные,finish,40
+floor_parquet,Паркет и инженерная доска,finish,20
+floor_linoleum,"Покрытие ПВХ, линолеум",finish,10
+floor_carpet,Покрытие ковровое,finish,7
+floor_epoxy,Полы наливные полимерные,finish,12
+skirting,Плинтусы,finish,10
+ceiling_armstrong,Потолки подвесные плиточные,finish,12
+ceiling_gypsum,Потолки подвесные из ГКЛ,finish,20
+ceiling_stretch,Потолки натяжные,finish,12
+wall_paint,Окраска стен,finish,6
+wall_wallpaper,Обои,finish,6
+wall_tile,Облицовка стен плиткой,finish,20
+wall_panel,Стеновые панели,finish,15
+elevator_shaft,"Лифтовые шахты, строительная часть",transport,60
+elevator_pit,Приямки лифтов,transport,60
+elevator_machine_room,Машинные помещения лифтов,transport,60
+escalator_structure,Несущие конструкции эскалаторов,transport,40
+roof_guardrail,Ограждения кровли,safety,20
+fire_escape_ladder,Пожарные наружные лестницы,safety,25
+fire_barrier,Противопожарные преграды и заполнения проёмов,safety,30
+lightning_protection,"Молниезащита, конструктивная часть",safety,20
+paving_asphalt,Покрытие асфальтобетонное,external,10
+paving_tile,Покрытие из тротуарной плитки,external,15
+curb,Бортовой камень,external,10
+parking_deck_coating,Покрытие паркинга полимерное,external,12
+ramp_external,Рампы и пандусы наружные,external,25
+stairs_external,Наружные лестницы и крыльца,external,25
+storm_drainage_external,Наружные лотки и дождеприёмные решётки,external,15
+fence_metal,Ограждение территории металлическое,external,20
+fence_concrete,Ограждение территории железобетонное,external,30
+landscaping,Озеленение и газоны,external,10
+street_furniture,Малые архитектурные формы,external,10
