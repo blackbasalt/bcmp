@@ -47,21 +47,26 @@ class Space(CommonModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     org = models.ForeignKey(Org, null=True, blank=True, on_delete=models.PROTECT, related_name="spaces")
     type = models.TextField(choices=DictSpaceType.choices)
-    subtype = models.ForeignKey(DictSpaceSubtype, on_delete=models.CASCADE, null=True, blank=True)
+    subtype = models.ForeignKey(DictSpaceSubtype, on_delete=models.CASCADE, null=True, blank=True, related_name="spaces")
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="subspace")
-    building = models.ForeignKey(DictBuilding, on_delete=models.CASCADE, null=True, blank=True, related_name="subspace")
+    building = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name="buildings_spaces")
     code = models.CharField(max_length=255, null=True, blank=True)
     name = models.CharField(max_length=255, null=True, blank=True)
     floor_number = models.IntegerField(null=True, blank=True)
     level_elevation_m = models.DecimalField(max_digits=6, decimal_places=3, blank=True, null=True)
+    status = models.ForeignKey(DictSpaceStatus, on_delete=models.PROTECT, blank=True, null=True, related_name="spaces")
 
-    area_m2 = models.DecimalField(max_digits=12, decimal_places=2)
-    is_common = models.BooleanField(default=False)
-    is_leasable = models.BooleanField(default=False)
+    area_m2 = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    is_common = models.BooleanField(default=False,blank=True, null=True)
+    is_leasable = models.BooleanField(default=False,blank=True, null=True)
     attrs = models.JSONField(default=dict, blank=True)
 
+    valid_from = models.DateField(blank=True, null=True)
+    valid_to = models.DateField(blank=True, null=True)
+
+
     def __str__(self):
-        return f"Пространство {self.type} от {self.id}"
+        return f"{self.code} ({self.type})"
 
 
 class BuildingPassport(CommonModel):

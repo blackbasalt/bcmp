@@ -31,5 +31,8 @@ venv/
 *.tmp
 tmp/
 
+# Office
+*~lock.*#
+
 # Claude Code local overrides
 .claude/settings.local.json

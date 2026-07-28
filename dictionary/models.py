@@ -60,7 +60,7 @@ class DictSpaceSubtype(DictionaryCommonModel):
     pass
 
     def __str__(self):
-        return f"{self.type} -> {self.name}"
+        return f"{self.name}"
 
 
 class DictSystem(DictionaryCommonModel):
@@ -129,6 +129,13 @@ class DictElementCategory(DictionaryCommonModel):
 
 
 class DictConditionGrade(DictionaryCommonModel):
+    pass
+
+    def __str__(self):
+        return self.name
+
+
+class DictDocumentRole(DictionaryCommonModel):
     pass
 
     def __str__(self):

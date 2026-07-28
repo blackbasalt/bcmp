@@ -6,15 +6,6 @@ from dictionary.models import *
 
 
 def run():
-    with open("scripts/populate_data/building.csv") as file:
-        reader = csv.reader(file)
-        next(reader)
-
-        DictBuilding.objects.all().delete()
-
-        for row in reader:
-            c, _ = DictBuilding.objects.get_or_create(name=row[0], short_name=row[1], code=row[2])
-
     with open("scripts/populate_data/system.csv") as file:
         reader = csv.reader(file)
         next(reader)
@@ -41,4 +32,13 @@ def run():
         for row in reader:
             print(row[1])
             c, _ = DictSpaceSubtype.objects.get_or_create(type=row[0], slug=row[1], name=row[2], short_name=row[2], description=row[7],grp=row[4])
+
+    with open("scripts/populate_data/document_role.csv") as file:
+        reader = csv.reader(file)
+        next(reader)
+
+        DictDocumentRole.objects.all().delete()
+
+        for row in reader:
+            c, _ = DictDocumentRole.objects.get_or_create(id=int(row[0]),slug=row[3], name=row[1], short_name=row[2])
 

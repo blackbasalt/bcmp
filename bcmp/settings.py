@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'parties',
     'zones',
     'engineering_systems',
+    'documents',
 ]
 
 MIDDLEWARE = [

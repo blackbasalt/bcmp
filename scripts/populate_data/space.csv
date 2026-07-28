@@ -1,67 +1,106 @@
-id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_common,is_common
-,,PROJECT,,Downtown,DT,,,,,,
-,DT,SITE,,Участок Manhattan,S1973,Kad 21318081973,,,,,
-,DT,SITE,,Участок Boston,S1972,Kad 21318081972,,,,,
-,DT,SITE,,Участок Dubai,S1974,Kad 21318081974,,,,,
-,DT,SITE,,Участок Geneva,S1975,Kad 21318081975,,,,,
-,DT,SITE,,Участок Tokyo,S1976,Kad 21318081976,,,,,
-,,SITE,,Участок A8,S1965,Kad 21318081965,,,,,
-,S1973,BUILDING,,Manhattan,MAN,,MAN,,,,
-,S1972,BUILDING,,Boston,BOS,,BOS,,,,
-,S1974,BUILDING,,Dubai,DUB,,DUB,,,,
-,S1975,BUILDING,,Geneva,GEN,,GEN,,,,
-,S1976,BUILDING,,Tokyo,TOK,,TOK,,,,
-,MAN,FLOOR,типовой,1 Этаж,MAN-F1,,MAN,1,561.22,,
-,MAN,FLOOR,типовой,2 Этаж,MAN-F2,,MAN,2,583.28,,
-,MAN,FLOOR,типовой,3 Этаж,MAN-F3,,MAN,3,581.82,,
-,MAN,FLOOR,типовой,4 Этаж,MAN-F4,,MAN,4,655,,
-,MAN,FLOOR,технический,5 Этаж,MAN-F5,,MAN,5,,,
-,MAN,ROOF,,Крыша,MAN-ROOF,,MAN,,,,
-,MAN-F1,STAIRWELL,,Лестничная клетка 1,MAN-F1-SW1,,MAN,1,,,
-,MAN-F1,STAIRWELL,,Лестничная клетка 2,MAN-F1-SW2,,MAN,1,,,
-,MAN-F1,SHAFT,лифтовая,Лифтовая шахта,MAN-F1-SL1,,MAN,1,,,
-,MAN-F1,ROOM,входная группа/тамбур,Входной Тамбур,MAN-F1-EV,entrance vestibule,MAN,1,,,
-,MAN-F1,ROOM,лобби/вестибюль,Лобби,MAN-F1-LB,lobby,MAN,1,,,
-,MAN-F1,ROOM,офис,каб101вход,MAN-F1-A,,MAN,1,,,
-,MAN-F1-A,ROOM,офис,каб101,MAN-F1-A1,,MAN,1,,,
-,MAN-F1-A,ROOM,офис,каб101вправо,MAN-F1-A2,,MAN,1,,,
-,MAN-F1,ROOM,офис,каб102,MAN-F1-B,,MAN,1,,,
-,MAN-F1,ROOM,,Каморка возле лестницы,MAN-F1-C,Вроде ее нет,MAN,1,,,
-,MAN-F1-C,ROOM,,Каморка возле лестницы2,MAN-F1-C1,Вроде ее нет,MAN,1,,,
-,MAN-F1-C,ROOM,,Каморка возле лестницы3,MAN-F1-C2,Вроде ее нет,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-D,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-E,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-F,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-G,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-H,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-I,,MAN,1,,,
-,MAN-F1,ROOM,офис,,MAN-F1-G,,MAN,1,,,
-,MAN-F1-G,ROOM,офис,,MAN-F1-G1,,MAN,1,,,
-,MAN-F1-G,ROOM,офис,,MAN-F1-G2,,MAN,1,,,
-,MAN-F1,ROOM,санузел,,MAN-F1-RR-F,,MAN,1,,,
-,MAN-F1-RR-F,ROOM,санузел,,MAN-F1-RR-F-T1,,MAN,1,,,
-,MAN-F1-RR-F,ROOM,санузел,,MAN-F1-RR-F-T2,,MAN,1,,,
-,MAN-F1,ROOM,санузел,,MAN-F1-RR-M,,MAN,1,,,
-,MAN-F1-RR-M,ROOM,санузел,,MAN-F1-RR-M-T1,,MAN,1,,,
-,MAN-F1-RR-M,ROOM,санузел,,MAN-F1-RR-M-T2,,MAN,1,,,
-,MAN-F2,VOID,,Второй свет 2эт,MAN-F2-VOID,,MAN,2,,,
-,MAN-F2,ROOM,коридор,Коридоры 2эт,MAN-F2-COR,,MAN,2,,,
-,MAN-F2,ROOM,,F2-A,MAN-F2-A,,MAN,2,,,
-,MAN-F2-A,ROOM,,F2-A1,MAN-F2-A1,,MAN,2,,,
-,MAN-F2,ROOM,,F2-B,MAN-F2-B,,MAN,2,,,
-,MAN-F2,ROOM,,F2-C,MAN-F2-C,,MAN,2,,,
-,MAN-F2-C,ROOM,,F2-C1,MAN-F2-C1,,MAN,2,,,
-,MAN-F2,ROOM,,F2-D,MAN-F2-D,,MAN,2,,,
-,MAN-F2,ROOM,,F2-E,MAN-F2-E,,MAN,2,,,
-,MAN-F2-E,ROOM,,F2-E1,MAN-F2-E1,,MAN,2,,,
-,MAN-F2-E,ROOM,,F2-E2,MAN-F2-E2,,MAN,2,,,
-,MAN-F2,ROOM,,F2-F,MAN-F2-F,,MAN,2,,,
-,MAN-F2-F,ROOM,,F2-F1,MAN-F2-F1,,MAN,2,,,
-,MAN-F2,ROOM,,F2-G,MAN-F2-G,,MAN,2,,,
-,MAN-F2,ROOM,,F2-H,MAN-F2-H,,MAN,2,,,
-,MAN-F2,ROOM,санузел,УборнаяЖен 2эт,MAN-F2-RR-F,,MAN,2,,,
-,MAN-F2-RR-F,ROOM,санузел,ТуалетЖен1 2эт,MAN-F2-RR-F-T1,,MAN,2,,,
-,MAN-F2-RR-F,ROOM,санузел,ТуалетЖен2 2эт,MAN-F2-RR-F-T2,,MAN,2,,,
-,MAN-F2,ROOM,санузел,УборнаяМуж 2эт,MAN-F2-RR-M,,MAN,2,,,
-,MAN-F2-RR-M,ROOM,санузел,ТуалетМуж1 2эт,MAN-F2-RR-M-T1,,MAN,2,,,
-,MAN-F2-RR-M,ROOM,санузел,ТуалетМуж2 2эт,MAN-F2-RR-M-T2,,MAN,2,,,
+id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_common,is_leasable
+,,project,,Downtown,dt,,,,,,
+,dt,site,office_complex,Участок Manhattan,s1973,Kad 21318081973,,,,,
+,dt,site,office_complex,Участок Boston,s1972,Kad 21318081972,,,,,
+,dt,site,office_complex,Участок Dubai,s1974,Kad 21318081974,,,,,
+,dt,site,office_complex,Участок Geneva,s1975,Kad 21318081975,,,,,
+,dt,site,office_complex,Участок Tokyo,s1976,Kad 21318081976,,,,,
+,s1973,building,office_building,Manhattan,man,,,,,,
+,s1972,building,office_building,Boston,bos,,,,,,
+,s1974,building,office_building,Dubai,dub,,,,,,
+,s1975,building,office_building,Geneva,gen,,,,,,
+,s1976,building,office_building,Tokyo,tok,,,,,,
+,man,floor,ground,1 Этаж,man-f1,,man,1,561.22,,
+,man,floor,standard,2 Этаж,man-f2,,man,2,583.28,,
+,man,floor,standard,3 Этаж,man-f3,,man,3,581.82,,
+,man,floor,standard,4 Этаж,man-f4,,man,4,655.76,,
+,man,floor,technical,5 Этаж,man-f5,,man,5,56.93,,
+,man,roof,operated,Крыша,man-roof,,man,,,,
+,man-f1,stairwell,regular,Лестничная клетка 1,man-f1-sw1,,man,1,,,
+,man-f1,stairwell,regular,Лестничная клетка 2,man-f1-sw2,,man,1,,,
+,man-f1,shaft,elevator,Лифтовая шахта,man-f1-sl1,,man,1,,,
+,man-f1,room,vestibule,Входной Тамбур,man-f1-ev,entrance vestibule,man,1,,TRUE,FALSE
+,man-f1,room,lobby,Лобби,man-f1-lb,lobby,man,1,,TRUE,FALSE
+,man-f1,room,office,каб101вход,man-f1-a,,man,1,6.55,FALSE,TRUE
+,man-f1-a,room,office,каб101,man-f1-a1,,man,1,20.49,FALSE,TRUE
+,man-f1-a,room,office,каб101вправо,man-f1-a2,,man,1,9.6,FALSE,TRUE
+,man-f1,room,office,каб102,man-f1-b,,man,1,61.71,FALSE,TRUE
+,man-f1,room,office,каб у туалета 1,man-f1-c,,man,1,,FALSE,FALSE
+,man-f1,room,office,каб у туалета 2,man-f1-d,,man,1,,FALSE,FALSE
+,man-f1,room,office,каб у туалета 3,man-f1-e,,man,1,,FALSE,FALSE
+,man-f1,room,office,каб105,man-f1-f,,man,1,37.86,FALSE,TRUE
+,man-f1,room,office,каб104,man-f1-g,,man,1,36.03,FALSE,TRUE
+,man-f1,room,tech_combined,Тепловой пункт,man-f1-h,,man,1,,FALSE,FALSE
+,man-f1,room,office,каб103,man-f1-i,,man,1,28.05,FALSE,TRUE
+,man-f1-g,room,office,каб103 (каморка 1),man-f1-i1,,man,1,15.78,FALSE,TRUE
+,man-f1-g,room,office,каб103 (каморка 2),man-f1-i2,,man,1,2.12,FALSE,TRUE
+,man-f1,room,restroom,УборнаяЖен 1эт,man-f1-rr-f,,man,1,,TRUE,FALSE
+,man-f1-rr-f,room,restroom,ТуалетЖен1 1эт,man-f1-rr-f-t1,,man,1,,TRUE,FALSE
+,man-f1-rr-f,room,restroom,ТуалетЖен2 1эт,man-f1-rr-f-t2,,man,1,,TRUE,FALSE
+,man-f1,room,restroom,УборнаяМуж 1эт,man-f1-rr-m,,man,1,,TRUE,FALSE
+,man-f1-rr-m,room,restroom,ТуалетМуж1 1эт,man-f1-rr-m-t1,,man,1,,TRUE,FALSE
+,man-f1-rr-m,room,restroom,ТуалетМуж2 1эт,man-f1-rr-m-t2,,man,1,,TRUE,FALSE
+,man-f2,void,second_light,Второй свет 2эт,man-f2-void,,man,2,,,
+,man-f2,room,corridor,Коридоры 2эт,man-f2-cor,,man,2,,TRUE,FALSE
+,man-f2,room,office,Каб204,man-f2-a,,man,2,41.17,FALSE,TRUE
+,man-f2-a,room,office,Каб204 (каморка),man-f2-a1,,man,2,5.94,FALSE,TRUE
+,man-f2,room,office,Каб203,man-f2-b,,man,2,45.37,FALSE,TRUE
+,man-f2,room,office,Каб202,man-f2-c,,man,2,66.43,FALSE,TRUE
+,man-f2-c,room,office,Каб202 (каморка),man-f2-c1,,man,2,38.69,FALSE,TRUE
+,man-f2,room,office,Каб201,man-f2-d,,man,2,41.83,FALSE,TRUE
+,man-f2,room,office,Каб208,man-f2-e,,man,2,51.5,FALSE,TRUE
+,man-f2-e,room,office,Каб208 (каморка 1),man-f2-e1,,man,2,8.66,FALSE,TRUE
+,man-f2-e,room,office,Каб208 (каморка 2),man-f2-e2,,man,2,3.26,FALSE,TRUE
+,man-f2,room,office,Каб206,man-f2-f,,man,2,37.6,FALSE,TRUE
+,man-f2-f,room,office,Каб207,man-f2-f1,,man,2,57.26,FALSE,TRUE
+,man-f2,room,office,Каб205,man-f2-g,,man,2,47.22,FALSE,TRUE
+,man-f2,room,office,Тех помещение у туалета 2эт,man-f2-h,,man,2,,FALSE,FALSE
+,man-f2,room,restroom,УборнаяЖен 2эт,man-f2-rr-f,,man,2,,TRUE,FALSE
+,man-f2-rr-f,room,restroom,ТуалетЖен1 2эт,man-f2-rr-f-t1,,man,2,,TRUE,FALSE
+,man-f2-rr-f,room,restroom,ТуалетЖен2 2эт,man-f2-rr-f-t2,,man,2,,TRUE,FALSE
+,man-f2,room,restroom,УборнаяМуж 2эт,man-f2-rr-m,,man,2,,TRUE,FALSE
+,man-f2-rr-m,room,restroom,ТуалетМуж1 2эт,man-f2-rr-m-t1,,man,2,,TRUE,FALSE
+,man-f2-rr-m,room,restroom,ТуалетМуж2 2эт,man-f2-rr-m-t2,,man,2,,TRUE,FALSE
+,man-f3,void,second_light,Второй свет 3эт,man-f3-void,,man,3,,,
+,man-f3,room,corridor,Корридоры 3эт,man-f3-cor,,man,3,,TRUE,FALSE
+,man-f3,room,office,Каб304,man-f3-a,,man,3,47.52,FALSE,TRUE
+,man-f3,room,office,Каб303,man-f3-b,,man,3,45.37,FALSE,TRUE
+,man-f3,room,office,Каб302,man-f3-c,,man,3,47.19,FALSE,TRUE
+,man-f3-c,room,office,Каб302 (каморка 1),man-f3-c1,,man,3,24.71,FALSE,TRUE
+,man-f3-c,room,office,Каб302 (каморка 2),man-f3-c2,,man,3,17.39,FALSE,TRUE
+,man-f3-c,room,office,Каб302 (каморка 3),man-f3-c3,,man,3,14.26,FALSE,TRUE
+,man-f3,room,office,Каб301,man-f3-d,,man,3,41.02,FALSE,TRUE
+,man-f3,room,office,Каб308,man-f3-e,,man,3,64.21,FALSE,TRUE
+,man-f3,room,office,Каб306,man-f3-f,,man,3,37.6,FALSE,TRUE
+,man-f3-f,room,office,Каб306 (каморка),man-f3-f1,,man,3,57.26,FALSE,TRUE
+,man-f3,room,office,Каб305,man-f3-g,,man,3,47.22,FALSE,TRUE
+,man-f3,room,restroom,УборнаяЖен 3эт,man-f3-rr-f,,man,3,,TRUE,FALSE
+,man-f3-rr-f,room,restroom,ТуалетЖен1 3эт,man-f3-rr-f-t1,,man,3,,TRUE,FALSE
+,man-f3-rr-f,room,restroom,ТуалетЖен2 3эт,man-f3-rr-f-t2,,man,3,,TRUE,FALSE
+,man-f3,room,restroom,УборнаяМуж 3эт,man-f3-rr-m,,man,3,,TRUE,FALSE
+,man-f3-rr-m,room,restroom,ТуалетМуж1 3эт,man-f3-rr-m-t1,,man,3,,TRUE,FALSE
+,man-f3-rr-m,room,restroom,ТуалетМуж2 3эт,man-f3-rr-m-t2,,man,3,,TRUE,FALSE
+,man-f4,room,corridor,Корридоры 4эт,man-f4-cor,,man,4,,TRUE,FALSE
+,man-f4,room,office,Каб405,man-f4-a,,man,4,39.57,FALSE,TRUE
+,man-f4,room,office,Каб404,man-f4-b,,man,4,41.86,FALSE,TRUE
+,man-f4,room,office,Каб403,man-f4-c,,man,4,43.55,FALSE,TRUE
+,man-f4,room,office,Каб402,man-f4-d,,man,4,37.7,FALSE,TRUE
+,man-f4,room,office,Каб401,man-f4-e,,man,4,30.9,FALSE,TRUE
+,man-f4,room,office,Комната отдыха 4 эт,man-f4-f,,man,4,34.23,FALSE,TRUE
+,man-f4-f,room,office,Комната отдыха (каморка) 4 эт,man-f4-f1,,man,4,9.13,FALSE,TRUE
+,man-f4,room,office,Каб406,man-f4-g,,man,4,36.38,FALSE,TRUE
+,man-f4-g,room,office,Каб408,man-f4-g1,,man,4,53.92,FALSE,TRUE
+,man-f4-g,room,office,Каб407,man-f4-g2,,man,4,45.71,FALSE,TRUE
+,man-f4,room,office,Каморка у лестницы,man-f4-h,,man,4,7.42,FALSE,FALSE
+,man-f4,room,office,Каморка у туалета,man-f4-i,,man,4,,FALSE,FALSE
+,man-f4,room,restroom,УборнаяЖен 4эт,man-f4-rr-f,,man,4,,TRUE,FALSE
+,man-f4-rr-f,room,restroom,ТуалетЖен1 4эт,man-f4-rr-f-t1,,man,4,,TRUE,FALSE
+,man-f4-rr-f,room,restroom,ТуалетЖен2 4эт,man-f4-rr-f-t2,,man,4,,TRUE,FALSE
+,man-f4,room,restroom,УборнаяМуж 4эт,man-f4-rr-m,,man,4,,TRUE,FALSE
+,man-f4-rr-m,room,restroom,ТуалетМуж1 4эт,man-f4-rr-m-t1,,man,4,,TRUE,FALSE
+,man-f4-rr-m,room,restroom,ТуалетМуж2 4эт,man-f4-rr-m-t2,,man,4,,TRUE,FALSE
+,man-f5,stairwell,regular,Лестничная клетка на крышу,man-f5-sw1,,man,5,3.8,,
+,man-f5,room,corridor,Коридор на 5 эт,man-f5-cor,,man,5,4.03,TRUE,FALSE
+,man-f5,room,office,Кабинет на 5 эт,man-f5-a,,man,5,40.53,FALSE,TRUE
+,man-f5-a,room,restroom,Туалет 5эт,man-f5-rr,,man,5,8.57,FALSE,TRUE
+,man-roof,room,tech_combined,Тех помещение на крыше,man-roof-a,,man,,25.16,FALSE,FALSE
