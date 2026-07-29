@@ -1,0 +1,11 @@
+Username,First name,Last name,Email address,Superuser status,Staff status,password
+user,Юзер,Юзербеков,user@example.com,TRUE,TRUE,user
+birzhan,Биржан,Кажигалиев,birzhan@example.com,FALSE,TRUE,birzhan123QWE
+aset,Асет,Агадилов,aset@example.com,FALSE,TRUE,aset123QWE
+symbat,Сымбат,Абильдина,symbat@example.com,FALSE,TRUE,symbat123QWE
+oralbek,Оралбек,Құралбек,oralbek@example.com,FALSE,TRUE,oralbek123QWE
+asel,Әсел,Нығметжанова,asel@example.com,FALSE,TRUE,asel123QWE
+erzhan,Ержан,Дархан,erzhan@example.com,FALSE,TRUE,erzhan123QWE
+darkhan,Дархан,Сахиев,darkhan@example.com,FALSE,TRUE,darkhan123QWE
+erlan,Ерлан,Маметов,erlan@example.com,FALSE,TRUE,erlan123QWE
+altynbek,Алтынбек,Калитанов,altynbek@example.com,FALSE,TRUE,altynbek123QWE

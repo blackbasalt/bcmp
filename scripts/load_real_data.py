@@ -4,9 +4,51 @@ from django.contrib.auth.models import User
 
 from dictionary.models import *
 from building_passport.models import *
-
+from parties.models import *
 
 def run():
+    with open("scripts/populate_data/party.csv") as file:
+        reader = csv.reader(file)
+        next(reader)
+
+        Party.objects.all().delete()
+
+        for row in reader:
+            kind="company"
+            if row[3]=="ФЛ":
+                kind = "person"
+            c, _ = Party.objects.get_or_create(
+                    kind=kind,
+                    name=row[2],
+                    bin_iin=row[4],
+                    )
+
+    """
+    with open('scripts/populate_data/user.csv') as file:
+        reader = csv.reader(file)
+        next(reader)
+
+        User.objects.all().delete()
+
+        for row in reader:
+            user = User.objects.create_user(
+                username=row[0],
+                first_name=row[1],
+                last_name=row[2],
+                password=row[6],
+            )
+            if row[5]=="TRUE":
+                user.is_staff = True
+            else:
+                user.is_staff = False
+
+            if row[4]=="TRUE":
+                user.is_superuser = True
+            else:
+                user.is_superuser = False
+
+            user.save()
+
     with open("scripts/populate_data/space.csv") as file:
         reader = csv.reader(file)
         next(reader)
@@ -54,4 +96,4 @@ def run():
                     floor_number=floor_number,
                     code=row[5],
                     )
-
+"""

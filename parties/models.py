@@ -27,6 +27,10 @@ class Party(CommonModel):
     name = models.CharField(max_length=255)
     bin_iin = models.CharField(max_length=32, blank=True, null=True)
     contacts = models.JSONField(default=dict, blank=True, db_default={})
+    external_id = models.CharField(max_length=1024, unique=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Org(CommonModel):
@@ -40,6 +44,9 @@ class Org(CommonModel):
     @property
     def name(self):
         return self.party.name
+
+    def __str__(self):
+        return self.name
 
 
 class PartyRole(CommonModel):
