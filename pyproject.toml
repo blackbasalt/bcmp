@@ -1,0 +1,26 @@
+[project]
+name = "bcmp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Altynbek", email = "kalitanov.altynbek@yandex.kz" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.0.7",
+    "django-extensions>=4.1",
+    "djangorestframework>=3.17.1",
+    "psycopg[binary]>=3.3.4",
+    "python-dotenv>=1.2.2",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "django-debug-toolbar>=7.0.0",
+    "pytest-django>=4.12.0",
+    "ruff>=0.16.0",
+]
