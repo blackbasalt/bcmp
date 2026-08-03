@@ -129,7 +129,10 @@ ok "Remote tooling present"
 # Sync code
 # ---------------------------------------------------------------------------
 log "Ensuring remote directories exist"
-ssh_sudo "mkdir -p '${REMOTE_DIR}/data' '${REMOTE_DIR}/staticfiles' && chown -R \$(id -u):\$(id -g) '${REMOTE_DIR}'"
+REMOTE_USER="$(ssh_run 'id -un')"
+REMOTE_GROUP="$(ssh_run 'id -gn')"
+# Whole command runs as root via `sh -c` so the chown isn't left to the login user.
+ssh_sudo "sh -c 'mkdir -p \"${REMOTE_DIR}/data\" \"${REMOTE_DIR}/staticfiles\" && chown -R ${REMOTE_USER}:${REMOTE_GROUP} \"${REMOTE_DIR}\"'"
 
 log "Syncing project to ${HOST}:${REMOTE_DIR}"
 RSYNC_SSH="ssh ${SSH_OPTS[*]}"
