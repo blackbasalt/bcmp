@@ -9,10 +9,13 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "django>=6.0.7",
-    "django-extensions>=4.1",
+    "django-filter>=26.1",
     "djangorestframework>=3.17.1",
-    "psycopg[binary]>=3.3.4",
+    "drf-spectacular>=0.30.0",
+    "gunicorn>=26.0.0",
+    "psycopg[binary,pool]>=3.3.4",
     "python-dotenv>=1.2.2",
+    "sentry-sdk[django]>=2.66.1",
 ]
 
 [tool.uv]
@@ -21,6 +24,8 @@ package = false
 [dependency-groups]
 dev = [
     "django-debug-toolbar>=7.0.0",
+    "django-extensions>=4.1",
+    "mypy>=2.3.0",
     "pytest-django>=4.12.0",
     "ruff>=0.16.0",
 ]
