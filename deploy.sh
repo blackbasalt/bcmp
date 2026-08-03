@@ -91,7 +91,22 @@ SSH_OPTS=(-o StrictHostKeyChecking=accept-new)
 [[ -n "$SSH_KEY" ]] && SSH_OPTS+=(-i "$SSH_KEY")
 
 ssh_run()  { ssh "${SSH_OPTS[@]}" "$HOST" "$@"; }
-ssh_sudo() { ssh "${SSH_OPTS[@]}" "$HOST" "sudo $*"; }
+
+# Run a command with root privileges on the remote.
+#   - If the SSH user is already root, run it directly.
+#   - Otherwise use sudo, allocating a TTY so it can prompt for a password
+#     (falls back silently if sudo is passwordless).
+REMOTE_IS_ROOT=""
+ssh_sudo() {
+  if [[ -z "$REMOTE_IS_ROOT" ]]; then
+    if [[ "$(ssh_run 'id -u')" == "0" ]]; then REMOTE_IS_ROOT=yes; else REMOTE_IS_ROOT=no; fi
+  fi
+  if [[ "$REMOTE_IS_ROOT" == "yes" ]]; then
+    ssh "${SSH_OPTS[@]}" "$HOST" "$*"
+  else
+    ssh -t "${SSH_OPTS[@]}" "$HOST" "sudo $*"
+  fi
+}
 
 # ---------------------------------------------------------------------------
 # Preflight
