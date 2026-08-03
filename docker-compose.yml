@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    image: bcmp:latest
+    container_name: bcmp
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # SQLite lives in the persisted bind-mounted data/ dir, not the image
+      SQLITE_PATH: /bcmp/data/db.sqlite3
+    volumes:
+      - ./data:/bcmp/data                # persisted database
+      - ./staticfiles:/bcmp/staticfiles  # collected static, served by host nginx
+    ports:
+      # Bound to loopback only; host nginx reverse-proxies to it
+      - "127.0.0.1:8000:8000"

@@ -1,16 +1,22 @@
 .git/
+.venv/
 venv/
 __pycache__/
+*.py[cod]
 populate/
 populate_mock_data/
-Dockerfile
 Jenkinsfile
-.dockerignore
 .gitignore
-docker-compose.yml
 pytest.ini
 .pylintrc
 .gitlab-ci.yml
 .flake8
 .DS_Store
 *.swp
+
+# Runtime artifacts / secrets — provided on the server, not baked in
+.env
+.env.*
+data/
+staticfiles/
+db.sqlite3
