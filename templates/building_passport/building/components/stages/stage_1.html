@@ -1,0 +1,8 @@
+{% if car.role.slug == 'initiator' %}
+    <button class="btn btn-primary rounded-pill btn-sm w-100 mb-3" data-bs-toggle="modal" data-bs-target="#requestCreateModal" title="Создать">
+        Создать заявку
+    </button>
+{% endif %}
+{% for lot in part_request_lots_stage_SC %}
+    {% include "kanban/board/components/stages/lot_card.html" %}
+{% endfor %}

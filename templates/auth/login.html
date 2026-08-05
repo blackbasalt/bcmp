@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-bs-theme="light" data-color-theme="Blue_Theme" data-layout="horizontal" data-boxed-layout="boxed" data-card="shadow"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <!-- Required meta tags -->
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="shortcut icon"  href="{% static 'favicon/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
+  <title>Loco Center</title>
+</head>
+
+<body data-sidebartype="full">
+  <div id="main-wrapper" class="p-0 bg-white auth-customizer-none">
+    <div class="position-relative overflow-hidden radial-gradient min-vh-100 d-flex align-items-center justify-content-center">
+      <div class="auth-login-shape-box position-relative">
+        <div class="d-flex align-items-center justify-content-center w-100 z-1 position-relative">
+          <div class="card auth-card mb-0 mx-3">
+            <div class="card-body">
+              <h4 class="text-center mb-4">Вход</h4>
+              {%  include 'base/components/messages.html' %}
+              <form method="POST" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <label for="user" class="form-label">Пользователь</label>
+                  <input type="text" class="form-control" id="user" name="username">
+                </div>
+                <div class="mb-4">
+                  <label for="password" class="form-label">Пароль</label>
+                  <input type="password" class="form-control" id="password" name="password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-4 rounded-pill">Войти</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelector('#user').focus()
+    })
+  </script>
+</body></html>

@@ -1,0 +1,153 @@
+<div class="modal fade" id="fullPageModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="fullPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content custom-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fullPageModalLabel">Выбор чертежного номера</h5>
+                <button type="button" class="btn-close closePNChooseModalBtn" data-bs-toggle="modal" data-bs-target="#requestCreateModal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                  <div class="col-md-12">
+                    <div id="search-container" class="pb-2">
+                      <div class="input-group mb-4 shadow-sm">
+                        <input class="form-control border-end-0 rounded-start" 
+                               id="treeSearch" 
+                               type="search"
+                               placeholder="Поиск ..." 
+                               aria-label="Search">
+                        <span class="input-group-text bg-white border-start-0 rounded-end">
+                            <i class="ti ti-search text-muted"></i>
+                        </span>
+                      </div>
+                      <div id="searchLoader" class="d-none text-center py-3">
+                          <div class="spinner-border text-primary" role="status">
+                              <span class="visually-hidden">Loading...</span>
+                          </div>
+                      </div>
+
+                      <div id="searchResultPane" class="collapse in d-none" aria-expanded="true">
+                        <table id="searchResultTree"
+                               class="table table-sm table-striped table-hover table-condensed table-bordered">
+                            <colgroup>
+                              <col width="8%" />
+                              <col width="8%" />
+                              <col width="24%" />
+                              <col width="52%" />
+                              <col width="8%" />
+                            </colgroup>
+                          <thead>
+                            <tr>
+                              <th>Чертежный номер</th>
+                              <th>Модель локомотива</th>
+                              <th>Название</th>
+                              <th>Путь</th>
+                              <th>Страница в книге</th>
+                            </tr>
+                          </thead>
+                          <tbody id="searchResultsBody">
+                            <!-- Results will be dynamically injected here -->
+                          </tbody>
+                        </table>
+                        <nav class="d-none"
+                             aria-label="Search results pagination"
+                             id="paginationNav">
+                          <ul class="pagination justify-content-center">
+                            <!-- Pagination buttons will be dynamically injected here -->
+                          </ul>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                    <div class="col-md-3">
+                      <div id="tree-container" class="border p-2 text-wrap" style="height: 80vh; overflow-y: auto;">
+                        <div id="taxonomyTree"></div>
+                      </div>
+                    </div>
+                    <div class="col-md-9">
+                      <div id="details-container">
+                        <div id="breadcrumb">
+                          <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                              <li class="breadcrumb-item active" aria-current="page">Выберите деталь для отображения</li>
+                            </ol>
+                          </nav>
+                        </div>
+                        <div id="media"></div>
+                        <div id="node-details">
+                          <h3>Деталь локомотива</h3>
+                          <!-- Tabs -->
+                          <ul class="nav nav-tabs" id="nodeTab" role="tablist">
+                            <li class="nav-item">
+                              <a class="nav-link active"
+                                 id="info-tab"
+                                 data-bs-toggle="tab"
+                                 href="#info"
+                                 role="tab"
+                                 aria-controls="info"
+                                 aria-selected="true">Информация</a>
+                            </li>
+                            <li class="nav-item">
+                              <a class="nav-link"
+                                 id="scheme-tab"
+                                 data-bs-toggle="tab"
+                                 href="#scheme-files"
+                                 role="tab"
+                                 aria-controls="scheme-files"
+                                 aria-selected="false"
+                                 style="min-width: 120px; text-align: center !important;">
+                                 Схемы
+                                 <span class="badge ms-2 text-bg-warning" id="scheme-files-count"></span>
+                              </a>
+                            </li>
+                            <li class="nav-item">
+                              <a class="nav-link"
+                                 id="image-tab"
+                                 data-bs-toggle="tab"
+                                 href="#image-files"
+                                 role="tab"
+                                 aria-controls="image-files"
+                                 aria-selected="false">
+                                 Изображения
+                                 <span class="badge ms-2 text-bg-warning" id="image-files-count"></span>
+                                </a>
+                            </li>
+                          </ul>
+                          <!-- Tab Content -->
+                          <div class="tab-content mt-3" id="nodeTabContent" style="height: 70vh; overflow-y: auto;">
+                            <!-- Information Tab -->
+                            <div class="tab-pane fade show active"
+                                 id="info"
+                                 role="tabpanel"
+                                 aria-labelledby="info-tab">
+                              <p id="node-info">Выберите деталь для отображения.</p>
+                            </div>
+                            <div class="tab-pane fade"
+                                 id="scheme-files"
+                                 role="tabpanel"
+                                 aria-labelledby="scheme-tab">
+                              <div id="scheme-content">
+                                <p>Выберите деталь для отображения.</p>
+                              </div>
+                            </div>
+                            <!-- image Files Tab -->
+                            <div class="tab-pane fade"
+                                 id="image-files"
+                                 role="tabpanel"
+                                 aria-labelledby="image-tab">
+                              <div id="image-content">
+                                <p>Выберите деталь для отображения.</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill closePNChooseModalBtn" data-bs-toggle="modal" data-bs-target="#requestCreateModal">Закрыть</button>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill" id="selectNodeButton">Выбрать</button>
+            </div>
+        </div>
+    </div>
+</div>

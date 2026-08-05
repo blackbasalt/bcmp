@@ -1,0 +1,58 @@
+<div class="modal fade" id="editProtocolModal" tabindex="-1" aria-labelledby="editProtocolModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProtocolModal">Редактировать протокол</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="protocol_edit_form" method="POST" action="" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label for="" class="form-label">Вид закупа</label>
+                        <div class="">
+                            <select
+                                id="purchase_method_edit"
+                                name="purchase_method"
+                                class="form-control form-control-sm"
+                                data-dropdown-parent="#editProtocolModal"
+                            >
+                                <option value=""></option>
+                                {% for item in purchase_method_choices %}
+                                    <option value="{{ item.id }}">{{ item.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="protocol_number_edit" class="form-label">Номер протокола</label>
+                        <input type="text" class="form-control form-control-sm" id="protocol_number_edit" name="protocol_number">
+                    </div>
+                    <div class="mb-2">
+                        <label for="protocol_date_edit" class="form-label">Дата протокола</label>
+                        <input type="date" class="form-control form-control-sm" id="protocol_date_edit" name="protocol_date">
+                    </div>
+                    <div class="mb-2">
+                        <label for="date_tender_start_edit" class="form-label">Дата начала тендера</label>
+                        <input type="date" class="form-control form-control-sm" id="date_tender_start_edit" name="date_tender_start">
+                    </div>
+                    <div class="mb-2">
+                        <label for="date_tender_end_edit" class="form-label">Дата окончания тендера</label>
+                        <input type="date" class="form-control form-control-sm" id="date_tender_end_edit" name="date_tender_end">
+                    </div>
+                    <div class="mb-2">
+                        <label for="protocol_file_edit" class="form-label mb-0">Протокол </label>
+                        <div class="mb-2 ms-3 fst-italic" id="protocol_file_name_edit"></div>
+                        <input type="file" class="form-control form-control-sm" id="protocol_file_edit" name="protocol_file">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm rounded-pill btn-outline-secondary" data-bs-dismiss="modal">Отменить</button>
+                    <button type="submit" form="protocol_edit_form" class="btn btn-sm rounded-pill btn-primary">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

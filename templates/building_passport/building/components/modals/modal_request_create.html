@@ -1,0 +1,109 @@
+<div class="modal fade" id="createRequestModal" tabindex="-1" aria-labelledby="createRequestModal" aria-hidden="true">
+    <div class="modal-dialog modal-xl extra-large-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createRequestModal">Создать заявку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <div class="p-2">
+                        <table class="table table-row-bordered table-hover request-table mb-0" >
+                            <thead>
+                                <tr class="">
+                                    <th style="width: 35px;"></th>
+                                    <th>Номер отслеживания</th>
+                                    <th>Наименование</th>
+                                    <th>Чертеж. номер</th>
+                                    <th>Доп. характеристики</th>
+                                    <th>Кол-во</th>
+                                    <th>Ед. измерения</th>
+                                    <th>Отв. менеджер</th>
+                                    <th>Дата принятия в работу</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <form id="request_group_create_form" method="POST" action="{% url 'kanban:create_request_view' %}">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <div class="d-flex border border-1 p-2 bg-secondary-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#unassignedLotsInRequestCreateModal" aria-expanded="false" aria-controls="unassignedLotsInRequestCreateModal" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                            <div class="ms-3 w-100">НЕСГРУППИРОВАННЫЕ ПОЗИЦИИ</div>
+                            <span><i class="ti ti-chevron-down fs-4 pe-2"></i></span>
+                        </div>
+                        <div class="border border-1 border-top-0 mb-3" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                            <div class="row collapse show" id="unassignedLotsInRequestCreateModal">
+                                <div class="table-responsive">
+                                    <div class="p-2">
+                                        <table class="table table-row-bordered table-hover request-table mb-0" >
+                                            {% if part_request_lots_not_assigned_CA.count %}
+                                            <thead>
+                                                <tr >
+                                                    <th style="width: 35px;" class="py-1"><input type="checkbox" class="checkAllLots" id="checkAllLotsCaCreate"></th>
+                                                    <th class="py-1"><label for="checkAllLotsCaCreate">Все</label></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                    <th class="py-1"></th>
+                                                </tr>
+                                            </thead>
+                                            {% endif %}
+                                            <tbody>
+                                                {% for lot in part_request_lots_not_assigned_CA %}
+                                                    {% if lot.status.slug == 'pr_lot_ca_working' and lot.responsible_manager_ca == request.user %}
+                                                        <tr class="row-lot" role="button">
+                                                            <td class="align-middle">
+                                                                <input type="checkbox" name="part_request_lots" value="{{lot.id}}" class="checkbox-lot">
+                                                            </td>
+                                                            <td>{{ lot.lot_track_number|default_if_none:"" }}</td>
+                                                            <td title="{% if lot.approved_goods_works_services_names_other %}{{ lot.approved_goods_works_services_names_other}}{% else %}{{ lot.name|default_if_none:'' }}{% endif %}">
+                                                                {% if lot.approved_goods_works_services_names_other %}{{ lot.approved_goods_works_services_names_other}}{% else %}{{ lot.name|default_if_none:"" }}{% endif %}
+                                                            </td>
+                                                            <td>{% if lot.approved_part_number %}{{ lot.approved_part_number}}{% else %}{{ lot.part_number|default_if_none:"" }}{% endif %}</td>
+                                                            <td title="{% if lot.approved_additional_characteristics %}{{ lot.approved_additional_characteristics}}{% else %}{{ lot.additional_characteristics|default_if_none:'' }}{% endif %}">
+                                                                {% if lot.approved_additional_characteristics %}{{ lot.approved_additional_characteristics}}{% else %}{{ lot.additional_characteristics|default_if_none:"" }}{% endif %}
+                                                            </td>
+                                                            <td>{% if lot.approved_amount %}{{ lot.approved_amount}}{% else %}{{ lot.amount|default_if_none:"" }}{% endif %}</td>
+                                                            <td>{% if lot.approved_unit %}{{ lot.approved_unit}}{% else %}{{ lot.unit|default_if_none:"" }}{% endif %}</td>
+                                                            <td>{% if lot.responsible_manager_ca %}{{ lot.responsible_manager_ca.first_name}} {{ lot.responsible_manager_ca.last_name}}{% endif %}</td>
+                                                            <td>{{ lot.date_assign_responsible_manager_ca|date:"d.m.Y H:i"|default_if_none:""}}</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <div class="col-4">
+                            <div class="mb-2 row">
+                                <label for="request_number" class="col col-form-label">Номер заявки 1C</label>
+                                <div class="col-7 align-content-center">
+                                    <input type="text" class="form-control form-control-sm" id="request_number" name="request_number">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <label for="request_date" class="col col-form-label">Дата заявки 1C</label>
+                                <div class="col-7 align-content-center">
+                                    <input type="date" class="form-control form-control-sm" id="request_date" name="request_date">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="d-flex justify-content-end">
+                    <button type="submit" form="request_group_create_form" class="btn btn-sm rounded-pill btn-primary">Создать</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

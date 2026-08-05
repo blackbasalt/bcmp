@@ -1,0 +1,396 @@
+<script>
+    function activateNode(key) {
+        const tree = $.ui.fancytree.getTree("#taxonomyTree");
+        const node = tree.getNodeByKey(key);
+    
+        if (node) {
+            node.setActive(); // Node is already loaded, just activate it
+        } else {
+            // Node is not loaded, fetch and expand the path
+            $.ajax({
+                url: `http://booklet.lococenter.kz/booklet/tree-path/${key}/`, // Backend API to fetch the node's path
+                headers: {
+                    "Authorization": "kanban-booklet-key" // Replace with actual token
+                },
+                method: "GET",
+                success: function (path) {
+                    // Path should be an array of keys leading to the target node
+                    if (path && path.length > 0) {
+                        expandPath(path, tree);
+                    } else {
+                        console.error(`Path for key "${key}" not found.`);
+                    }
+                },
+                error: function () {
+                    console.error(`Failed to fetch path for key "${key}".`);
+                },
+            });
+        }
+    }
+    
+    function expandPath(path) {
+        const tree = $.ui.fancytree.getTree("#taxonomyTree");
+    
+        function recursiveExpand(index) {
+            if (index >= path.length) {
+                // If we've reached the last node, activate it and scroll into view
+                const targetNode = tree.getNodeByKey(path[path.length - 1]);
+                if (targetNode) {
+                    targetNode.setActive();
+                    targetNode.scrollIntoView(true); // Scroll to the node
+                } else {
+                    console.error(`Failed to activate node with key "${path[path.length - 1]}".`);
+                }
+                return;
+            }
+    
+            const currentKey = path[index];
+            const node = tree.getNodeByKey(currentKey);
+    
+            if (node) {
+                if (node.isLoaded() || !node.isLazy()) {
+                    // Node is already loaded, proceed to the next
+                    if (!node.isExpanded()) {
+                        node.setExpanded(true).done(() => recursiveExpand(index + 1));
+                    } else {
+                        recursiveExpand(index + 1);
+                    }
+                } else {
+                    // If the node is lazy and not loaded, trigger load and then expand
+                    node.load().done(() => {
+                        node.setExpanded(true).done(() => recursiveExpand(index + 1));
+                    });
+                }
+            } else {
+                console.error(`Node with key "${currentKey}" not found.`);
+            }
+        }
+    
+        // Start from the root of the path
+        recursiveExpand(0);
+    }
+    
+    
+    $(document).ready(function () {
+        const $tree = $("#taxonomyTree");
+        const $nodeInfo = $("#node-info");
+        const $media = $("#media");
+        const $paginationNav = $("#paginationNav");
+        const $pagination = $paginationNav.find(".pagination");
+        let treeInitialized = false;
+
+        const $treeSearch = $("#treeSearch");
+        const $searchResultPane = $("#searchResultPane");
+        const $searchResultsBody = $("#searchResultsBody");
+
+        let searchResults = [];
+        let currentPage = 1;
+        const resultsPerPage = 5;
+    
+        const $taxonomyTree = $("#taxonomyTree");
+        const $fullPageModal = $("#fullPageModal");
+        let $parentModal
+        let prevLocomotiveType
+
+        function renderPage(page) {
+            $searchResultsBody.empty();
+
+            // Calculate the start and end indices
+            const start = (page - 1) * resultsPerPage;
+            const end = Math.min(start + resultsPerPage, searchResults.length);
+
+            // Populate the table with current page's results
+            for (let i = start; i < end; i++) {
+                const result = searchResults[i];
+                $searchResultsBody.append(`
+                    <tr class="search-result-row" data-key="${result.key}" data-path='${JSON.stringify(result.path)}'>
+                        <td>${result.number}</td>
+                        <td>${result.model}</td>
+                        <td>${result.title}</td>
+                        <td>${result.path_numbers.join(" > ")}</td>
+                        <td>${result.chapter}</td>
+                    </tr>
+                `);
+            }
+        }
+
+        // Function to render pagination buttons
+        function renderPagination() {
+            $pagination.empty();
+
+            const totalPages = Math.ceil(searchResults.length / resultsPerPage);
+
+            for (let i = 1; i <= totalPages; i++) {
+                $pagination.append(`
+                    <li class="page-item ${i === currentPage ? "active" : ""}">
+                        <a class="page-link" href="#" data-page="${i}">${i}</a>
+                    </li>
+                `);
+            }
+        }
+
+    
+        $("#selectNodeButton").on("click", function () {
+            const tree = $.ui.fancytree.getTree("#taxonomyTree");
+            const activeNode = tree.getActiveNode();
+    
+            if (activeNode) {
+                const nodeKey = activeNode.key;
+                const nodeTitle = activeNode.title;
+                const extractedTitle = nodeTitle.split(":")[0].trim();
+                const extractedGoodServiceName = nodeTitle.split(":")[1]?.trim().split("(Страница")[0]?.trim();
+                $parentModal.find(".good_service_name").empty().val(extractedGoodServiceName);
+                $parentModal.find(".catalog_part_number").val(extractedTitle);
+                $parentModal.find(".hiddenPartNumber").val(extractedTitle);
+                $fullPageModal.modal("hide");
+                $parentModal.modal("show");
+            } else {
+                alert("Please select a node before proceeding.");
+            }
+        });
+    
+        // Function to initialize the FancyTree
+        function initializeTree(locomotiveType) {
+            // if (treeInitialized && locomotiveType == prevLocomotiveType) return;
+            // const selectedLocomotive = $("#for_locomotive").val(); // Get the value of the dropdown
+            let treeRootUrl;
+
+            if (locomotiveType) {
+                // Extract locomotive_type (modify this if `locomotive_type` is not the last part of the text)
+                // const locomotiveType = $("#for_locomotive option:selected").text().split(" ").pop();
+                treeRootUrl = `http://booklet.lococenter.kz/booklet/tree-root/${locomotiveType}/`;
+            } else {
+                // Use default or empty URL if no locomotive is selected
+                treeRootUrl = `http://booklet.lococenter.kz/booklet/tree-root/`;
+            }
+    
+            $tree.fancytree({
+                extensions: ["filter"],
+                source: {
+                    url: treeRootUrl, 
+                    headers: {
+                        "Authorization": "kanban-booklet-key", 
+                    },
+                },
+                lazyLoad: function (event, data) {
+                    data.result = {
+                        url: `http://booklet.lococenter.kz/booklet/tree-children/${data.node.key}`, 
+                        headers: {
+                            "Authorization": "kanban-booklet-key",
+                        },
+                    };
+                },
+                filter: {
+                    autoApply: true,
+                    autoExpand: true,
+                    mode: "dimm",
+                },
+                activate: function (event, data) {
+                    const node = data.node;
+    
+                    function getNodePath(node) {
+                        const path = [];
+                        while (node) {
+                            const cleanTitle = node.title.replace(/\s*\([^)]*\)$/, "");
+                            path.unshift({
+                                key: node.key,
+                                title: cleanTitle,
+                            });
+                            node = node.parent; // Go to the parent node
+                        }
+                        return path;
+                    }
+    
+                    const pathArray = getNodePath(node).splice(1);
+                    const breadcrumbHtml = pathArray
+                        .map((item, index) => {
+                            if (index === pathArray.length - 1) {
+                                // Current node (active)
+                                return `<li class="breadcrumb-item active" aria-current="page">${item.title}</li>`;
+                            } else {
+                                // Ancestors with links
+                                return `<li class="breadcrumb-item">
+                                    <a href="#" onclick="activateNode('${item.key}')">${item.title}</a>
+                                </li>`;
+                            }
+                        })
+                        .join("");
+    
+                    // Inject breadcrumb into the page
+                    $("#breadcrumb").html(`
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                ${breadcrumbHtml}
+                            </ol>
+                        </nav>
+                    `);
+    
+                    // Fetch and display node details
+                    $.ajax({
+                        url: `http://booklet.lococenter.kz/booklet/tree-info/${node.key}/`,
+                        headers: {
+                            "Authorization": "kanban-booklet-key", 
+                        },
+                        success: function (details) {
+                            $("#node-info").html(`
+                                <p><strong>Title:</strong> ${details.title}</p>
+                            `);
+                            
+                            const $schemeContent = $("#scheme-content");
+                            $schemeContent.empty();
+                            $('#scheme-files-count').text(details.schemes.length || '');
+                            if (details.schemes && details.schemes.length > 0) {
+                                details.schemes.forEach((scheme) => {
+                                    $schemeContent.append(`
+                                        <div>
+                                            <img src="http://booklet.lococenter.kz/media/${scheme.image}" alt="Scheme ${scheme.id}" class="img-thumbnail mb-2" />
+                                        </div>
+                                    `);
+                                });
+                            } else {
+                                $schemeContent.html("<p>Схемы отсутствуют.</p>");
+                            }
+    
+                            const $imageContent = $("#image-content");
+                            $imageContent.empty();
+                            $('#image-files-count').text(details.images.length || '');
+                            if (details.images && details.images.length > 0) {
+                                details.images.forEach((image) => {
+                                    $imageContent.append(`
+                                        <div>
+                                            <img src="http://booklet.lococenter.kz/media/${image.image}" alt="Image ${image.id}" class="img-thumbnail mb-2" />
+                                        </div>
+                                    `);
+                                });
+                            } else {
+                                $imageContent.html("<p>Изображения отсутствуют.</p>");
+                            }
+                        },
+                        error: function () {
+                            $media.empty();
+                            $nodeInfo.text("Error fetching node details.");
+                        },
+                    });
+                },
+                renderNode: function (event, data) {
+                    const node = data.node;
+                    const $span = $(node.span);
+                    $span.wrap(`<div class="fancytree-node-wrapper"></div>`);
+                },
+            });
+
+            prevLocomotiveType = locomotiveType
+            treeInitialized = true; // Mark tree as initialized
+        }
+
+        let locomotiveType = null
+
+        $(".for_locomotive").on('change', function() {
+            locomotiveType = $(this).find("option:selected").text().split(" ").pop()
+        })
+        
+        $(".for_locomotive_type").on('change', function() {
+            if ($(this).val()) {
+                locomotiveType = $(this).find("option:selected").text()
+            } else {
+                locomotiveType = null
+            }
+        })
+    
+        $(".openFullPageModal").on("click", function () {
+            $parentModal = $(this).closest(".modal");
+            const parentModalId = $parentModal.attr("id");
+            $('.closePNChooseModalBtn').attr('data-bs-target', '#' + parentModalId);
+            initializeTree(locomotiveType);
+        });
+
+        function debounce(func, delay) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+        const $searchLoader = $("#searchLoader");
+        const performSearch = debounce(function(query) {
+            if (query.length >= 3) {
+                // Show loader, hide previous results
+                $searchLoader.removeClass('d-none');
+                $searchResultPane.hide();
+                $paginationNav.hide();
+
+                $.ajax({
+                    url: "http://booklet.lococenter.kz/booklet/tree-search/",
+                    method: "GET",
+                    data: { query: query },
+                    success: function(results) {
+                        searchResults = results;
+                        currentPage = 1;
+
+                        if (searchResults.length > 0) {
+                            renderPage(currentPage);
+                            renderPagination();
+                            $searchResultPane.removeClass("d-none").show();
+                            $paginationNav.removeClass("d-none").show();
+                        } else {
+                            $searchResultsBody.html(`
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <p class="text-muted mb-0">По вашему запросу ничего не найдено</p>
+                                    </td>
+                                </tr>
+                            `);
+                            $searchResultPane.removeClass("d-none").show();
+                            $paginationNav.hide();
+                        }
+                        $searchLoader.addClass('d-none');
+                    },
+                    error: function() {
+                        console.error("Error fetching search results.");
+                        $searchResultPane.hide();
+                        $paginationNav.hide();
+                        $searchLoader.addClass('d-none');
+                    },
+                    complete: function() {
+                        $searchLoader.addClass('d-none');
+                    }
+                });
+            } else {
+                $searchResultPane.hide();
+                $paginationNav.hide();
+                $searchLoader.addClass('d-none');
+            }
+        }, 400);
+
+        // Fetch search results
+        $treeSearch.on("keyup", function () {
+            const query = $(this).val().trim();
+
+            performSearch(query);
+        });
+
+        // Handle click on a pagination button
+        $pagination.on("click", ".page-link", function (e) {
+            e.preventDefault();
+            const page = parseInt($(this).data("page"), 10);
+
+            if (page !== currentPage) {
+                currentPage = page;
+                renderPage(currentPage);
+                renderPagination();
+            }
+        });
+
+        $(document).on("click", ".search-result-row", function () {
+            const key = $(this).data("key");
+            const path = $(this).data("path");
+
+            if (path) {
+                expandPath(path);
+            } else {
+                console.error(`Path not provided for key "${key}".`);
+            }
+        });
+
+    });
+</script>

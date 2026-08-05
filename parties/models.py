@@ -25,7 +25,7 @@ class Party(CommonModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     kind = models.CharField(max_length=16, choices=Kind.choices)
     name = models.CharField(max_length=255)
-    bin_iin = models.CharField(max_length=32, blank=True, null=True)
+    bin_iin = models.CharField(unique=True, max_length=32, blank=True, null=True)
     contacts = models.JSONField(default=dict, blank=True, db_default={})
     external_id = models.CharField(max_length=1024, unique=True, null=True, blank=True)
 

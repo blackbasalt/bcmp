@@ -1,0 +1,47 @@
+<div class="row h-100">
+    <!-- STAGE 1 list of created lots  -->
+    <div class="col border-end">
+        <div class="row sticky-top" style="top: 120; z-index: 1;">
+            <div class="bg-danger-subtle col py-1 text-center shadow-sm mb-3">
+                <span class="fs-4">{{ part_request_stage_choices.0.name }}</span>
+            </div>
+        </div>
+        {% include "kanban/board/components/stages/stage_1.html" %}
+    </div>
+    <!-- STAGE 2  -->
+    <div class="col border-end">
+        <div class="row sticky-top" style="top: 120; z-index: 1;">
+            <div class="bg-warning-subtle col py-1 text-center shadow-sm mb-3">
+                <span class="fs-4">{{ part_request_stage_choices.1.name }}</span>
+            </div>
+        </div>
+        {% include "kanban/board/components/stages/stage_2.html" %}
+    </div>
+    <!-- STAGE 3  -->
+    <div class="col border-end">
+        <div class="row sticky-top" style="top: 120; z-index: 1;">
+            <div class="col py-1 text-center shadow-sm mb-3" style="background: #cce7f8">
+                <span class="fs-4">{{ part_request_stage_choices.2.name }}</span>
+            </div>
+        </div>
+        {% include "kanban/board/components/stages/stage_3.html" %}
+    </div>
+    <!-- STAGE 4  -->
+    <div class="col border-end">
+        <div class="row sticky-top" style="top: 120; z-index: 1;">
+            <div class="col py-1 text-center shadow-sm mb-3" style="background: #ecfafd">
+                <span class="fs-4">{{ part_request_stage_choices.3.name }}</span>
+            </div>
+        </div>
+        {% include "kanban/board/components/stages/stage_4.html" %}
+    </div>
+    <!-- STAGE 5  -->
+    <div class="col border-end">
+        <div class="row sticky-top" style="top: 120; z-index: 1;">
+            <div class="bg-success-subtle col py-1 text-center shadow-sm mb-3">
+                <span class="fs-4">{{ part_request_stage_choices.4.name }}</span>
+            </div>
+        </div>
+        {% include "kanban/board/components/stages/stage_5.html" %}
+    </div>
+</div>

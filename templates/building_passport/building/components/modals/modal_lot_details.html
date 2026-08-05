@@ -1,0 +1,83 @@
+{% load custom_filters %}
+<div class="modal fade" id="lotDetailsModal" tabindex="-1" aria-labelledby="lotDetailsModal">
+    <div class="modal-dialog modal-xl" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lotDetailsModalLabel">Заявка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background-color: #f6f9fb">
+                <form id="modalStatusForwardForm" action="/request_lots/status_forward/" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="part_request_lots" class="lotIdHiddenInput" value="">
+                </form>
+                <form id="modalStatusBackwardForm" action="/request_lots/status_backward/" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="part_request_lots" class="lotIdHiddenInput" value="">
+                </form>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header py-3 px-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h3 class="card-title text-gray-800 mb-0">
+                                        Детали заявки
+                                    </h3>
+                                    <div class="d-flex gap-2">
+                                        <div id="statusBadgeContainer"></div>
+                                        <a class="btn btn-sm btn-outline btn-hover-shadow rounded-3 py-0" id="detailsPageLinkInModal" href="" title="Редактировать заявку"><i class="ti ti-pencil fs-4"></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" >
+                                    <table class="table table-row-bordered table-sm">
+                                        <tbody id="lotDetailsTBody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header py-3 px-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-history me-3 mb-3 fs-6"></i>
+                                    <div>
+                                        <h3 class="card-title text-gray-800 mb-0">
+                                            История
+                                        </h3>
+                                        <span class="text-muted fs-3 mb-2">Логирование действии</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body px-3">
+                                <div class="table-responsive" >
+                                    <table class="table table-sm fs-2">
+                                        <thead class="bg-white position-sticky top-0" style="z-index:10">
+                                            <tr class="fw-bold text-gray-800">
+                                                <th>Дата</th>
+                                                <th>Пользователь</th>
+                                                <th>Изменено</th>
+                                                <th class="text-center">Было</th>
+                                                <th></th>
+                                                <th class="text-center">Стало</th>
+                                                <th>Заметки</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lotHistoryTBody">
+                                        </tbody>
+                                    </table>                                          
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm rounded-pill btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,28 @@
+<div class="group-card bg-primary-subtle">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="ms-1" style="font-size: 13px;">
+            <div style="max-width: 400px;" class="text-nowrap text-truncate" title="Дата нач. тендера: {{protocol.date_tender_start|default_if_none:""}} | Дата окон. тендера: {{protocol.date_tender_end|default_if_none:""}} | Вид закупа: {{protocol.purchase_method|default_if_none:""}}">
+                Протокол #<span class="text-dark">{{ protocol.protocol_number }}</span>
+                {% if protocol.protocol_date %} | {{ protocol.protocol_date|date:'d.m.Y' }}{% endif %}
+                {% comment %} {% if protocol.swt_approved_by %}<span class="fst-italic"> | {{ protocol.swt_approved_by.first_name|slice:"0:1" }}. {{ protocol.swt_approved_by.last_name }}</span>{% endif %} {% endcomment %}
+            </div>
+        </span>
+        <div class="d-flex gap-2 align-items-center fs-2">
+            <span class="fs-3 me-2" title="Осталось в протоколе {{protocol.count_lots_without_contract}} позиции(я) из {{protocol.count_lots}}">{{protocol.count_lots_without_contract}}/{{protocol.count_lots}}</span>
+            {% if car.role.slug == 'supplier_lc' and protocol.is_all_lots_done_SWT %}
+                <form class="fs-2" action="{% url 'kanban:request_lot_status_forward_view' %}" method="POST">
+                    {% csrf_token %}
+                    {% for lot in protocol.lots.all %}
+                        <input type="hidden" name="part_request_lots" value="{{ lot.id }}">
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary rounded-pill btn-sm py-0 open-take-all-confirm-modal" title="Взять в работу">
+                        <i class="ti ti-check px-1"></i>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% for lot in protocol.lots_without_contract %}
+        {% include "kanban/board/components/stages/lot_card.html" %}
+    {% endfor %}
+</div>

@@ -1,0 +1,44 @@
+<div class="row">
+    <div class="col">    
+        <div class="group-card bg-primary-subtle">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="ms-1 text-nowrap" style="font-size: 13px;">
+                    <div style="max-width: 400px;" class="text-nowrap text-truncate" title="Дата нач. тендера: {{protocol.date_tender_start|default_if_none:""}} | Дата окон. тендера: {{protocol.date_tender_end|default_if_none:""}} | Вид закупа: {{protocol.purchase_method|default_if_none:""}}">
+                        Протокол #<span class="text-dark">{{ protocol.protocol_number|default_if_none:'' }}</span>
+                        {% if protocol.protocol_date %} | {{ protocol.protocol_date|date:'d.m.Y'|default_if_none:'' }}{% endif %}
+                        {% comment %} {% if protocol.swt_approved_by %}<span class="fst-italic"> | {{ protocol.swt_approved_by.first_name|slice:"0:1" }}. {{ protocol.swt_approved_by.last_name }}</span>{% endif %} {% endcomment %}
+                    </div>
+                </span>
+                <div class="d-flex gap-1 align-items-center fs-2">
+                    {% if car.role.slug == 'buyer_swt' %}
+                    <button 
+                        class="btn btn-sm btn-outline btn-hover-shadow rounded-3 py-0 edit-protocol-btn" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#editProtocolModal" 
+                        title="Редактировать протокол"
+                        data-protocol-id="{{protocol.id|default_if_none:''}}" 
+                        data-purchase-method="{{protocol.purchase_method.id|default_if_none:''}}" 
+                        data-protocol-number="{{protocol.protocol_number|default_if_none:''}}" 
+                        data-protocol-date="{{protocol.protocol_date|date:'Y-m-d'|default_if_none:''}}" 
+                        data-date-tender-start="{{protocol.date_tender_start|date:'Y-m-d'|default_if_none:''}}" 
+                        data-date-tender-end="{{protocol.date_tender_end|date:'Y-m-d'|default_if_none:''}}" 
+                        data-protocol-file-url="{% if protocol.protocol_file %}{{protocol.protocol_file.url}}{% endif %}" 
+                        data-protocol-file-name="{% if protocol.protocol_file %}{{protocol.protocol_file_name}}{% endif %}" 
+                    >
+                        <i class="ti ti-pencil fs-4"></i>
+                    </button>
+                    <form class="fs-2" action="{% url 'kanban:forward_protocol_view' protocol.id %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary rounded-pill btn-sm py-0 open-confirm-modal" title="Отправить в отдел снабжения">
+                            <i class="ti ti-arrow-right px-1"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% for lot in protocol.lots.all %}
+                {% include "kanban/board/components/stages/lot_card.html" %}
+            {% endfor %}
+        </div>
+    </div>
+</div>

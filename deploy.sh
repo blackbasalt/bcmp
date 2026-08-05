@@ -186,7 +186,7 @@ ssh_run "cd '${REMOTE_DIR}' && docker compose up -d --build"
 ok "Container up"
 
 log "Waiting for the app to answer on 127.0.0.1:8000"
-if ssh_run "for i in \$(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8000/ && exit 0; sleep 2; done; exit 1"; then
+if ssh_run "for i in \$(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8000/admin/ && exit 0; sleep 2; done; exit 1"; then
   ok "App is responding"
 else
   warn "App did not respond in time — check: ssh ${HOST} 'cd ${REMOTE_DIR} && docker compose logs --tail=100'"
@@ -195,51 +195,51 @@ fi
 # ---------------------------------------------------------------------------
 # Host nginx reverse proxy
 # ---------------------------------------------------------------------------
-if [[ "$CONFIGURE_NGINX" -eq 1 ]]; then
-  log "Configuring host nginx for ${DOMAIN}"
-  NGINX_CONF="$(cat <<EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+# if [[ "$CONFIGURE_NGINX" -eq 1 ]]; then
+#   log "Configuring host nginx for ${DOMAIN}"
+#   NGINX_CONF="$(cat <<EOF
+# server {
+#     listen 80;
+#     listen [::]:80;
+#     server_name ${DOMAIN} www.${DOMAIN};
+#
+#     client_max_body_size 25m;
 
-    client_max_body_size 25m;
-
-    location /static/ {
-        alias ${REMOTE_DIR}/staticfiles/;
-        access_log off;
-        expires 30d;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
-    }
-}
-EOF
-)"
-  echo "$NGINX_CONF" | ssh_run "cat > /tmp/bcmp.nginx.conf"
-  ssh_sudo "mv /tmp/bcmp.nginx.conf /etc/nginx/sites-available/bcmp.conf"
-  ssh_sudo "ln -sf /etc/nginx/sites-available/bcmp.conf /etc/nginx/sites-enabled/bcmp.conf"
-  ssh_sudo "nginx -t" || die "nginx config test failed — not reloading"
-  ssh_sudo "systemctl reload nginx"
-  ok "nginx reverse proxy live for ${DOMAIN}"
-
-  if [[ "$USE_SSL" -eq 1 ]]; then
-    log "Requesting/renewing TLS certificate via certbot"
-    ssh_run "command -v certbot >/dev/null" \
-      || die "certbot not installed on remote (install it, or drop --ssl)"
-    ssh_sudo "certbot --nginx --non-interactive --agree-tos \
-      -m '${CERTBOT_EMAIL}' -d '${DOMAIN}' -d 'www.${DOMAIN}' --redirect"
-    ok "HTTPS enabled for ${DOMAIN}"
-  fi
-else
-  warn "Skipped nginx configuration (--no-nginx). App listens on 127.0.0.1:8000."
-fi
+#     location /static/ {
+#         alias ${REMOTE_DIR}/staticfiles/;
+#         access_log off;
+#         expires 30d;
+#     }
+#
+#     location / {
+#         proxy_pass http://127.0.0.1:8000;
+#         proxy_set_header Host \$host;
+#         proxy_set_header X-Real-IP \$remote_addr;
+#         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto \$scheme;
+#         proxy_redirect off;
+#     }
+# }
+# EOF
+# )"
+#   echo "$NGINX_CONF" | ssh_run "cat > /tmp/bcmp.nginx.conf"
+#   ssh_sudo "mv /tmp/bcmp.nginx.conf /etc/nginx/sites-available/bcmp.conf"
+#   ssh_sudo "ln -sf /etc/nginx/sites-available/bcmp.conf /etc/nginx/sites-enabled/bcmp.conf"
+#   ssh_sudo "nginx -t" || die "nginx config test failed — not reloading"
+#   ssh_sudo "systemctl reload nginx"
+#   ok "nginx reverse proxy live for ${DOMAIN}"
+#
+#   if [[ "$USE_SSL" -eq 1 ]]; then
+#     log "Requesting/renewing TLS certificate via certbot"
+#     ssh_run "command -v certbot >/dev/null" \
+#       || die "certbot not installed on remote (install it, or drop --ssl)"
+#     ssh_sudo "certbot --nginx --non-interactive --agree-tos \
+#       -m '${CERTBOT_EMAIL}' -d '${DOMAIN}' -d 'www.${DOMAIN}' --redirect"
+#     ok "HTTPS enabled for ${DOMAIN}"
+#   fi
+# else
+#   warn "Skipped nginx configuration (--no-nginx). App listens on 127.0.0.1:8000."
+# fi
 
 echo
 ok "Deployment complete."

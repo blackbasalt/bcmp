@@ -80,11 +80,38 @@ class BuildingPassport(CommonModel):
         OTHER = "other", "Прочее"
  
     space = models.OneToOneField(Space, primary_key=True, on_delete=models.CASCADE, db_column="space_id", related_name="passport")
-    cadastral_no = models.CharField("Кадастровый номер", max_length=64, blank=True, null=True)
-    address = models.CharField(max_length=512, blank=True, null=True)
+
+
+    building_passport_naming = models.CharField(max_length=512, blank=True, null=True) #
+    region = models.CharField(max_length=512, blank=True, null=True) #1
+    region_district = models.CharField(max_length=512, blank=True, null=True) #2
+    settlement = models.CharField(max_length=512, blank=True, null=True) #3
+    settlement_district = models.CharField(max_length=512, blank=True, null=True) #4
+    address = models.CharField(max_length=512, blank=True, null=True) #5
+    cadastral_no = models.CharField("Кадастровый номер", max_length=64, blank=True, null=True) #6
+    inventory_number = models.CharField(max_length=512, blank=True, null=True) #7
+    intended_purpose = models.CharField(max_length=512, blank=True, null=True) #8
+    property_category = models.CharField(max_length=512, blank=True, null=True) #9
+
+    series_project_type = models.CharField(max_length=512, blank=True, null=True) #1
+    number_of_floors = models.CharField(max_length=512, blank=True, null=True) #2
+    building_footprint = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #3
+    building_volume = models.DecimalField(max_digits=20, decimal_places=2, blank=True, null=True) #4
+    total_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #5
+    balcony_loggia_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #6
+    living_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #7
+    non_residential_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #8
+    apartments_number = models.IntegerField(blank=True, null=True) #9
+    total_rooms = models.IntegerField(blank=True, null=True) #10
+    wall_material = models.CharField(max_length=512, blank=True, null=True) #11
+    year_built = models.IntegerField(blank=True, null=True) #12
+    physical_wear_tear = models.CharField(max_length=512, blank=True, null=True) #13
+    registry_number = models.CharField(max_length=512, blank=True, null=True) #
+    passport_prepared = models.DateField(blank=True, null=True) #
+    signer_name = models.CharField(max_length=512, blank=True, null=True) #
+
     lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     lon = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    year_built = models.IntegerField(blank=True, null=True)
     year_commissioned = models.IntegerField(blank=True, null=True)
     year_last_major_repair = models.IntegerField(blank=True, null=True)
     building_class = models.CharField(max_length=16, choices=BuildingClass.choices, blank=True, null=True)
