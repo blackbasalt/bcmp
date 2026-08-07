@@ -1,8 +1,0 @@
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert mx-3 mt-3 py-2 {% if message.tags %}alert-{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}danger{% else %}{{ message.tags }}{% endif %}{% endif %} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-sm btn-close" style="padding: 12px" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    {% endfor %}
-{% endif %}

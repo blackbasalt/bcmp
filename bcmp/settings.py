@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 
 
 def _env_list(name, default=''):
@@ -49,8 +50,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    #'django_extensions',
+    'django_extensions',
 
+    'authentication',
     'dictionary',
     'building_passport',
     'parties',
@@ -74,7 +76,7 @@ ROOT_URLCONF = 'bcmp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATE_DIR,],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -134,8 +136,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Adjust as per your project structure
+]
+#STATIC_ROOT = BASE_DIR / 'static'
+
+LOGIN_REDIRECT_URL = "/login/"
+LOGIN_URL = "/login/"
 
 # Behind an SSL-terminating reverse proxy (nginx)
 if not DEBUG:
