@@ -104,23 +104,57 @@
             {% comment %}
               `data-contour` — договор экрана, парный к `data-space` в дереве: по коду
               помещения план и дерево находят друг друга. Заливка полупрозрачная,
-              чтобы чертёж читался сквозь неё; окраска по слою — следующий тикет, здесь
-              все контуры нейтральны.
+              чтобы чертёж читался сквозь неё.
+
+              Цвет приходит от слоя посчитанным (`plan_layer`) и ставится прямо на
+              контур, а не выбирается здесь по классу: следующий слой — долги
+              арендаторов, сроки договоров — встанет на это же место, и разметке для
+              него ничего не потребуется. `data-paint` называет разновидность тем же
+              ключом, что и запись легенды.
+
+              Контур вне слоя — лестничная клетка, шахта, проём второго света — остаётся
+              одной линией без заливки: на чертеже не должно быть необъяснённых провалов,
+              но и выдавать их за тип помещения нельзя. Слой не даёт им ничего, поэтому
+              и подпись у них одно имя.
 
               Контур выбирают тем же, чем и узел дерева (`_space_select.html`): так
               план и становится тем, что можно расспрашивать, показывая пальцем.
             {% endcomment %}
             <svg class="absolute inset-0 h-full w-full text-base-content"
                  viewBox="{{ plan.view_box }}" aria-label="Контуры помещений">
-              {% for contour in contours %}
-                <path class="floor-contour" data-contour="{{ contour.space.code }}"
-                      {% include "building_passport/_space_select.html" with space=contour.space %}
-                      d="{{ contour.path_d }}" vector-effect="non-scaling-stroke">
-                  <title>{{ contour.space|space_label }}</title>
+              {% for painted in painting.contours %}
+                <path class="floor-contour" data-contour="{{ painted.space.code }}"
+                      {% if painted.paint %}data-paint="{{ painted.paint.key }}" style="color: {{ painted.paint.colour }}"{% else %}style="fill: none"{% endif %}
+                      {% include "building_passport/_space_select.html" with space=painted.space %}
+                      d="{{ painted.path_d }}" vector-effect="non-scaling-stroke">
+                  {# Подпись контура: имя помещения и строка слоя — что означает его цвет. #}
+                  <title>{{ painted.space|space_label }}{% if painted.paint %} — {{ painted.paint.note }}{% endif %}</title>
                 </path>
               {% endfor %}
             </svg>
           </div>
+
+          {% comment %}
+            Легенда: цвет без неё приходится угадывать, а угаданное читается как факт.
+            Собрана она слоем и только из того, что на этом этаже нарисовано, — запись
+            о цвете, которого на чертеже нет, была бы подписью к пустому месту.
+            Разновидности, у которых заливки нет вовсе, записи не получают.
+
+            Слой назван: план показывает один слой за раз, и читатель должен знать,
+            который. Здесь же встанет и переключатель, когда слоёв станет больше.
+          {% endcomment %}
+          {% if painting.legend %}
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <span class="opacity-60">Слой: {{ painting.title|lower }}</span>
+              {% for paint in painting.legend %}
+                <span class="flex items-center gap-1.5" data-legend="{{ paint.key }}"
+                      style="color: {{ paint.colour }}">
+                  <span class="plan-legend-swatch"></span>
+                  <span class="text-base-content">{{ paint.label }}</span>
+                </span>
+              {% endfor %}
+            </div>
+          {% endif %}
         {% else %}
           {% comment %}
             Постоянное пустое состояние, а не заглушка: план может отсутствовать и

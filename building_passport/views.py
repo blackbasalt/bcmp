@@ -7,6 +7,7 @@ from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
 
+from . import plan_layer
 from .models import FloorPlan, Space
 from .passport_sections import sections
 from .space_tree import spaces_under, tree_under
@@ -106,12 +107,16 @@ class FloorView(LoginRequiredMixin, DetailView):
         context["plan"] = plan
         # Контуры отбираются тем же чокпоинтом, что и дерево: помещение другого клиента,
         # оказавшееся под этим этажом, не должно проехать на экран именем и формой.
-        # Его помещение едет тем же запросом — при наведении на контур видно имя.
-        context["contours"] = (
+        # Его помещение едет тем же запросом — по нему слой и красит контур.
+        contours = (
             plan.contours.filter(space__in=visible).select_related("space").order_by("space__code")
             if plan
             else ()
         )
+        # Цвет контура и легенда к нему — правило слоя, посчитанное здесь, а не набор
+        # классов в разметке: следующий слой встанет на это же место, и экрану для него
+        # ничего не потребуется. Слой на плане один за раз, и пока он заведён один.
+        context["painting"] = plan_layer.SPACE_TYPE.apply(contours)
         # Всё нутро здания одним запросом: дерево вложено на произвольную глубину,
         # и обход по узлам стоил бы запроса на каждое помещение. Лишнее отсекает
         # само дерево: под этажом оказывается только то, что связано с ним через
@@ -122,7 +127,7 @@ class FloorView(LoginRequiredMixin, DetailView):
         # находят незаведённое, и ненанесённое не должно молчать. Оба набора пусты,
         # пока у этажа нет действующего плана: не нанесено тогда вообще ничего, и
         # пометка на каждом узле сообщала бы то же, что и пустой центр экрана.
-        drawn = {contour.space_id for contour in context["contours"]}
+        drawn = {contour.space_id for contour in contours}
         under = spaces_under(self.object, inside) if plan else ()
         context["drawn"] = drawn
         context["undrawn"] = {space.pk for space in under if space.pk not in drawn}

@@ -6,9 +6,10 @@
 контуров — одна операция. Сам разбор SVG живёт в своём шве, `test_floor_plan_svg`.
 
 Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
-переключателе и `data-select` с `data-drawn` на том, чем выбирают помещение. Это
-договор экрана, а не оформление: по ним план и дерево находят друг друга, видно, есть
-ли на этаже чертёж, и видно, какие помещения на него не нанесены.
+переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение, и
+`data-paint` с `data-legend` на окраске по слою. Это договор экрана, а не оформление:
+по ним план и дерево находят друг друга, видно, есть ли на этаже чертёж, какие
+помещения на него не нанесены и чем окрашен каждый контур.
 """
 
 import re
@@ -135,6 +136,23 @@ def contours_on(page):
     return {tag["data-contour"]: tag for tag in marked(page, "data-contour")}
 
 
+def legend_on(page):
+    """Записи легенды по ключу разновидности — тому же, каким помечен контур."""
+    return {tag["data-legend"]: tag for tag in marked(page, "data-legend")}
+
+
+def painted_on(page):
+    """Чем окрашен каждый контур: код помещения → ключ разновидности слоя.
+
+    Контур без заливки в набор не попадает: он не окрашен, а обведён.
+    """
+    return {
+        code: tag["data-paint"]
+        for code, tag in contours_on(page).items()
+        if "data-paint" in tag
+    }
+
+
 # Файл плана
 
 
@@ -224,8 +242,12 @@ def test_a_space_with_no_path_in_the_file_is_not_drawn(floor_page):
 
 
 def test_hovering_a_contour_shows_the_name_of_its_space(floor_page):
-    """Этаж просматривают, не проваливаясь в каждое помещение по очереди."""
-    assert contours_on(floor_page)["man-f1-a"]["title-text"] == "каб101вход"
+    """Этаж просматривают, не проваливаясь в каждое помещение по очереди.
+
+    Имя стоит первым, а не единственным: слой дописывает к нему свою строку — что
+    означает цвет, которым помещение залито.
+    """
+    assert contours_on(floor_page)["man-f1-a"]["title-text"].startswith("каб101вход")
 
 
 def test_the_drawing_is_asked_for_through_the_application(floor_page, plan):
@@ -669,3 +691,143 @@ def test_the_history_of_plans_does_not_write_the_validity_of_the_spaces_themselv
     make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
     assert set(Space.objects.values_list("valid_from", "valid_to")) == {(None, None)}
+
+
+# Слой «тип помещения»: окраска контуров и легенда
+
+
+@pytest.fixture
+def coloured_floor(first_floor, make_space):
+    """Этаж, на котором есть все три типа помещений и то, что ни к одному не относится.
+
+    «каб101вход» сдаётся, «Коридор» — МОП, ИТП не сдаётся и общим не является,
+    а лестничная клетка — не тип помещения вовсе.
+    """
+    Space.objects.filter(code="man-f1-a").update(is_leasable=True)
+    corridor = make_space(first_floor, "man-f1-c", "Коридор")
+    Space.objects.filter(pk=corridor.pk).update(is_common=True)
+    make_space(first_floor, "man-f1-s", "ЛК-1", type="stairwell")
+    make_plan(
+        first_floor,
+        plan_svg(
+            ("man-f1-a", ENTRANCE_PATH),
+            ("man-f1-b", ITP_PATH),
+            ("man-f1-c", "M0 200 L100 200 L100 300 Z"),
+            ("man-f1-s", "M400 200 L500 200 L500 300 Z"),
+        ),
+    )
+    return first_floor
+
+
+@pytest.fixture
+def coloured(client, member, coloured_floor):
+    return floor_screen(client, member, coloured_floor)
+
+
+def test_the_floor_screen_renders_with_the_layer_applied(client, member, coloured_floor):
+    """Экран со слоем отрисовывается: ошибка правила или разметки обнаруживается здесь."""
+    client.force_login(member)
+
+    response = client.get(floor_url(coloured_floor))
+
+    assert response.status_code == 200
+
+
+def test_each_of_the_three_types_is_painted_its_own_way(coloured):
+    """Сдаваемое, общее и техническое видно, не читая ни одной подписи.
+
+    Сверяется, чем залит каждый контур, а не какого он цвета: цвет — дело палитры,
+    и назови его тест, он сломался бы на первой же смене темы.
+    """
+    assert painted_on(coloured) == {
+        "man-f1-a": "leasable",
+        "man-f1-c": "common",
+        "man-f1-b": "technical",
+    }
+
+
+def test_a_space_that_is_neither_leased_nor_common_reads_as_technical(
+    client, member, first_floor
+):
+    """Техническое — это отсутствие обоих признаков, в том числе непроставленных.
+
+    ИТП, венткамера и электрощитовая находятся именно так. Непроставленный признак
+    означает «нет»: четвёртый цвет для «неизвестно» рассказывал бы о полноте данных,
+    а не о здании.
+    """
+    Space.objects.filter(code="man-f1-b").update(is_leasable=None, is_common=None)
+    make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert painted_on(page) == {"man-f1-b": "technical"}
+
+
+def test_a_space_marked_both_leasable_and_common_is_drawn_as_leasable(
+    client, member, first_floor
+):
+    """Признаки противоречат друг другу; сдаваемое помещение не является общим."""
+    Space.objects.filter(code="man-f1-a").update(is_leasable=True, is_common=True)
+    make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert painted_on(page) == {"man-f1-a": "leasable"}
+
+
+@pytest.mark.parametrize("type", ["void", "shaft", "stairwell"])
+def test_a_space_outside_the_three_types_is_outlined_without_a_fill(
+    client, member, first_floor, make_space, type
+):
+    """Проём, шахта и лестничная клетка нарисованы, чтобы на чертеже не было провалов.
+
+    Залить их одним из трёх цветов значило бы назвать их типом помещения, которым
+    они не являются, поэтому слой не даёт им ничего: контур на плане есть, а заливки
+    у него нет. Отсутствие `data-paint` — это и есть «не залит» на проводе; чем
+    рисуется незалитый контур, знает таблица стилей.
+    """
+    make_space(first_floor, "man-f1-x", "Не тип помещения", type=type)
+    make_plan(first_floor, plan_svg(("man-f1-x", ENTRANCE_PATH)))
+
+    tag = contours_on(floor_screen(client, member, first_floor))["man-f1-x"]
+
+    assert tag["d"] == ENTRANCE_PATH
+    assert "data-paint" not in tag
+
+
+def test_the_screen_shows_a_legend_for_the_colouring(coloured):
+    """Цвет без легенды приходится угадывать, а угаданное читается как факт."""
+    assert set(legend_on(coloured)) == {"leasable", "common", "technical"}
+    assert "Арендопригодные" in coloured
+    assert "МОП" in coloured
+    assert "Технические" in coloured
+
+
+def test_a_space_outside_the_three_types_gets_no_legend_entry(coloured):
+    """Лестничная клетка на чертеже есть, но объяснять в легенде нечего: она не залита."""
+    assert "man-f1-s" in contours_on(coloured)
+    assert len(legend_on(coloured)) == 3
+
+
+def test_the_legend_explains_the_colours_of_this_floor_and_no_others(
+    client, member, first_floor
+):
+    """Запись о цвете, которого на чертеже нет, — это подпись к пустому месту."""
+    make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert set(legend_on(page)) == {"technical"}
+
+
+def test_hovering_a_contour_says_what_its_colour_means(coloured):
+    """Слой отвечает и по одному помещению: незачем сверять цвет с легендой глазами.
+
+    Контур вне слоя подписан одним именем: заливки у него нет, и объяснять нечего.
+    """
+    hovered = {code: tag["title-text"] for code, tag in contours_on(coloured).items()}
+
+    assert "арендопригодное" in hovered["man-f1-a"]
+    assert "общего пользования" in hovered["man-f1-c"]
+    assert "техническое" in hovered["man-f1-b"]
+    assert hovered["man-f1-s"] == "ЛК-1"
