@@ -49,6 +49,13 @@ reverse-proxy vhost (`/static/` served from disk, everything else proxied) →
   are safe. First run auto-fills a secret key + your domain, but review it.
 - Re-running the script = a normal redeploy (rebuild + restart).
 
+## Поэтажные планы
+
+Чертёж этажа — это SVG, в котором `id` пути равен коду помещения: из таких путей при
+загрузке файла собираются контуры (ADR 0003). Как нарисовать такой файл в Figma,
+Inkscape, CorelDRAW, Illustrator и других редакторах, как проверить его до загрузки и
+что означают отказы формы — [docs/floor-plan-svg.md](docs/floor-plan-svg.md).
+
 ## Статика
 
 Tailwind + daisyUI, single light theme, plus HTMX and Alpine for the
