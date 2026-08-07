@@ -186,9 +186,9 @@ def test_the_floor_keeps_a_place_for_the_card_of_a_space(floor_page):
     assert "Помещение не выбрано" in floor_page
 
 
-def test_a_floor_without_a_plan_says_the_plan_is_not_loaded_yet(floor_page):
-    """Отсутствие плана читается как «ещё не загружен», а не как поломка экрана."""
-    assert "Поэтажный план для этого этажа не загружен" in floor_page
+def test_a_floor_without_a_plan_says_there_is_no_plan_in_force(floor_page):
+    """Отсутствие плана читается как состояние данных, а не как поломка экрана."""
+    assert "нет действующего поэтажного плана" in floor_page
 
 
 # Переходы с экрана этажа

@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Exists, OuterRef, Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
@@ -87,12 +88,21 @@ class FloorView(LoginRequiredMixin, DetailView):
         plans = FloorPlan.objects.visible_to(self.request.user)
         building = self.object.building
         context["building"] = building
+        # Сегодняшний день берётся один раз на весь экран: значок в переключателе и
+        # чертёж в центре должны говорить об одном и том же дне, даже если запрос
+        # пришёлся на полночь.
+        in_force = plans.in_force_on(timezone.localdate())
         # Значок плана в переключателе: иначе по этажам щёлкают в надежде найти чертёж.
         # Подзапрос идёт через тот же чокпоинт — чужая строка не должна ставить значок.
+        # Обещает он ровно то, что откроется: этаж с одним лишь будущим планом чертежа
+        # сегодня не покажет, и значка на нём нет.
         context["floors"] = visible.floors_of(building).annotate(
-            has_plan=Exists(plans.filter(floor=OuterRef("pk")))
+            has_plan=Exists(in_force.filter(floor=OuterRef("pk")))
         )
-        plan = plans.latest_for(self.object)
+        # Планировку показывает действующий план, а не последний загруженный: работы
+        # планируют по сегодняшнему чертежу, и назначенная на будущее перепланировка
+        # до своей даты на экран не выходит.
+        plan = in_force.filter(floor=self.object).first()
         context["plan"] = plan
         # Контуры отбираются тем же чокпоинтом, что и дерево: помещение другого клиента,
         # оказавшееся под этим этажом, не должно проехать на экран именем и формой.

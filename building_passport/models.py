@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Q
 from django.db.models.functions import Lower, Now
+from django.utils import timezone
 
 
 from dictionary.models import *
@@ -129,13 +130,32 @@ class FloorPlanQuerySet(models.QuerySet):
         """
         return self.filter(floor__in=Space.objects.visible_to(user))
 
-    def latest_for(self, floor):
-        """План этажа, который показывает экран, — самый поздний по дате начала.
+    def overlapping(self, begin, end):
+        """Планы, чьи периоды задевают отрезок от `begin` до `end` включительно.
 
-        Правило действующего плана — какой из периодов идёт сегодня — за тикетом
-        об истории планировок; здесь порядок задаёт только дата начала.
+        Оба конца входят в период, поэтому план, начинающийся в день закрытия
+        отрезка, с ним пересекается. Открытый конец — что у плана, что у отрезка —
+        означает «по сей день» и не кончается никогда, так что любое начало после
+        такого плана в него попадает.
+
+        Одна форма запроса на два вопроса: какой план действует в этот день — это
+        пересечение с отрезком из одного дня, а непересечение периодов — то же
+        самое на отрезке нового плана.
         """
-        return self.filter(floor=floor).order_by("-valid_from").first()
+        began_by_the_end = Q() if end is None else Q(valid_from__lte=end)
+        not_ended_before_the_begin = Q(valid_to__isnull=True) | Q(valid_to__gte=begin)
+        return self.filter(began_by_the_end).filter(not_ended_before_the_begin)
+
+    def in_force_on(self, day):
+        """Планы, действующие в этот день: период начался и ещё не закончился.
+
+        Периоды планов одного этажа не пересекаются, поэтому у этажа таких планов
+        не больше одного.
+
+        Не «самый поздний по дате начала»: план будущей перепланировки уже заведён,
+        а этаж сегодня выглядит ещё не так, и работы планируют по сегодняшнему.
+        """
+        return self.overlapping(day, day)
 
 
 class FloorPlan(CommonModel):
@@ -181,6 +201,7 @@ class FloorPlan(CommonModel):
         super().clean()
         if self.floor_id is not None and self.floor.type != DictSpaceType.FLOOR:
             raise ValidationError({"floor": "План принадлежит этажу, а не помещению в нём."})
+        self._validate_period()
         if self.floor_id is None or not self.file:
             return
         try:
@@ -197,6 +218,7 @@ class FloorPlan(CommonModel):
         нарисован (ADR 0003), поэтому правка периода не переносит план на сегодняшнее
         дерево помещений. Новая планировка — это новый план, а не новый файл у старого.
         """
+        self._validate_period()
         if not self._state.adding:
             super().save(*args, **kwargs)
             return
@@ -204,6 +226,43 @@ class FloorPlan(CommonModel):
         with transaction.atomic():
             super().save(*args, **kwargs)
             Contour.objects.bulk_create(contours)
+
+    def _validate_period(self):
+        """Период должен быть периодом и не должен задевать соседний период этажа.
+
+        Правило стоит на самом плане, а не на форме: админка, будущая форма загрузки
+        и код пишут одним и тем же путём и получают один и тот же отказ. Иначе
+        «действующий план» перестал бы быть определённым — сегодняшних планов
+        оказалось бы два, и какой из них показывать, решал бы порядок сортировки.
+
+        Прежний план при этом не закрывается сам: назначить перепланировку днём
+        загрузки — выдумать факт, тот же по природе, что и `year_built = 1900`,
+        от которого этап 1 уходил. Дату называет загружающий, а система отказывает.
+        """
+        if self.valid_from is None or self.floor_id is None:
+            return
+        if self.valid_to is not None and self.valid_to < self.valid_from:
+            raise ValidationError({"valid_to": "Период заканчивается раньше, чем начинается."})
+        conflicting = self._conflicting_plans().first()
+        if conflicting is not None:
+            closes = f"{conflicting.valid_to:%d.%m.%Y}" if conflicting.valid_to else "по сей день"
+            raise ValidationError(
+                f"Период пересекается с планом этажа за {conflicting.valid_from:%d.%m.%Y} — "
+                f"{closes}. У этажа не бывает двух действующих планов: закройте прежний "
+                f"период датой перепланировки."
+            )
+
+    def _conflicting_plans(self):
+        """Планы того же этажа, чьи периоды задевают этот, — их не должно быть ни одного.
+
+        Смежный план конфликтом не считается: пересекается тот, что начинается в день
+        закрытия предыдущего, а не на следующий день после него.
+        """
+        return (
+            FloorPlan.objects.filter(floor_id=self.floor_id)
+            .exclude(pk=self.pk)
+            .overlapping(self.valid_from, self.valid_to)
+        )
 
     def _read_contours(self):
         """Разобранный чертёж: его `viewBox` и контуры, уже сведённые с помещениями."""

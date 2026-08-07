@@ -11,13 +11,14 @@
 """
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from html.parser import HTMLParser
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from django.utils import timezone
 
 from building_passport.floor_plan_svg import PlanUnreadable
 from building_passport.models import Contour, FloorPlan, Space
@@ -26,6 +27,7 @@ pytestmark = pytest.mark.django_db
 
 VIEW_BOX = "0 0 800 600"
 ENTRANCE_PATH = "M0 0 L100 0 L100 100 Z"
+ITP_PATH = "M400 0 L500 0 L500 100 Z"
 
 
 @pytest.fixture(autouse=True)
@@ -43,12 +45,18 @@ def plan_svg(*contours, view_box=VIEW_BOX):
     )
 
 
-def make_plan(floor, source, valid_from=date(2020, 1, 1)):
+def make_plan(floor, source, valid_from=date(2020, 1, 1), valid_to=None):
     return FloorPlan.objects.create(
         floor=floor,
         file=SimpleUploadedFile("plan.svg", source.encode(), content_type="image/svg+xml"),
         valid_from=valid_from,
+        valid_to=valid_to,
     )
+
+
+def day(offset):
+    """Дата в днях от сегодняшней: «действующий» — свойство именно сегодняшнего дня."""
+    return timezone.localdate() + timedelta(days=offset)
 
 
 @pytest.fixture
@@ -191,7 +199,7 @@ def test_a_floor_with_a_plan_opens(client, member, plan):
     response = client.get(floor_url(plan.floor))
 
     assert response.status_code == 200
-    assert "Поэтажный план для этого этажа не загружен" not in response.content.decode()
+    assert "нет действующего поэтажного плана" not in response.content.decode()
 
 
 def test_each_drawn_space_is_outlined_on_the_plan(floor_page):
@@ -357,14 +365,14 @@ def admin_client(client, django_user_model):
     return client
 
 
-def admin_upload(client, floor, source):
+def admin_upload(client, floor, source, valid_from=date(2020, 1, 1), valid_to=None):
     return client.post(
         reverse("admin:building_passport_floorplan_add"),
         {
             "floor": str(floor.pk),
             "file": SimpleUploadedFile("plan.svg", source.encode(), content_type="image/svg+xml"),
-            "valid_from": "2020-01-01",
-            "valid_to": "",
+            "valid_from": valid_from.isoformat(),
+            "valid_to": valid_to.isoformat() if valid_to else "",
         },
     )
 
@@ -386,3 +394,226 @@ def test_a_file_that_is_not_a_plan_is_rejected_in_admin_with_a_reason(admin_clie
     assert response.status_code == 200
     assert re.search(r"не читается как SVG", response.content.decode())
     assert FloorPlan.objects.count() == 0
+
+
+# История планировок: действующий план и непересекающиеся периоды
+
+
+@pytest.fixture
+def superseded(first_floor):
+    """Прежний план: его период закончился вчера, но сам он остаётся в истории."""
+    return make_plan(
+        first_floor,
+        plan_svg(("man-f1-a", ENTRANCE_PATH)),
+        valid_from=day(-365),
+        valid_to=day(-1),
+    )
+
+
+@pytest.fixture
+def in_force(first_floor):
+    """Действующий план: период начался месяц назад и не закрыт."""
+    return make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30))
+
+
+def floor_screen(client, member, floor):
+    client.force_login(member)
+    return client.get(floor_url(floor)).content.decode()
+
+
+def test_the_floor_screen_renders_the_plan_in_force_today(
+    client, member, first_floor, superseded
+):
+    """Работы планируют по сегодняшнему чертежу, а не по тому, что был до перепланировки."""
+    current = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert set(contours_on(page)) == {"man-f1-b"}
+    assert file_url(current) in page
+    assert file_url(superseded) not in page
+
+
+def test_a_plan_whose_period_has_not_begun_is_not_rendered(client, member, first_floor):
+    """Перепланировка назначена на будущее: до её даты этаж выглядит так, как сейчас.
+
+    Назначить её можно, только назвав день, которым закрывается нынешний план, —
+    иначе периоды пересекаются и новый план не принимается.
+    """
+    current = make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
+    )
+    future = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(30))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert set(contours_on(page)) == {"man-f1-a"}
+    assert file_url(current) in page
+    assert file_url(future) not in page
+
+
+def test_a_floor_whose_only_plan_has_not_begun_shows_no_plan(client, member, first_floor):
+    """Пустой центр честнее будущего чертежа: сегодня этаж выглядит не так.
+
+    И говорит он «нет действующего», а не «не загружен»: план у этажа есть, просто
+    его период ещё не начался, и загружать второй раз то же самое незачем.
+    """
+    make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
+
+    page = floor_screen(client, member, first_floor)
+
+    assert contours_on(page) == {}
+    assert "нет действующего поэтажного плана" in page
+
+
+def test_the_switcher_marks_a_floor_by_the_plan_in_force_today(
+    client, member, first_floor, in_force, make_floor, make_space
+):
+    """Значок обещает чертёж: этаж с одним лишь будущим планом обещать его не должен."""
+    second = make_floor(first_floor.building, 2)
+    make_space(second, "man-f2-a", "каб201")
+    make_plan(second, plan_svg(("man-f2-a", ENTRANCE_PATH)), valid_from=day(30))
+
+    page = floor_screen(client, member, first_floor)
+
+    marks = {tag["data-floor"]: tag["data-plan"] for tag in marked(page, "data-floor")}
+    assert marks == {"man-f1": "yes", "man-f2": "no"}
+
+
+def test_a_superseded_plan_is_kept_rather_than_deleted(first_floor, superseded):
+    """История планировок и есть то, ради чего у плана период: прежний чертёж остаётся."""
+    make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    assert FloorPlan.objects.filter(pk=superseded.pk).exists()
+
+
+def test_a_superseded_plan_keeps_the_contours_it_was_drawn_with(
+    first_floor, superseded, make_space
+):
+    """Старый план не перерисовывается сегодняшними помещениями (ADR 0003).
+
+    После перепланировки на этаже появилось помещение, которого на прежнем чертеже
+    не было. Его контур принадлежит новому плану, а старый остаётся с тем, с чем
+    был нарисован: иначе это не устаревшая картинка, а неверная.
+    """
+    make_space(first_floor, "man-f1-c", "каб102")
+
+    current = make_plan(
+        first_floor,
+        plan_svg(("man-f1-b", ITP_PATH), ("man-f1-c", ENTRANCE_PATH)),
+        valid_from=day(0),
+    )
+
+    assert [c.space.code for c in superseded.contours.all()] == ["man-f1-a"]
+    assert sorted(c.space.code for c in current.contours.all()) == ["man-f1-b", "man-f1-c"]
+
+
+def test_a_plan_overlapping_an_existing_plan_of_the_floor_is_rejected(first_floor, in_force):
+    """У этажа не бывает двух действующих планов: какой из них сегодняшний — неизвестно."""
+    with pytest.raises(ValidationError):
+        make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+
+def test_a_rejected_overlap_leaves_the_existing_plan_in_force(
+    client, member, first_floor, in_force
+):
+    """Отказ ничего не меняет: действующим остаётся тот план, что действовал."""
+    with pytest.raises(ValidationError):
+        make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    assert list(FloorPlan.objects.all()) == [in_force]
+    assert set(contours_on(floor_screen(client, member, first_floor))) == {"man-f1-a"}
+
+
+def test_creating_a_plan_does_not_close_the_period_of_the_previous_one(first_floor, in_force):
+    """Закрыть прежний период задним числом — записать перепланировку административным днём.
+
+    Дату называет загружающий; система её не выдумывает, поэтому пересечение — отказ,
+    а не молчаливое закрытие предыдущего плана.
+    """
+    with pytest.raises(ValidationError):
+        make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    in_force.refresh_from_db()
+    assert in_force.valid_to is None
+
+
+def test_a_plan_beginning_the_day_the_previous_one_ends_is_rejected(first_floor):
+    """В этот день действовали бы оба: период включает и свой последний день."""
+    make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(-10)
+    )
+
+    with pytest.raises(ValidationError):
+        make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(-10))
+
+
+def test_a_plan_beginning_the_day_after_the_previous_one_ends_is_accepted(
+    client, member, first_floor
+):
+    """Смежные периоды — это и есть история: у каждого дня свой единственный план."""
+    make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(-10)
+    )
+
+    make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(-9))
+
+    assert FloorPlan.objects.count() == 2
+    assert set(contours_on(floor_screen(client, member, first_floor))) == {"man-f1-b"}
+
+
+def test_a_plan_of_another_floor_may_hold_the_same_period(
+    first_floor, in_force, make_floor, make_space
+):
+    """Непересечение — правило одного этажа: у каждого этажа свой действующий план."""
+    second = make_floor(first_floor.building, 2)
+    make_space(second, "man-f2-a", "каб201")
+
+    make_plan(second, plan_svg(("man-f2-a", ENTRANCE_PATH)), valid_from=in_force.valid_from)
+
+    assert FloorPlan.objects.count() == 2
+
+
+def test_editing_a_period_into_an_overlap_is_rejected(first_floor, superseded):
+    """Правка периода — тот же путь записи: правило принадлежит плану, а не форме."""
+    current = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    current.valid_from = superseded.valid_to
+    with pytest.raises(ValidationError):
+        current.save()
+
+    current.refresh_from_db()
+    assert current.valid_from == day(0)
+
+
+def test_a_period_that_ends_before_it_begins_is_rejected(first_floor):
+    """Период, кончающийся раньше начала, — не период: действующим он не станет никогда."""
+    with pytest.raises(ValidationError):
+        make_plan(
+            first_floor,
+            plan_svg(("man-f1-a", ENTRANCE_PATH)),
+            valid_from=day(0),
+            valid_to=day(-1),
+        )
+
+
+def test_an_overlapping_plan_is_rejected_in_admin_with_a_reason(
+    admin_client, first_floor, in_force
+):
+    """Отказ называет причину на форме: иначе дату правят наугад, глядя на пустую страницу."""
+    response = admin_upload(
+        admin_client, first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0)
+    )
+
+    assert response.status_code == 200
+    assert re.search(r"период.*пересекается", response.content.decode(), re.IGNORECASE)
+    assert FloorPlan.objects.count() == 1
+
+
+def test_the_history_of_plans_does_not_write_the_validity_of_the_spaces_themselves(
+    first_floor, superseded
+):
+    """`Space.valid_from` означает, когда существовало помещение, а не когда — его чертёж."""
+    make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
+
+    assert set(Space.objects.values_list("valid_from", "valid_to")) == {(None, None)}
