@@ -1,8 +1,11 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Exists, OuterRef, Q
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
@@ -10,6 +13,7 @@ from dictionary.models import DictSpaceType
 from . import plan_completeness, plan_layer
 from .models import FloorPlan, Space
 from .passport_sections import sections
+from .plan_upload import FloorPlanForm
 from .space_tree import spaces_under, tree_under
 
 
@@ -65,7 +69,13 @@ class BCDetailView(LoginRequiredMixin, DetailView):
 
 
 class FloorView(LoginRequiredMixin, DetailView):
-    """Экран этажа — дерево помещений слева, план в центре, карточка помещения справа."""
+    """Экран этажа — дерево помещений слева, план в центре, карточка помещения справа.
+
+    Он же принимает загрузку плана: форма стоит на этом экране, и отправляется она
+    по его же адресу. Отдельный адрес для записи означал бы второе место, которое
+    собирает тот же этаж и то же право на него, а отказ формы возвращался бы на
+    страницу без дерева и без чертежа, с которыми загрузившему и надо сверяться.
+    """
 
     template_name = "building_passport/floor.html"
     context_object_name = "floor"
@@ -136,7 +146,63 @@ class FloorView(LoginRequiredMixin, DetailView):
             contours,
             plan.unmatched_ids if plan else (),
         )
+        # Форма загрузки — только тому, кто вправе загружать: действия, которого
+        # сотруднику не совершить, ему и не предлагают. Отказ приносит с собой уже
+        # заполненную форму, поэтому пустая ставится только на её место.
+        if not self.administers_the_floor:
+            context["upload"] = None
+        else:
+            context.setdefault("upload", FloorPlanForm(floor=self.object))
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Загрузка плана: тот же адрес, что и у экрана, — форма стоит именно на нём.
+
+        Отказ возвращает тот же экран с причиной на форме, а успех — переход на него
+        же: перезагруженный экран и есть подтверждение, и новый действующий план
+        встаёт на место прежнего сам.
+        """
+        self.object = self.get_object()
+        if not self.administers_the_floor:
+            # 403, а не 404: этаж этот сотрудник видит, и отвечать «его нет» значило
+            # бы соврать о том, что уже показано. Скрывать здесь нечего — скрывают
+            # чужие данные, а не собственную нехватку прав (ADR 0005).
+            raise PermissionDenied("Загружать планы этой организации может её администратор.")
+        form = FloorPlanForm(request.POST, request.FILES, floor=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(upload=form))
+        plan = form.save()
+        messages.success(request, self.upload_report(plan))
+        return redirect("building_passport:floor", self.object.building_id, self.object.pk)
+
+    @cached_property
+    def administers_the_floor(self):
+        """Вправе ли этот пользователь вести данные организации этого этажа (ADR 0005).
+
+        Спрашивается тот же чокпоинт, что и на записи: показанная кнопка и принятый
+        запрос должны отвечать на один вопрос одинаково, иначе форма предлагает то,
+        что потом отклоняется. Ответ на запрос один, поэтому и спрашивается он один
+        раз: отказ формы иначе задавал бы тот же вопрос дважды.
+        """
+        return Space.objects.administered_by(self.request.user).filter(pk=self.object.pk).exists()
+
+    @staticmethod
+    def upload_report(plan):
+        """Что сказать о загруженном плане: с какого дня он действует и виден ли уже.
+
+        План с будущей датой на экран сегодня не выходит — и загрузивший должен
+        узнать это от нас, а не из неизменившегося экрана, который он примет за
+        потерянный файл. Про прежний план фраза при этом молчит: его может и не
+        быть вовсе, и обещать чертёж, которого нет, — та же выдумка, что и дата.
+
+        Действует ли план сегодня, спрашивается у того же `in_force_on`, которым
+        экран выбирает чертёж: второе сравнение дат разошлось бы с первым.
+        """
+        loaded = f"План загружен. Планировка действует с {plan.valid_from:%d.%m.%Y}"
+        in_force = FloorPlan.objects.in_force_on(timezone.localdate())
+        if in_force.filter(pk=plan.pk).exists():
+            return f"{loaded}."
+        return f"{loaded} — до этого дня экран этажа его не показывает."
 
 
 class SpaceCardView(LoginRequiredMixin, DetailView):

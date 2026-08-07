@@ -57,6 +57,26 @@ class SpaceQuerySet(models.QuerySet):
             return self
         return self.filter(org_id__in=user.memberships.values("org_id"))
 
+    def administered_by(self, user):
+        """Пространства, которые пользователь вправе вести, — чокпоинт записи (ADR 0005).
+
+        Отдельный от `visible_to` вопрос: читать данные организации и заводить их —
+        разные права, и второе даётся флагом на членстве, а не глобальным `is_staff`.
+        Место при этом одно, как и у чтения: путь записи спрашивает его, а не
+        собирает фильтр сам.
+
+        Суперпользователь администрирует всё по той же причине, по которой всё
+        видит: он и так пишет через админку Django, и запрет здесь ничего бы не
+        закрыл, а только развёл два ответа на один вопрос.
+        """
+        if not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        return self.filter(
+            org_id__in=user.memberships.filter(is_admin=True).values("org_id")
+        )
+
     def buildings_visible_to(self, user):
         """Доступные пользователю бизнес-центры: БЦ — это пространство типа building."""
         return self.visible_to(user).filter(type=DictSpaceType.BUILDING)

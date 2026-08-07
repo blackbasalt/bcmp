@@ -53,6 +53,14 @@ class OrgMembership(CommonModel):
     """Доступ пользователя к организации. Один сотрудник может состоять в нескольких."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
     org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="memberships")
+    #: Право вести данные этой организации из приложения, а не только читать их.
+    #: Стоит на членстве, а не на пользователе: администраторство принадлежит паре
+    #: «сотрудник + организация», и сотрудник, ведущий одного клиента, остаётся
+    #: обычным читателем у другого. Глобальный `is_staff` этого не выражает — тот же
+    #: довод, что и у самой изоляции по организациям (ADR 0001, ADR 0005).
+    is_admin = models.BooleanField(
+        default=False, db_default=False, verbose_name="администратор организации"
+    )
 
     class Meta:
         db_table = "org_membership"

@@ -40,8 +40,15 @@ class OrgAdmin(admin.ModelAdmin):
 
 @admin.register(OrgMembership)
 class OrgMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "org")
-    list_filter = ("org",)
+    """Здесь администратор платформы и выдаёт администраторство (ADR 0005).
+
+    Право стоит на членстве, то есть на паре «сотрудник + организация», поэтому и
+    список фильтруется обоими: вопрос «кто ведёт данные этого клиента» задают и от
+    организации, и от пользователя.
+    """
+
+    list_display = ("user", "org", "is_admin")
+    list_filter = ("org", "is_admin")
     search_fields = ("user__username", "org__party__name")
     autocomplete_fields = ("org",)
 
