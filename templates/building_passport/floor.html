@@ -76,8 +76,13 @@
 
             Сам чертёж приходит картинкой по адресу приложения — скрипты внутри SVG
             так не выполняются, а файл всё равно едет через чокпоинт.
+
+            Размер рамки ограничен высотой окна (`.floor-plan`): план — часть экрана
+            этажа, а не сам экран, и рядом с ним должны оставаться видны дерево слева
+            и карточка помещения справа.
           {% endcomment %}
-          <div class="relative w-full" style="aspect-ratio: {{ plan.aspect_ratio }}">
+          <div class="floor-plan overflow-hidden rounded-lg border border-base-300"
+               style="aspect-ratio: {{ plan.aspect_ratio }}; --plan-ratio: {{ plan.aspect_ratio }}">
             <img class="absolute inset-0 h-full w-full object-contain"
                  src="{% url 'building_passport:floor_plan_svg' plan.pk %}"
                  alt="Поэтажный план: {{ floor|space_label }}">
