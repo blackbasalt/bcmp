@@ -1,10 +1,11 @@
 # syntax=docker/dockerfile:1
 
-# --- CSS build stage --------------------------------------------------------
+# --- Asset build stage ------------------------------------------------------
 # Tailwind + daisyUI need Node, the runtime image does not have it. This stage
-# compiles the stylesheet and only its output crosses into the runtime image,
-# so nobody can ship a stale stylesheet by forgetting to rebuild it (ADR 0002).
-FROM node:22-slim AS css
+# compiles the stylesheet and picks the htmx and Alpine builds out of
+# node_modules; only its output crosses into the runtime image, so nobody can
+# ship a stale asset by forgetting to rebuild it (ADR 0002).
+FROM node:22-slim AS assets
 
 WORKDIR /build
 
@@ -13,7 +14,7 @@ RUN npm ci
 
 COPY assets ./assets
 COPY templates ./templates
-RUN npm run build:css
+RUN npm run build
 
 
 # --- Runtime image ----------------------------------------------------------
@@ -37,9 +38,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 # App source
 COPY . .
 
-# Compiled stylesheet from the CSS stage, into a STATICFILES_DIRS location so
-# collectstatic picks it up in the entrypoint
-COPY --from=css /build/static/css/app.css /bcmp/static/css/app.css
+# Compiled stylesheet and vendored scripts from the asset stage, into a
+# STATICFILES_DIRS location so collectstatic picks them up in the entrypoint
+COPY --from=assets /build/static/css/app.css /bcmp/static/css/app.css
+COPY --from=assets /build/static/js /bcmp/static/js
 
 RUN chmod +x /bcmp/entrypoint.sh
 

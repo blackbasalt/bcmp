@@ -37,9 +37,11 @@ __pycache__/
 .venv/
 venv/
 
-# Compiled stylesheet — built by the Node stage of the image build (ADR 0002),
-# never committed, so a stale artifact cannot ship
+# Compiled stylesheet and the vendored htmx/Alpine builds — produced by the Node
+# stage of the image build (ADR 0002), never committed, so a stale artifact
+# cannot ship
 /static/css/
+/static/js/
 
 # collectstatic destination and the persisted SQLite mount
 /staticfiles/

@@ -1,0 +1,50 @@
+{% comment %}
+  Панель ИИ-управляющего. Она лежит поверх экрана и по умолчанию закрыта: паспорт
+  сохраняет всю ширину, а вопрос не стоит читателю той страницы, которую он читает.
+  Открытие и закрытие — Alpine, отправка сообщения — HTMX; перезагрузки страницы нет.
+{% endcomment %}
+<div x-data="{ open: false }" x-on:keydown.escape.window="open = false">
+
+  <button type="button" class="btn btn-primary btn-circle btn-lg fixed bottom-6 right-6 z-30 shadow-lg"
+          x-on:click="open = true" aria-label="Открыть ИИ-управляющего">ИИ</button>
+
+  {% comment %}
+    Подложка ловит щелчок мимо панели. `x-cloak` снимается только после старта
+    Alpine — иначе закрытая панель успевает мигнуть на медленной загрузке.
+  {% endcomment %}
+  <div x-show="open" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/30"
+       x-on:click="open = false"></div>
+
+  <aside x-show="open" x-cloak
+         x-transition:enter-start="translate-x-full" x-transition:leave-end="translate-x-full"
+         class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-base-100 shadow-xl transition-transform"
+         aria-label="ИИ-управляющий">
+
+    <div class="flex items-center justify-between border-b border-base-300 p-4">
+      <h2 class="font-semibold">ИИ-управляющий</h2>
+      <button type="button" class="btn btn-sm btn-ghost" x-on:click="open = false"
+              aria-label="Закрыть панель">✕</button>
+    </div>
+
+    {% comment %}
+      Сюда HTMX кладёт переписку целиком после каждой отправки — тем же шаблоном,
+      которым она печатается при загрузке экрана.
+    {% endcomment %}
+    <div id="assistant-conversation" class="flex-1 space-y-2 overflow-y-auto p-4"
+         hx-on::after-swap="this.scrollTop = this.scrollHeight">
+      {% include "assistant/_conversation.html" %}
+    </div>
+
+    <form class="flex gap-2 border-t border-base-300 p-4"
+          hx-post="{% url 'assistant:message' %}"
+          hx-target="#assistant-conversation"
+          hx-swap="innerHTML"
+          {# Поле очищается только после удачной отправки: иначе неотправленный вопрос придётся набирать заново. #}
+          hx-on::after-request="if (event.detail.successful) this.reset()">
+      {% csrf_token %}
+      <input type="text" name="text" class="input input-bordered flex-1" required
+             autocomplete="off" placeholder="Спросите о бизнес-центре">
+      <button type="submit" class="btn btn-primary">Отправить</button>
+    </form>
+  </aside>
+</div>

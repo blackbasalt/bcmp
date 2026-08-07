@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django_extensions',
 
     'authentication',
+    'assistant',
     'dictionary',
     'building_passport',
     'parties',
@@ -83,6 +84,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Панель ИИ-управляющего стоит в общем макете, её переписка нужна
+                # на каждом экране.
+                'assistant.context_processors.conversation',
             ],
         },
     },

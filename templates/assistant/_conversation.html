@@ -1,0 +1,19 @@
+{% comment %}
+  Переписка целиком. Этот же кусок приходит в ответ на отправку сообщения, поэтому
+  разметка одна и та же и при первом показе страницы, и после ответа.
+{% endcomment %}
+{% comment %}
+  Классы выписаны целиком по обеим веткам: Tailwind ищет имена классов в тексте
+  шаблона, и собранного из тега класса в стилях не окажется.
+{% endcomment %}
+{% for message in conversation %}
+  {% if message.role == 'question' %}
+    <div class="chat chat-end">
+      <div class="chat-bubble chat-bubble-primary">{{ message.text }}</div>
+    </div>
+  {% else %}
+    <div class="chat chat-start">
+      <div class="chat-bubble">{{ message.text }}</div>
+    </div>
+  {% endif %}
+{% endfor %}

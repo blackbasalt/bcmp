@@ -49,17 +49,23 @@ reverse-proxy vhost (`/static/` served from disk, everything else proxied) →
   are safe. First run auto-fills a secret key + your domain, but review it.
 - Re-running the script = a normal redeploy (rebuild + restart).
 
-## Стили
+## Статика
 
-Tailwind + daisyUI, single light theme. The stylesheet is compiled from
-`assets/css/app.css` to `static/css/app.css`, which is **not** committed — the
-Node stage of the Docker build produces it, so a stale artifact cannot ship
-(ADR 0002). The runtime image keeps no Node.
+Tailwind + daisyUI, single light theme, plus HTMX and Alpine for the
+ИИ-управляющий panel. Neither `static/css/` nor `static/js/` is committed — the
+Node stage of the Docker build produces both, so a stale artifact cannot ship
+(ADR 0002). The runtime image keeps no Node. HTMX and Alpine are vendored out of
+`node_modules` by `npm run build:js` rather than loaded from a CDN, so the app
+serves everything it runs.
 
 Working on templates locally:
 
 ```bash
 npm install
-npm run watch:css   # or `npm run build:css` for a one-off minified build
+npm run build       # stylesheet + vendored scripts, once
+npm run watch:css   # stylesheet on every template change
 ```
+
+`npm run build:js` only copies files, so it needs re-running only after
+`npm install` changes the htmx or Alpine version.
 

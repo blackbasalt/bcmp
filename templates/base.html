@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}BCMP{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {# Оба скрипта вендорные и лежат в static/ — их кладёт та же стадия сборки, что и CSS (ADR 0002). #}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen bg-base-200">
 
@@ -48,6 +51,11 @@
   <main class="mx-auto w-full max-w-6xl px-4 py-6">
     {% block content %}{% endblock %}
   </main>
+
+  {% if user.is_authenticated %}
+    {# Панель отвечает про здания клиентов, поэтому до входа её на экране нет. #}
+    {% include "assistant/panel.html" %}
+  {% endif %}
 
 </body>
 </html>
