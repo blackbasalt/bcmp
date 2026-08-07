@@ -43,6 +43,10 @@ venv/
 /static/css/
 /static/js/
 
+# Мок-планы этажей: строятся из scripts/populate_data/space.csv скриптом рядом,
+# поэтому в git лежит он, а не его вывод
+/scripts/mock_plans/
+
 # collectstatic destination and the persisted SQLite and uploaded-file mounts
 /staticfiles/
 /data/
