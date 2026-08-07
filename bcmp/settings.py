@@ -137,12 +137,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
+# Sources: hand-written assets plus the stylesheet the Node build stage compiles
+# into static/css/ (ADR 0002).
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # Adjust as per your project structure
+    BASE_DIR / "static",
 ]
-#STATIC_ROOT = BASE_DIR / 'static'
+# Destination of collectstatic — a separate directory, bind-mounted on the server
+# and served by nginx. Must not overlap STATICFILES_DIRS.
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
-LOGIN_REDIRECT_URL = "/login/"
+LOGIN_REDIRECT_URL = "building_passport:bc_list"
 LOGIN_URL = "/login/"
 
 # Behind an SSL-terminating reverse proxy (nginx)

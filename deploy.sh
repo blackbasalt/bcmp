@@ -148,6 +148,8 @@ rsync -az --delete \
   --exclude 'data/' \
   --exclude 'staticfiles/' \
   --exclude 'db.sqlite3' \
+  --exclude 'node_modules/' \
+  --exclude 'static/css/' \
   "${SCRIPT_DIR}/" "${HOST}:${REMOTE_DIR}/"
 ok "Code synced"
 

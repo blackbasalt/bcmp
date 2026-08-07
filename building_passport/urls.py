@@ -2,8 +2,8 @@ from django.urls import path
 
 from . import views
 
-app_name = "bp"
+app_name = "building_passport"
 urlpatterns = [
-    path("bp/", views.HomeView.as_view(), name="home"),
-    path("bp/", views.HomeView.as_view(), name="board"),
+    path("", views.BCListView.as_view(), name="bc_list"),
+    path("bc/<uuid:pk>/", views.BCDetailView.as_view(), name="bc_detail"),
 ]

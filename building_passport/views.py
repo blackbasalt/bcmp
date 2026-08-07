@@ -1,17 +1,14 @@
-from django.shortcuts import render
-from django.views.generic import View
 from django.contrib.auth.mixins import LoginRequiredMixin
-
-from .models import *
-
-MODULE_NAME = "building_passport"
+from django.views.generic import TemplateView
 
 
-class HomeView(LoginRequiredMixin, View):
-    template_name = "building_passport/building/index.html"
+class BCListView(LoginRequiredMixin, TemplateView):
+    """Список БЦ — the бизнес-центры the signed-in user has access to."""
 
-    def get(self, request):
-        context = {
-            "buildings":Space.objects.filter(type="building"),
-        }
-        return render(request, self.template_name, context)
+    template_name = "building_passport/bc_list.html"
+
+
+class BCDetailView(LoginRequiredMixin, TemplateView):
+    """Карточка БЦ — the паспорт здания of a single бизнес-центр."""
+
+    template_name = "building_passport/bc_detail.html"

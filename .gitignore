@@ -37,6 +37,14 @@ __pycache__/
 .venv/
 venv/
 
+# Compiled stylesheet — built by the Node stage of the image build (ADR 0002),
+# never committed, so a stale artifact cannot ship
+/static/css/
+
+# collectstatic destination and the persisted SQLite mount
+/staticfiles/
+/data/
+
 # Caches
 .cache/
 *.tmp

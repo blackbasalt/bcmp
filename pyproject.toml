@@ -21,6 +21,10 @@ dependencies = [
 [tool.uv]
 package = false
 
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "bcmp.settings"
+python_files = ["test_*.py", "tests.py"]
+
 [dependency-groups]
 dev = [
     "django-debug-toolbar>=7.0.0",

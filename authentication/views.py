@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.views import generic
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login, logout
@@ -37,7 +38,7 @@ class LoginView(View):
         if context['has_error']:
             return render(request, 'auth/login.html', status=401, context=context)
         login(request, user)
-        return redirect('building_passport:home')
+        return redirect(settings.LOGIN_REDIRECT_URL)
 
 class LogoutView(View):
     def get(self, request):

@@ -20,3 +20,8 @@ pytest.ini
 data/
 staticfiles/
 db.sqlite3
+
+# Build output — the CSS stage compiles its own copy, so a locally built or
+# stale stylesheet must never enter the build context (ADR 0002)
+node_modules/
+static/css/

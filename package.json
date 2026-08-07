@@ -1,0 +1,14 @@
+{
+  "name": "bcmp",
+  "private": true,
+  "description": "Tailwind + daisyUI stylesheet for BCMP. Compiled by the Node stage of the Docker build (ADR 0002); the runtime image keeps no Node.",
+  "scripts": {
+    "build:css": "tailwindcss --input assets/css/app.css --output static/css/app.css --minify",
+    "watch:css": "tailwindcss --input assets/css/app.css --output static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "daisyui": "^5.7.16",
+    "tailwindcss": "^4.3.3"
+  }
+}

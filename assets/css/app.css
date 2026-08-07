@@ -1,0 +1,19 @@
+/* `source(none)` turns off Tailwind's automatic source detection: it walks the
+   whole repo, so the stylesheet would differ between a developer's checkout and
+   the Node stage, which copies in only the templates. Sources are declared
+   below instead. */
+@import "tailwindcss" source(none);
+
+/* This project's templates live in one place by decision — the configured
+   TEMPLATE_DIR — so it is the whole surface Tailwind has to scan. Django's
+   APP_DIRS loader stays on for the admin, whose markup we do not style; a
+   per-app templates/ directory holding our own markup would go unscanned here
+   and uncopied in the Dockerfile's CSS stage, so add it to both or keep to the
+   one location. */
+@source "../../templates";
+
+/* Single light theme, no dark mode: daisyUI is loaded with `light` alone, so no
+   `prefers-color-scheme` variant is emitted and there is nothing to toggle. */
+@plugin "daisyui" {
+  themes: light --default;
+}

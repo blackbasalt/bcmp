@@ -23,5 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("login/", login_views.LoginView.as_view(), name="login"),
     path("logout/", login_views.LogoutView.as_view(), name="logout"),
-    path("", include("building_passport.urls", namespace="building_passport")),
+    path("", include("building_passport.urls")),
 ]

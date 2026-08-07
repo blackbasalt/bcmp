@@ -15,6 +15,7 @@ Django project with a one-command deploy to a VPS (nginx + Docker).
 | `.env.example` | Template for server env (secret key, hosts, CSRF) |
 | `bcmp/settings.py` | Made `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, DB path env-driven; added `STATIC_ROOT` |
 | `.dockerignore` | Excludes venv/db/static/secrets from the build |
+| `package.json`, `assets/css/app.css` | Tailwind + daisyUI stylesheet, compiled by the Node stage of the image build |
 
 ### How to deploy
 
@@ -47,3 +48,18 @@ reverse-proxy vhost (`/static/` served from disk, everything else proxied) →
 - **`.env` is never overwritten** once it exists on the server, so re-deploys
   are safe. First run auto-fills a secret key + your domain, but review it.
 - Re-running the script = a normal redeploy (rebuild + restart).
+
+## Стили
+
+Tailwind + daisyUI, single light theme. The stylesheet is compiled from
+`assets/css/app.css` to `static/css/app.css`, which is **not** committed — the
+Node stage of the Docker build produces it, so a stale artifact cannot ship
+(ADR 0002). The runtime image keeps no Node.
+
+Working on templates locally:
+
+```bash
+npm install
+npm run watch:css   # or `npm run build:css` for a one-off minified build
+```
+
