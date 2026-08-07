@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Вход заблокирован — BCMP{% endblock %}
+
+{% block content %}
+  {# Экран вместо формы входа: подбор пароля исчерпал лимит попыток. Логин не
+     повторяется и не подтверждается — иначе блокировка сама скажет, что он есть. #}
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h1 class="card-title">Слишком много попыток входа</h1>
+
+      <p>
+        Исчерпан лимит неудачных попыток ({{ failure_limit }}). Вход с этого
+        устройства временно закрыт — попробуйте снова через
+        {% widthratio cooloff_timedelta.total_seconds 60 1 %} мин.
+      </p>
+
+      <p class="text-sm opacity-70">
+        Если пароль забыт, снять блокировку раньше срока может администратор.
+      </p>
+    </div>
+  </div>
+{% endblock %}

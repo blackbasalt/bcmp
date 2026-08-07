@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'axes',
 
     'authentication',
     'assistant',
@@ -75,6 +77,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Must be last: it turns the PermissionDenied raised by the axes backend into
+    # the lockout response.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'bcmp.urls'
@@ -130,6 +135,24 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# Brute-force protection (django-axes)
+# Counts failed attempts by hooking authenticate(), so it covers both the login
+# screen and /admin/ without either of them knowing about it.
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_RESET_ON_SUCCESS = True
+# The nested list means AND: the lockout applies to the (address, login) pair, so
+# someone guessing at a known login cannot lock its owner out of the system.
+AXES_LOCKOUT_PARAMETERS = [['ip_address', 'username']]
+AXES_LOCKOUT_TEMPLATE = 'auth/locked_out.html'
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -170,3 +193,23 @@ LOGIN_URL = "/login/"
 # Behind an SSL-terminating reverse proxy (nginx)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Every request reaches gunicorn from the Docker gateway, so REMOTE_ADDR is the
+    # same address for all clients — locking one out would lock out everyone. nginx
+    # must set `proxy_set_header X-Real-IP $remote_addr;`, which overwrites whatever
+    # the client sent and is therefore the one address here that cannot be forged.
+    # Only trusted when a proxy is actually in front, hence not in the DEBUG branch.
+    AXES_IPWARE_META_PRECEDENCE_ORDER = ('HTTP_X_REAL_IP',)
+
+    # nginx terminates TLS and redirects :80 to :443, so nothing is served over
+    # plain HTTP any more: a session cookie has no reason to travel on one.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # A stolen session cookie skips password guessing altogether, so the browser
+    # is told never to try HTTP for this host again. Note this is a year-long
+    # promise across all of *.stata.kz — drop INCLUDE_SUBDOMAINS if any other
+    # subdomain is still served over HTTP.
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # SECURE_SSL_REDIRECT is deliberately left off: nginx already redirects, and
+    # SECURE_PROXY_SSL_HEADER means Django sees every proxied request as https.

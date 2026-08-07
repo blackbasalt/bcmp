@@ -27,7 +27,11 @@ class LoginView(View):
         user = authenticate(request, username=username, password=password)
 
         if not user and not context['has_error']:
-            messages.add_message(request, messages.ERROR, 'Неверный логин или пароль')
+            # На попытке, исчерпавшей лимит, axes подменит весь ответ экраном
+            # блокировки. Сообщение осталось бы в сессии и всплыло бы поверх него
+            # лишней подсказкой — а то и на следующем экране, уже после разблокировки.
+            if not getattr(request, 'axes_locked_out', False):
+                messages.add_message(request, messages.ERROR, 'Неверный логин или пароль')
             context['has_error'] = True
 
         if context['has_error']:
