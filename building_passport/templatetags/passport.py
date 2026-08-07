@@ -7,9 +7,10 @@
 
 from django import template
 
-from ..passport_display import area, or_missing
+from ..passport_display import area, or_missing, space_label
 
 register = template.Library()
 
 register.filter(or_missing)
 register.filter(area)
+register.filter(space_label)

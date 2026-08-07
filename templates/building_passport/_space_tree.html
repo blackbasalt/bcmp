@@ -1,0 +1,18 @@
+{% load passport %}
+{% comment %}
+  Ветка дерева помещений, включающая саму себя: вложенность в данных произвольной
+  глубины, и разметка повторяет её один в один, а не разворачивается в плоский список.
+
+  `data-space` — договор экрана, а не оформление: по коду помещения план и дерево
+  будут находить друг друга, когда контуры появятся.
+{% endcomment %}
+<ul class="space-y-1 {% if nested %}ml-3 border-l border-base-300 pl-3{% endif %}">
+  {% for node in nodes %}
+    <li data-space="{{ node.space.code }}">
+      <div class="rounded px-2 py-1 text-sm hover:bg-base-200">{{ node.space|space_label }}</div>
+      {% if node.children %}
+        {% include "building_passport/_space_tree.html" with nodes=node.children nested=1 %}
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>

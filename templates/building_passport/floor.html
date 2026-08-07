@@ -1,0 +1,72 @@
+{% extends "shell.html" %}
+{% load passport %}
+
+{% block title %}{{ floor|space_label }} — {{ building|space_label }} — BCMP{% endblock %}
+{% block page_title %}{{ floor|space_label }}{% endblock %}
+
+{% block breadcrumbs %}
+  <li><a href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a></li>
+  {% comment %}
+    Крошка здания — она же путь назад к паспорту: с этажа возвращаются часто, и
+    отдельной кнопке для этого места на экране не находится.
+  {% endcomment %}
+  <li><a href="{% url 'building_passport:bc_detail' building.pk %}">{{ building|space_label }}</a></li>
+  <li>{{ floor|space_label }}</li>
+{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Переключатель этажей: между пятью этажами ходят чаще, чем между зданиями, и
+    возвращаться ради этого на Карточку БЦ незачем.
+  {% endcomment %}
+  <nav class="mb-4 flex flex-wrap items-center gap-2" aria-label="Этажи здания">
+    {% for other in floors %}
+      {% if other.pk == floor.pk %}
+        <span class="btn btn-sm btn-primary" aria-current="page">{{ other|space_label }}</span>
+      {% else %}
+        <a class="btn btn-sm btn-ghost"
+           href="{% url 'building_passport:floor' building.pk other.pk %}">{{ other|space_label }}</a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  {% comment %}
+    Три области стоят с самого начала: дерево слева, поэтажный план в центре,
+    карточка помещения справа. Центр и правый край пока пусты — их заполняют
+    следующие тикеты этапа, и переезжать ради них разметке не придётся.
+  {% endcomment %}
+  <div class="grid gap-4 lg:grid-cols-[18rem_1fr_20rem]">
+
+    <section class="card bg-base-100 shadow-sm" aria-label="Помещения этажа">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Помещения</h2>
+        {% if tree %}
+          {% include "building_passport/_space_tree.html" with nodes=tree %}
+        {% else %}
+          {# Этаж без помещений — состояние данных, а не пустая колонка. #}
+          <p class="text-sm opacity-70">На этом этаже не заведено ни одного помещения.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow-sm" aria-label="Поэтажный план">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Поэтажный план</h2>
+        {% comment %}
+          Постоянное пустое состояние, а не заглушка: план может отсутствовать и
+          после того, как загрузка появится, и тогда экран говорит ровно это.
+        {% endcomment %}
+        <div class="alert alert-info">
+          <span>Поэтажный план для этого этажа не загружен. Помещения этажа перечислены слева.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow-sm" aria-label="Карточка помещения">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Помещение</h2>
+        <p class="text-sm opacity-70">Помещение не выбрано.</p>
+      </div>
+    </section>
+  </div>
+{% endblock %}

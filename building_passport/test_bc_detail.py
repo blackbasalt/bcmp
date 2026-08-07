@@ -44,6 +44,18 @@ def make_party(name):
     return Party.objects.create(kind=Party.Kind.COMPANY, name=name)
 
 
+def make_floor(building, number):
+    return Space.objects.create(
+        org=building.org,
+        type="floor",
+        parent=building,
+        building=building,
+        code=f"{building.code}-f{number}",
+        name=f"{number} Этаж",
+        floor_number=number,
+    )
+
+
 def fill_passport(building, **overrides):
     """Заполненный паспорт: в нём есть значение в каждом из четырёх разделов."""
     fields = {
@@ -217,6 +229,53 @@ def test_a_commercial_passport_is_not_padded_with_residential_lines(
     assert "Жилая площадь" not in page
     assert "квартир" not in page
     assert "комнат" not in page
+
+
+def test_the_card_lists_the_floors_of_the_building(client, member, manhattan):
+    """Внутрь здания входят с его паспорта, а не через отдельное меню."""
+    make_floor(manhattan, 1)
+    make_floor(manhattan, 2)
+    client.force_login(member)
+
+    _, page = open_bc(client, manhattan)
+
+    assert "Этажи" in page
+    assert "1 Этаж" in page
+    assert "2 Этаж" in page
+
+
+def test_a_floor_opens_from_the_card_in_one_click(client, member, manhattan):
+    """До этажа — один переход: на карточке стоит адрес самого этажа."""
+    floor = make_floor(manhattan, 1)
+    client.force_login(member)
+
+    _, page = open_bc(client, manhattan)
+
+    assert reverse("building_passport:floor", args=[manhattan.pk, floor.pk]) in page
+
+
+def test_a_building_without_floors_keeps_its_existing_treatment(client, member, manhattan):
+    """У четырёх БЦ без нутра этажей нет — и раздела «Этажи» на карточке тоже."""
+    client.force_login(member)
+
+    response, page = open_bc(client, manhattan)
+
+    assert response.status_code == 200
+    assert "Этажи" not in page
+
+
+def test_the_card_does_not_list_the_floors_of_another_building(
+    client, member, downtown, manhattan
+):
+    """Этажи соседнего здания на этой карточке — чужая навигация, а не выбор."""
+    boston = Space.objects.create(org=downtown, type="building", code="bos", name="Boston")
+    make_floor(boston, 7)
+    make_floor(manhattan, 1)
+    client.force_login(member)
+
+    _, page = open_bc(client, manhattan)
+
+    assert "7 Этаж" not in page
 
 
 def test_every_passport_leads_back_to_the_list_of_buildings(filled_page):

@@ -2,7 +2,7 @@
 {% load passport %}
 
 {% block title %}{{ building.name|default:building.code }} — BCMP{% endblock %}
-{% block page_title %}{{ building.name|default:building.code|or_missing }}{% endblock %}
+{% block page_title %}{{ building|space_label }}{% endblock %}
 
 {% comment %}
   Путь назад к списку — крошка в шапке: между зданиями ходят часто, и он должен
@@ -10,10 +10,28 @@
 {% endcomment %}
 {% block breadcrumbs %}
   <li><a href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a></li>
-  <li>{{ building.name|default:building.code|or_missing }}</li>
+  <li>{{ building|space_label }}</li>
 {% endblock %}
 
 {% block content %}
+  {% comment %}
+    Вход внутрь здания. У четырёх БЦ без нутра этажей нет — раздел не показывается
+    вовсе, и «не загружено» остаётся на том же месте, где было.
+  {% endcomment %}
+  {% if floors %}
+    <section class="card mb-4 bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Этажи</h2>
+        <div class="flex flex-wrap gap-2">
+          {% for floor in floors %}
+            <a class="btn btn-sm btn-outline"
+               href="{% url 'building_passport:floor' building.pk floor.pk %}">{{ floor|space_label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
   {% comment %}
     Разделы приходят из представления уже отобранными: пустое поле показывается
     прочерком, а раздел без единого значения сюда не доезжает.

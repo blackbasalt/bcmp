@@ -56,6 +56,17 @@ class SpaceQuerySet(models.QuerySet):
         """Доступные пользователю бизнес-центры: БЦ — это пространство типа building."""
         return self.visible_to(user).filter(type=DictSpaceType.BUILDING)
 
+    def floors_of(self, building):
+        """Этажи здания снизу вверх — и раздел «Этажи» карточки, и переключатель.
+
+        Фильтрацию по организации не делает: её делает `visible_to`, через который
+        этот метод и вызывается, — иначе появилось бы второе место, где решается,
+        чьи данные показывать.
+        """
+        return self.filter(type=DictSpaceType.FLOOR, building=building).order_by(
+            "floor_number", "code"
+        )
+
 
 class Space(CommonModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
