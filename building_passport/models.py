@@ -177,6 +177,13 @@ class FloorPlan(CommonModel):
     file = models.FileField(upload_to=plan_file_path, verbose_name="файл SVG")
     #: `viewBox` чертежа: с ним же рисуются контуры поверх, иначе они с ним разъедутся.
     view_box = models.CharField(max_length=128, editable=False, verbose_name="viewBox")
+    #: `id` путей чертежа, которым не нашлось помещения этажа. Замечаются они при
+    #: разборе, а показываются на экране этажа — между этими моментами их надо где-то
+    #: держать, и держит их сам план: разобран чертёж один раз (ADR 0003), и заново
+    #: по сегодняшнему дереву помещений он не сводится.
+    unmatched_ids = models.JSONField(
+        default=list, editable=False, verbose_name="непривязанные пути"
+    )
     valid_from = models.DateField(verbose_name="действует с")
     valid_to = models.DateField(blank=True, null=True, verbose_name="действует по")
 
@@ -222,7 +229,9 @@ class FloorPlan(CommonModel):
         if not self._state.adding:
             super().save(*args, **kwargs)
             return
-        self.view_box, contours = self._read_contours()
+        reading, contours = self._read_contours()
+        self.view_box = reading.view_box
+        self.unmatched_ids = list(reading.unmatched)
         with transaction.atomic():
             super().save(*args, **kwargs)
             Contour.objects.bulk_create(contours)
@@ -265,10 +274,14 @@ class FloorPlan(CommonModel):
         )
 
     def _read_contours(self):
-        """Разобранный чертёж: его `viewBox` и контуры, уже сведённые с помещениями."""
+        """Разобранный чертёж и его контуры, уже сведённые с помещениями этажа.
+
+        Само чтение отдаётся целиком: с плана остаётся не только геометрия, но и
+        пути, которым помещения не нашлось, — они и есть находка разбора.
+        """
         spaces = self._spaces_by_code()
         reading = read_plan(b"".join(self.file.chunks()), spaces.keys())
-        return reading.view_box, [
+        return reading, [
             Contour(plan=self, space=spaces[contour.code], path_d=contour.path_d)
             for contour in reading.contours
         ]

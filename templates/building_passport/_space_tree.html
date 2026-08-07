@@ -15,7 +15,7 @@
     <li data-space="{{ node.space.code }}">
       <button type="button"
               class="tree-node flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-base-200"
-              {% if node.space.pk in drawn %}data-drawn="yes"{% elif node.space.pk in undrawn %}data-drawn="no"{% endif %}
+              {% if node.space.pk in completeness.drawn %}data-drawn="yes"{% elif node.space.pk in completeness.undrawn %}data-drawn="no"{% endif %}
               {% include "building_passport/_space_select.html" with space=node.space %}>
         <span class="grow">{{ node.space|space_label }}</span>
         {% comment %}
@@ -25,7 +25,7 @@
           действующего плана не нанесено вообще ничего, и метка на каждом узле
           сообщала бы ровно то же, что и пустой центр экрана.
         {% endcomment %}
-        {% if node.space.pk in undrawn %}
+        {% if node.space.pk in completeness.undrawn %}
           <span class="badge badge-sm badge-ghost shrink-0"
                 title="Помещение не нанесено на действующий поэтажный план">нет контура</span>
         {% endif %}

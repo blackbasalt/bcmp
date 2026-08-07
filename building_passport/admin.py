@@ -26,7 +26,7 @@ class FloorPlanAdmin(admin.ModelAdmin):
 
     list_display = ("floor", "valid_from", "valid_to", "contour_count")
     list_filter = ("floor__building",)
-    readonly_fields = ("view_box", "contour_count")
+    readonly_fields = ("view_box", "contour_count", "unmatched")
 
     def get_readonly_fields(self, request, obj=None):
         # Чертёж уже разобран, и контуры пересобирать нельзя (ADR 0003): подменённый
@@ -45,6 +45,15 @@ class FloorPlanAdmin(admin.ModelAdmin):
     @admin.display(description="контуров")
     def contour_count(self, obj):
         return obj.contours.count()
+
+    @admin.display(description="непривязанные пути")
+    def unmatched(self, obj):
+        """`id` путей, которым не нашлось помещения, — тут же, где план и заводят.
+
+        То же самое видно и на экране этажа, но чертёж правит загрузивший, и
+        обнаружить опечатку он должен там, где только что нажал «сохранить».
+        """
+        return ", ".join(obj.unmatched_ids) or "—"
 
 
 #admin.site.register(SpaceRequirement)

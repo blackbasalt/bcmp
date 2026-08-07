@@ -6,10 +6,11 @@
 контуров — одна операция. Сам разбор SVG живёт в своём шве, `test_floor_plan_svg`.
 
 Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
-переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение, и
-`data-paint` с `data-legend` на окраске по слою. Это договор экрана, а не оформление:
-по ним план и дерево находят друг друга, видно, есть ли на этаже чертёж, какие
-помещения на него не нанесены и чем окрашен каждый контур.
+переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение,
+`data-paint` с `data-legend` на окраске по слою и `data-unmatched` на пути, которому
+не нашлось помещения. Это договор экрана, а не оформление: по ним план и дерево
+находят друг друга, видно, есть ли на этаже чертёж, какие помещения на него не
+нанесены, чем окрашен каждый контур и какие `id` в чертеже повисли.
 """
 
 import re
@@ -151,6 +152,20 @@ def painted_on(page):
         for code, tag in contours_on(page).items()
         if "data-paint" in tag
     }
+
+
+def overlay(page):
+    """Слой контуров поверх чертежа — то, что рисует приложение, а не сам файл.
+
+    Нужен там, где проверяется отсутствие лишнего пути: в самом чертеже путей
+    сколько угодно, и считать их вперемешку с контурами нечего.
+    """
+    return re.search(r'<svg[^>]*aria-label="Контуры помещений".*?</svg>', page, re.DOTALL).group()
+
+
+def stated(page):
+    """Страница одной строкой: фраза не должна ломаться о перенос в разметке."""
+    return " ".join(page.split())
 
 
 # Файл плана
@@ -336,6 +351,130 @@ def test_nothing_is_marked_in_the_tree_when_no_plan_is_in_force(
 
     assert marked(page, "data-drawn") == []
     assert "нет контура" not in page
+
+
+# Полнота: сколько нанесено и что на чертеже повисло
+
+
+def test_the_floor_screen_states_how_many_spaces_are_drawn_out_of_how_many_exist(floor_page):
+    """Экран считает то, чего на плане нет, — и это самое ценное, что он умеет сказать.
+
+    На этаже три помещения, обведены два: «каб101» не нанесён. Сличать дерево с
+    чертежом глазами для этого не нужно.
+    """
+    assert "Нанесено 2 из 3 помещений" in stated(floor_page)
+
+
+def test_a_space_with_no_contour_counts_into_the_figure_of_what_is_not_drawn(
+    client, member, plan, make_space
+):
+    """Заведённое после плана помещение на чертеже не появляется — и счёт это говорит.
+
+    Контуры плана не пересобираются (ADR 0003), поэтому новое помещение растит
+    знаменатель, а не числитель.
+    """
+    make_space(plan.floor, "man-f1-c", "каб102")
+    client.force_login(member)
+
+    page = client.get(floor_url(plan.floor)).content.decode()
+
+    assert "Нанесено 2 из 4 помещений" in stated(page)
+
+
+def test_completeness_is_counted_in_spaces_rather_than_in_square_metres(client, member, plan):
+    """Метрам нужен масштаб, которого план не объявляет, и площадь есть не у всех.
+
+    Выдуманный масштаб дал бы цифру, которая выглядит точной и не является таковой.
+    """
+    Space.objects.filter(code="man-f1-a").update(area_m2=100)
+    client.force_login(member)
+
+    page = client.get(floor_url(plan.floor)).content.decode()
+
+    assert "Нанесено 2 из 3 помещений" in stated(page)
+    assert "м²" not in page
+
+
+def test_no_contour_is_drawn_for_the_uncovered_remainder_of_the_floor(floor_page):
+    """Разрыв между площадью этажа и суммой помещений — это находка, а не дыра в картинке.
+
+    Синтетический контур «прочее» закрыл бы её выдуманной формой — той же ошибкой,
+    что и `-1 м²`, только в другой среде. Поверх чертежа лежит ровно столько путей,
+    сколько помещений обведено.
+    """
+    assert overlay(floor_page).count("<path") == len(contours_on(floor_page)) == 2
+
+
+def test_nothing_is_counted_when_no_plan_is_in_force(client, member, first_floor):
+    """Без действующего плана не нанесено ничего: «0 из 3» сказало бы то же, что пустой центр."""
+    make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
+    client.force_login(member)
+
+    page = client.get(floor_url(first_floor)).content.decode()
+
+    assert "Нанесено" not in page
+
+
+def test_a_path_matching_no_space_is_reported_on_the_floor_screen(client, member, first_floor):
+    """Опечатка в `id` должна быть видна: план загрузился, а путь помещением не стал.
+
+    Экран этажа — то место, где это обнаруживается: контуров на нём меньше, чем
+    ожидал рисовавший, и причина названа рядом.
+    """
+    make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH), ("man-f1-zz", ITP_PATH)))
+    client.force_login(member)
+
+    page = client.get(floor_url(first_floor)).content.decode()
+
+    assert {tag["data-unmatched"] for tag in marked(page, "data-unmatched")} == {"man-f1-zz"}
+    assert "Нанесено 1 из 3 помещений" in stated(page)
+
+
+def test_one_id_on_two_paths_is_named_once(client, member, first_floor):
+    """Названа опечатка, а не каждый путь с нею: дважды она читается сбоем экрана.
+
+    Дубликат `id` за известным помещением файл бы отклонил, а за неизвестным —
+    переживает: план грузится и против неполного дерева.
+    """
+    make_plan(
+        first_floor,
+        plan_svg(("man-f1-zz", ENTRANCE_PATH), ("man-f1-zz", ITP_PATH)),
+    )
+    client.force_login(member)
+
+    page = client.get(floor_url(first_floor)).content.decode()
+
+    assert [tag["data-unmatched"] for tag in marked(page, "data-unmatched")] == ["man-f1-zz"]
+
+
+def test_a_plan_whose_every_path_matched_reports_nothing_unmatched(floor_page):
+    """Исправный чертёж не должен нести на экране предупреждения ни о чём."""
+    assert marked(floor_page, "data-unmatched") == []
+
+
+def test_the_unmatched_paths_are_kept_with_the_plan_that_was_read(first_floor):
+    """Непривязанные пути замечаются при разборе, а показываются на экране этажа.
+
+    Между этими двумя моментами их надо где-то держать, и держит их сам план:
+    заново чертёж не разбирается.
+    """
+    plan = make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH), ("man-f1-zz", ITP_PATH)))
+
+    assert plan.unmatched_ids == ["man-f1-zz"]
+
+
+def test_the_unmatched_paths_are_not_recomputed_when_the_period_is_edited(plan):
+    """Разбор был один раз (ADR 0003): правка периода не пересчитывает и непривязанное.
+
+    Помещению меняют код — при повторном разборе его путь стал бы непривязанным.
+    План остаётся с тем, с чем был прочитан.
+    """
+    Space.objects.filter(code="man-f1-b").update(code="man-f1-renamed")
+
+    plan.valid_to = date(2026, 1, 1)
+    plan.save()
+
+    assert plan.unmatched_ids == []
 
 
 # Переключатель этажей

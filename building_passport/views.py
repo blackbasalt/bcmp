@@ -7,7 +7,7 @@ from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
 
-from . import plan_layer
+from . import plan_completeness, plan_layer
 from .models import FloorPlan, Space
 from .passport_sections import sections
 from .space_tree import spaces_under, tree_under
@@ -123,14 +123,19 @@ class FloorView(LoginRequiredMixin, DetailView):
         # `parent`.
         inside = visible.filter(building=building).order_by("code", "name")
         context["tree"] = tree_under(self.object, inside)
-        # Помещение без контура помечается в дереве: план — инструмент, которым
-        # находят незаведённое, и ненанесённое не должно молчать. Оба набора пусты,
-        # пока у этажа нет действующего плана: не нанесено тогда вообще ничего, и
-        # пометка на каждом узле сообщала бы то же, что и пустой центр экрана.
-        drawn = {contour.space_id for contour in contours}
-        under = spaces_under(self.object, inside) if plan else ()
-        context["drawn"] = drawn
-        context["undrawn"] = {space.pk for space in under if space.pk not in drawn}
+        # Полнота: сколько помещений этажа нанесено, какие остались без контура и
+        # какие пути чертежа не нашли помещения. Одним счётом на весь экран — им же
+        # помечаются узлы дерева, потому что метка в дереве и число под планом
+        # говорят об одном и том же и разойтись не должны.
+        #
+        # Считается только против действующего плана: без него не нанесено вообще
+        # ничего, и «0 из 82» с меткой на каждом узле сообщали бы ровно то же, что и
+        # пустой центр экрана.
+        context["completeness"] = plan_completeness.completeness_of(
+            spaces_under(self.object, inside) if plan else (),
+            contours,
+            plan.unmatched_ids if plan else (),
+        )
         return context
 
 
