@@ -1,0 +1,63 @@
+{% load passport %}
+{% comment %}
+  Карточка помещения: то, что BCMP знает о выбранном помещении. Приезжает в правую
+  панель экрана этажа отдельным запросом, поэтому это кусок разметки, а не экран, —
+  план и дерево при её открытии никуда не деваются.
+
+  Разделов «Документы» и «Системы» здесь нет намеренно: таблицы за ними пусты, а
+  раздел, обещающий данные, которых нет, хуже своего отсутствия.
+{% endcomment %}
+<h3 class="text-base font-semibold">{{ space|space_label }}</h3>
+
+{% comment %}
+  Пустое поле показывается прочерком — тем же «— нет данных», что и в паспорте (#5):
+  пустое место можно прочитать как ноль, а прочерк нельзя.
+{% endcomment %}
+<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+  <dt class="opacity-60">Код</dt>
+  <dd>{{ space.code|or_missing }}</dd>
+  <dt class="opacity-60">Наименование</dt>
+  <dd>{{ space.name|or_missing }}</dd>
+  <dt class="opacity-60">Подтип</dt>
+  <dd>{{ space.subtype|or_missing }}</dd>
+  <dt class="opacity-60">Тип помещения</dt>
+  <dd>{{ space.get_type_display }}</dd>
+  <dt class="opacity-60">Площадь</dt>
+  <dd>{{ space.area_m2|area|or_missing }}</dd>
+</dl>
+
+{% comment %}
+  Место в дереве. Названо «выше» и «ниже», а не «входит в» и «содержит»: связь
+  `parent` означает и вложенность (кабины в уборной), и объединение соседних
+  помещений (тамбур и кабинеты за ним), и карточка не должна утверждать, какая из
+  двух здесь на руках.
+
+  Соседи по дереву — кнопки, а не ссылки: они переставляют эту же панель, а не
+  уводят с экрана этажа, ради которого панель и заведена. Выбирают они помещение
+  тем же, чем узел дерева и контур на плане (`_space_select.html`).
+{% endcomment %}
+<div class="border-t border-base-300 pt-3 text-sm">
+  <h4 class="mb-1 opacity-60">Место в дереве</h4>
+  <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+    {% if parent %}
+      <dt class="opacity-60">Выше</dt>
+      <dd>
+        {% if parent_is_a_space %}
+          <button type="button" class="link link-hover text-left"
+                  {% include "building_passport/_space_select.html" with space=parent %}>{{ parent|space_label }}</button>
+        {% else %}
+          {{ parent|space_label }}
+        {% endif %}
+      </dd>
+    {% endif %}
+    {% if children %}
+      <dt class="opacity-60">Ниже</dt>
+      <dd class="flex flex-col items-start gap-1">
+        {% for child in children %}
+          <button type="button" class="link link-hover text-left"
+                  {% include "building_passport/_space_select.html" with space=child %}>{{ child|space_label }}</button>
+        {% endfor %}
+      </dd>
+    {% endif %}
+  </dl>
+</div>

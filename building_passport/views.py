@@ -9,7 +9,7 @@ from dictionary.models import DictSpaceType
 
 from .models import FloorPlan, Space
 from .passport_sections import sections
-from .space_tree import tree_under
+from .space_tree import spaces_under, tree_under
 
 
 class BCListView(LoginRequiredMixin, ListView):
@@ -118,6 +118,46 @@ class FloorView(LoginRequiredMixin, DetailView):
         # `parent`.
         inside = visible.filter(building=building).order_by("code", "name")
         context["tree"] = tree_under(self.object, inside)
+        # Помещение без контура помечается в дереве: план — инструмент, которым
+        # находят незаведённое, и ненанесённое не должно молчать. Оба набора пусты,
+        # пока у этажа нет действующего плана: не нанесено тогда вообще ничего, и
+        # пометка на каждом узле сообщала бы то же, что и пустой центр экрана.
+        drawn = {contour.space_id for contour in context["contours"]}
+        under = spaces_under(self.object, inside) if plan else ()
+        context["drawn"] = drawn
+        context["undrawn"] = {space.pk for space in under if space.pk not in drawn}
+        return context
+
+
+class SpaceCardView(LoginRequiredMixin, DetailView):
+    """Карточка помещения — правая панель экрана этажа, а не отдельный экран.
+
+    Ответ — кусок разметки, который HTMX кладёт в панель: план при этом остаётся на
+    экране, и пространственный контекст, приведший читателя к помещению, не тратится
+    на чтение о нём.
+    """
+
+    template_name = "building_passport/_space_card.html"
+    context_object_name = "space"
+
+    def get_queryset(self):
+        """Чужое помещение отвечает 404 — тем же чокпоинтом, что и экраны (ADR 0001)."""
+        return Space.objects.visible_to(self.request.user).select_related("subtype")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Соседи по дереву едут тем же чокпоинтом, что и само помещение, — и тот, что
+        # выше, тоже: пройти по `parent` напрямую значило бы завести второе место, где
+        # решается, чьи данные показывать (ADR 0001). Чужая строка не должна проехать
+        # в панель именем, как не проезжает в дерево и на план.
+        visible = Space.objects.visible_to(self.request.user)
+        context["children"] = visible.filter(parent=self.object).order_by("code", "name")
+        parent_id = self.object.parent_id
+        parent = visible.filter(pk=parent_id).first() if parent_id else None
+        context["parent"] = parent
+        # Этаж над помещением называется, но карточкой не открывается: он не узел
+        # дерева, а сам экран, на котором панель и стоит, — ссылка вела бы на месте.
+        context["parent_is_a_space"] = parent is not None and parent.type != DictSpaceType.FLOOR
         return context
 
 

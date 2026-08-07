@@ -3,11 +3,12 @@
 Шов тот же, что у списка и карточки: граница HTTP. Тесты открывают этаж тестовым
 клиентом от имени пользователя с известным членством и проверяют наблюдаемое — какие
 помещения на экране, что с чем вложено и какой код ответа. Классы и вёрстка не
-проверяются; единственная опора в разметке — атрибут `data-space` на узле дерева,
-и он часть договора экрана, а не оформления: по нему план и дерево будут находить
-друг друга.
+проверяются; опора в разметке — атрибуты `data-space` на узле дерева и `data-select`
+на том, чем помещение выбирают. Оба — часть договора экрана, а не оформления: по
+первому видно вложенность, по второму дерево и план находят друг друга.
 """
 
+import re
 from html.parser import HTMLParser
 
 import pytest
@@ -56,8 +57,42 @@ def nesting(page):
     return parser.ancestors
 
 
+class Selecting(HTMLParser):
+    """Чем на экране выбирают помещение: код помещения → атрибуты этого элемента.
+
+    На этаже без плана выбирают только из дерева, поэтому код встречается один раз.
+    """
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.found: dict[str, dict[str, str]] = {}
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if "data-select" in attributes:
+            self.found[attributes["data-select"]] = attributes
+
+
+def selecting(page):
+    parser = Selecting()
+    parser.feed(page)
+    return parser.found
+
+
+def rail_content(page):
+    """Что лежит в правой панели: `#space-card` — та цель, в которую кладут карточку.
+
+    Тоже договор экрана: по этому адресу в разметке карточка и приезжает.
+    """
+    return re.search(r'id="space-card"[^>]*>(.*?)</div>', page, re.DOTALL).group(1).strip()
+
+
 def floor_url(floor):
     return reverse("building_passport:floor", args=[floor.building_id, floor.pk])
+
+
+def card_url(space):
+    return reverse("building_passport:space_card", args=[space.pk])
 
 
 def open_floor(client, floor):
@@ -178,12 +213,33 @@ def test_the_tree_holds_no_space_of_another_organisation(client, member, central
     assert "Чужое помещение" not in page
 
 
+# Дерево как способ выбрать помещение
+
+
+def test_every_space_in_the_tree_opens_its_card(floor_page):
+    """Дерево — единственный путь к помещениям без контура: щёлкнуть по ним негде.
+
+    Сверяются адреса карточек, а не наличие узла: узел, который ничего не открывает,
+    оставил бы такие помещения ровно там же, где они были, — недосягаемыми.
+    """
+    opens = {code: tag["hx-get"] for code, tag in selecting(floor_page).items()}
+
+    assert opens == {
+        space.code: card_url(space)
+        for space in Space.objects.filter(code__in=["man-f1-a", "man-f1-a1", "man-f1-b"])
+    }
+
+
 # Разметка экрана и пустые состояния
 
 
-def test_the_floor_keeps_a_place_for_the_card_of_a_space(floor_page):
-    """Три области стоят с самого начала: правый край ждёт своего тикета пустым."""
-    assert "Помещение не выбрано" in floor_page
+def test_the_screen_opens_with_nothing_in_the_rail(floor_page):
+    """Пока помещение не выбрано, в панели нечего показывать, а ширину держит план.
+
+    Открыта панель или закрыта — свойство стороны браузера; по HTTP наблюдается то,
+    что карточку никто не спрашивал: цель, в которую её кладут, пуста.
+    """
+    assert rail_content(floor_page) == ""
 
 
 def test_a_floor_without_a_plan_says_there_is_no_plan_in_force(floor_page):

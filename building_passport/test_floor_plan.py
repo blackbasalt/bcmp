@@ -5,9 +5,10 @@
 проверяется только то, чего по HTTP не наблюдать: что создание плана и разбор его
 контуров — одна операция. Сам разбор SVG живёт в своём шве, `test_floor_plan_svg`.
 
-Опора в разметке — атрибуты `data-contour` на контуре и `data-plan` на этаже в
-переключателе. Это договор экрана, а не оформление: по первому план и дерево будут
-находить друг друга, второй говорит, есть ли на этаже чертёж.
+Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
+переключателе и `data-select` с `data-drawn` на том, чем выбирают помещение. Это
+договор экрана, а не оформление: по ним план и дерево находят друг друга, видно, есть
+ли на этаже чертёж, и видно, какие помещения на него не нанесены.
 """
 
 import re
@@ -74,6 +75,10 @@ def floor_url(floor):
 
 def file_url(plan):
     return reverse("building_passport:floor_plan_svg", args=[plan.pk])
+
+
+def card_url(space):
+    return reverse("building_passport:space_card", args=[space.pk])
 
 
 @pytest.fixture
@@ -262,6 +267,53 @@ def test_the_plan_of_another_floor_is_not_drawn_on_this_one(
     page = client.get(floor_url(first_floor)).content.decode()
 
     assert contours_on(page) == {}
+
+
+# План и дерево — два вида одного выбора
+
+
+def test_a_contour_opens_the_card_of_the_space_it_outlines(floor_page):
+    """План расспрашивают, показывая пальцем: щелчок по контуру выбирает помещение."""
+    entrance = Space.objects.get(code="man-f1-a")
+
+    assert contours_on(floor_page)["man-f1-a"]["hx-get"] == card_url(entrance)
+
+
+def test_the_tree_marks_which_spaces_are_missing_from_the_plan(floor_page):
+    """План — самый острый инструмент проекта для поиска незаведённого.
+
+    «каб101» на чертеже не обведён, и в дереве это видно, не сличая список с
+    картинкой.
+    """
+    marks = {tag["data-select"]: tag["data-drawn"] for tag in marked(floor_page, "data-drawn")}
+
+    assert marks == {"man-f1-a": "yes", "man-f1-a1": "no", "man-f1-b": "yes"}
+    assert "нет контура" in floor_page
+
+
+def test_a_space_missing_from_the_plan_is_still_selectable_from_the_tree(floor_page):
+    """Именно эти помещения важнее прочих, а щёлкнуть по ним на чертеже негде."""
+    undrawn = Space.objects.get(code="man-f1-a1")
+    node = {tag["data-select"]: tag for tag in marked(floor_page, "data-drawn")}["man-f1-a1"]
+
+    assert node["hx-get"] == card_url(undrawn)
+
+
+def test_nothing_is_marked_in_the_tree_when_no_plan_is_in_force(
+    client, member, first_floor
+):
+    """Без действующего плана не нанесено ничего, и метка на каждом узле — шум.
+
+    План будущей перепланировки на этаже уже заведён: сегодня он не действует, и
+    сказать по нему, что нанесено, а что нет, нельзя.
+    """
+    make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
+    client.force_login(member)
+
+    page = client.get(floor_url(first_floor)).content.decode()
+
+    assert marked(page, "data-drawn") == []
+    assert "нет контура" not in page
 
 
 # Переключатель этажей
