@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load passport %}
+
+{% block title %}Бизнес-центры — BCMP{% endblock %}
+
+{% block content %}
+  <h1 class="text-2xl font-semibold mb-4">Бизнес-центры</h1>
+
+  {% comment %}
+    Карточки, а не таблица: на пяти зданиях таблица не даёт ничего, а на ноутбуке
+    заставляет скроллить вбок. Сетка ужимается до одной колонки.
+  {% endcomment %}
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for building in buildings %}
+      <a href="{% url 'building_passport:bc_detail' building.pk %}"
+         class="card bg-base-100 shadow-sm hover:shadow-md">
+        <div class="card-body gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <h2 class="card-title">{{ building.name|default:building.code|or_missing }}</h2>
+            {% if not building.has_spaces %}
+              {# Здание без помещений — «ещё не загрузили», а не пустая страница. #}
+              <span class="badge badge-warning whitespace-nowrap">Помещения не загружены</span>
+            {% endif %}
+          </div>
+
+          {% if building.project %}
+            <p class="text-xs opacity-60">Проект: {{ building.project.name }}</p>
+          {% endif %}
+
+          <p class="text-sm">{{ building.passport.address|or_missing }}</p>
+
+          <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            <dt class="opacity-60">Класс</dt>
+            <dd>{{ building.passport.get_building_class_display|or_missing }}</dd>
+
+            <dt class="opacity-60">Год постройки</dt>
+            <dd>{{ building.passport.year_built|or_missing }}</dd>
+
+            <dt class="opacity-60">Общая площадь</dt>
+            <dd>{{ building.passport.total_area|area|or_missing }}</dd>
+          </dl>
+        </div>
+      </a>
+    {% empty %}
+      {# Пустой список — нормальное состояние нового сотрудника, а не сломанный экран. #}
+      <div class="alert alert-info sm:col-span-2 lg:col-span-3">
+        <span>Ни один бизнес-центр вам пока не доступен. Доступ к организации выдаёт
+          администратор платформы.</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,15 +1,10 @@
 from django.conf import settings
-from django.views import generic
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import authenticate, login, logout
-from django.urls import reverse_lazy
-from django.contrib.auth.models import BaseUserManager
-from django.contrib.auth.models import User
-from django.shortcuts import render, redirect
-from django.views.generic import View
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.shortcuts import redirect, render
+from django.views.generic import View
 
-# Create your views here.
+
 class LoginView(View):
     def get(self, request):
         return render(request, 'auth/login.html')
@@ -23,7 +18,7 @@ class LoginView(View):
         password = request.POST.get('password')
         if username == '':
             messages.add_message(request, messages.ERROR,
-                                 'Введите email')
+                                 'Введите логин')
             context['has_error'] = True
         if password == '':
             messages.add_message(request, messages.ERROR,
@@ -40,8 +35,11 @@ class LoginView(View):
         login(request, user)
         return redirect(settings.LOGIN_REDIRECT_URL)
 
+
 class LogoutView(View):
-    def get(self, request):
+    """Выход только POST-ом: ссылку на /logout/ может открыть чужая страница."""
+
+    def post(self, request):
         logout(request)
-        messages.add_message(request, messages.SUCCESS, 'Успешно разлогинились')
+        messages.add_message(request, messages.SUCCESS, 'Вы вышли из системы')
         return redirect('login')

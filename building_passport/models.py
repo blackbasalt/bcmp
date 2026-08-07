@@ -52,6 +52,10 @@ class SpaceQuerySet(models.QuerySet):
             return self
         return self.filter(org_id__in=user.memberships.values("org_id"))
 
+    def buildings_visible_to(self, user):
+        """Доступные пользователю бизнес-центры: БЦ — это пространство типа building."""
+        return self.visible_to(user).filter(type=DictSpaceType.BUILDING)
+
 
 class Space(CommonModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -78,6 +82,22 @@ class Space(CommonModel):
 
     def __str__(self):
         return f"{self.code} ({self.type})"
+
+    @property
+    def project(self):
+        """Проект над пространством — он показывается подписью, а не уровнем навигации.
+
+        Выше БЦ ровно два уровня, площадка и проект, поэтому цепочка родителей
+        разматывается на два шага: заодно зациклённый `parent` не подвесит запрос.
+        """
+        ancestor = self.parent
+        for _ in range(2):
+            if ancestor is None:
+                return None
+            if ancestor.type == DictSpaceType.PROJECT:
+                return ancestor
+            ancestor = ancestor.parent
+        return None
 
 
 class BuildingPassport(CommonModel):

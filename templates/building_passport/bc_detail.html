@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Карточка БЦ — BCMP{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Экран целиком — следующий тикет: паспорт по разделам и проверка доступа к БЦ.
+    Здесь он существует ровно настолько, чтобы карточка в списке открывалась.
+  {% endcomment %}
+  <h1 class="text-2xl font-semibold mb-4">Карточка БЦ</h1>
+
+  <a class="link" href="{% url 'building_passport:bc_list' %}">← К списку бизнес-центров</a>
+{% endblock %}
