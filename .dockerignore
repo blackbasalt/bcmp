@@ -18,6 +18,7 @@ pytest.ini
 .env
 .env.*
 data/
+media/
 staticfiles/
 db.sqlite3
 

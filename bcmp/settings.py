@@ -151,6 +151,14 @@ STATICFILES_DIRS = [
 # and served by nginx. Must not overlap STATICFILES_DIRS.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Uploaded files (поэтажные планы). A bind-mounted directory next to the SQLite
+# database, so a redeploy does not discard them.
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
+# MEDIA_URL is deliberately left unset. Uploaded планы are served by a view that
+# goes through the scoped-queryset chokepoint (ADR 0001); nginx has no /media/
+# location, and without a MEDIA_URL `FieldFile.url` raises rather than quietly
+# handing out a direct address to another client's floor plan.
+
 LOGIN_REDIRECT_URL = "building_passport:bc_list"
 LOGIN_URL = "/login/"
 

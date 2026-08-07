@@ -19,13 +19,28 @@
     Переключатель этажей: между пятью этажами ходят чаще, чем между зданиями, и
     возвращаться ради этого на Карточку БЦ незачем.
   {% endcomment %}
+  {% comment %}
+    `data-plan` — договор экрана: этаж с чертежом помечен точкой, чтобы по этажам не
+    щёлкали в надежде его найти. Подпись к точке уходит в `title`: значок без слов
+    ничего не сообщает тому, кто читает страницу не глазами.
+  {% endcomment %}
   <nav class="mb-4 flex flex-wrap items-center gap-2" aria-label="Этажи здания">
     {% for other in floors %}
       {% if other.pk == floor.pk %}
-        <span class="btn btn-sm btn-primary" aria-current="page">{{ other|space_label }}</span>
+        <span class="btn btn-sm btn-primary" aria-current="page"
+              data-floor="{{ other.code }}" data-plan="{% if other.has_plan %}yes{% else %}no{% endif %}"
+              {% if other.has_plan %}title="Поэтажный план загружен"{% endif %}>
+          {{ other|space_label }}
+          {% if other.has_plan %}<span class="size-1.5 rounded-full bg-primary-content"></span>{% endif %}
+        </span>
       {% else %}
         <a class="btn btn-sm btn-ghost"
-           href="{% url 'building_passport:floor' building.pk other.pk %}">{{ other|space_label }}</a>
+           data-floor="{{ other.code }}" data-plan="{% if other.has_plan %}yes{% else %}no{% endif %}"
+           {% if other.has_plan %}title="Поэтажный план загружен"{% endif %}
+           href="{% url 'building_passport:floor' building.pk other.pk %}">
+          {{ other|space_label }}
+          {% if other.has_plan %}<span class="size-1.5 rounded-full bg-primary"></span>{% endif %}
+        </a>
       {% endif %}
     {% endfor %}
   </nav>
@@ -52,13 +67,45 @@
     <section class="card bg-base-100 shadow-sm" aria-label="Поэтажный план">
       <div class="card-body gap-3">
         <h2 class="card-title text-lg">Поэтажный план</h2>
-        {% comment %}
-          Постоянное пустое состояние, а не заглушка: план может отсутствовать и
-          после того, как загрузка появится, и тогда экран говорит ровно это.
-        {% endcomment %}
-        <div class="alert alert-info">
-          <span>Поэтажный план для этого этажа не загружен. Помещения этажа перечислены слева.</span>
-        </div>
+        {% if plan %}
+          {% comment %}
+            Чертёж и контуры — две картинки в одной рамке: у обеих один `viewBox` и
+            одно соотношение сторон, поэтому контур ложится ровно туда, где помещение
+            нарисовано. Рамка задаётся соотношением из плана, а не размерами файла:
+            экспорт может не объявлять ни ширины, ни высоты.
+
+            Сам чертёж приходит картинкой по адресу приложения — скрипты внутри SVG
+            так не выполняются, а файл всё равно едет через чокпоинт.
+          {% endcomment %}
+          <div class="relative w-full" style="aspect-ratio: {{ plan.aspect_ratio }}">
+            <img class="absolute inset-0 h-full w-full object-contain"
+                 src="{% url 'building_passport:floor_plan_svg' plan.pk %}"
+                 alt="Поэтажный план: {{ floor|space_label }}">
+            {% comment %}
+              `data-contour` — договор экрана, парный к `data-space` в дереве: по коду
+              помещения план и дерево будут находить друг друга. Заливка полупрозрачная,
+              чтобы чертёж читался сквозь неё; окраска по слою — следующий тикет, здесь
+              все контуры нейтральны.
+            {% endcomment %}
+            <svg class="absolute inset-0 h-full w-full text-base-content"
+                 viewBox="{{ plan.view_box }}" aria-label="Контуры помещений">
+              {% for contour in contours %}
+                <path class="floor-contour" data-contour="{{ contour.space.code }}"
+                      d="{{ contour.path_d }}" vector-effect="non-scaling-stroke">
+                  <title>{{ contour.space|space_label }}</title>
+                </path>
+              {% endfor %}
+            </svg>
+          </div>
+        {% else %}
+          {% comment %}
+            Постоянное пустое состояние, а не заглушка: план может отсутствовать и
+            после того, как загрузка появится, и тогда экран говорит ровно это.
+          {% endcomment %}
+          <div class="alert alert-info">
+            <span>Поэтажный план для этого этажа не загружен. Помещения этажа перечислены слева.</span>
+          </div>
+        {% endif %}
       </div>
     </section>
 

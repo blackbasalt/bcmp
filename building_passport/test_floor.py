@@ -14,7 +14,6 @@ import pytest
 from django.urls import reverse
 
 from building_passport.models import Space
-from parties.models import OrgMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -57,51 +56,6 @@ def nesting(page):
     return parser.ancestors
 
 
-@pytest.fixture
-def member(django_user_model, downtown):
-    user = django_user_model.objects.create_user("engineer")
-    OrgMembership.objects.create(user=user, org=downtown)
-    return user
-
-
-@pytest.fixture
-def manhattan(downtown):
-    return Space.objects.create(org=downtown, type="building", code="man", name="Manhattan")
-
-
-@pytest.fixture
-def first_floor(manhattan):
-    """Первый этаж Manhattan с вложенностью: «каб101» стоит под «каб101вход»."""
-    floor = make_floor(manhattan, 1)
-    entrance = make_room(floor, "man-f1-a", "каб101вход")
-    make_room(entrance, "man-f1-a1", "каб101")
-    make_room(floor, "man-f1-b", "ИТП")
-    return floor
-
-
-def make_floor(building, number):
-    return Space.objects.create(
-        org=building.org,
-        type="floor",
-        parent=building,
-        building=building,
-        code=f"{building.code}-f{number}",
-        name=f"{number} Этаж",
-        floor_number=number,
-    )
-
-
-def make_room(parent, code, name):
-    return Space.objects.create(
-        org=parent.org,
-        type="room",
-        parent=parent,
-        building=parent.building,
-        code=code,
-        name=name,
-    )
-
-
 def floor_url(floor):
     return reverse("building_passport:floor", args=[floor.building_id, floor.pk])
 
@@ -131,7 +85,7 @@ def test_a_member_opens_a_floor_of_their_own_building(client, member, first_floo
 
 
 def test_a_floor_of_another_organisation_is_missing_rather_than_forbidden(
-    client, member, central
+    client, member, central, make_floor
 ):
     """403 подтвердил бы, что у другого клиента есть такое здание и такой этаж."""
     theirs = Space.objects.create(org=central, type="building", code="ctr", name="Central Tower")
@@ -142,7 +96,9 @@ def test_a_floor_of_another_organisation_is_missing_rather_than_forbidden(
     assert response.status_code == 404
 
 
-def test_a_floor_is_not_reachable_through_another_building(client, member, downtown, manhattan):
+def test_a_floor_is_not_reachable_through_another_building(
+    client, member, downtown, manhattan, make_floor
+):
     """Адрес называет и здание, и этаж; несовпадение — не экран, а отсутствие."""
     boston = Space.objects.create(org=downtown, type="building", code="bos", name="Boston")
     floor = make_floor(boston, 7)
@@ -192,10 +148,12 @@ def test_a_nested_space_is_shown_nested_rather_than_flat(floor_page):
     assert "man-f1-a" in nesting(floor_page)["man-f1-a1"]
 
 
-def test_a_space_of_another_floor_is_not_in_this_floor_tree(client, member, first_floor):
+def test_a_space_of_another_floor_is_not_in_this_floor_tree(
+    client, member, first_floor, make_floor, make_space
+):
     """Дерево этажа начинается с этажа: соседний этаж в него не подмешивается."""
     second = make_floor(first_floor.building, 2)
-    make_room(second, "man-f2-a", "каб201")
+    make_space(second, "man-f2-a", "каб201")
     client.force_login(member)
 
     _, page = open_floor(client, first_floor)
@@ -236,7 +194,9 @@ def test_a_floor_without_a_plan_says_the_plan_is_not_loaded_yet(floor_page):
 # Переходы с экрана этажа
 
 
-def test_the_switcher_reaches_the_other_floors_of_the_building(client, member, first_floor):
+def test_the_switcher_reaches_the_other_floors_of_the_building(
+    client, member, first_floor, make_floor
+):
     """Между этажами ходят с самого этажа, а не через возврат на Карточку БЦ."""
     second = make_floor(first_floor.building, 2)
     client.force_login(member)
@@ -248,7 +208,7 @@ def test_the_switcher_reaches_the_other_floors_of_the_building(client, member, f
 
 
 def test_the_switcher_does_not_reach_a_floor_of_another_building(
-    client, member, downtown, first_floor
+    client, member, downtown, first_floor, make_floor
 ):
     """Переключатель — этажи этого здания; чужие этажи в нём не значатся."""
     boston = Space.objects.create(org=downtown, type="building", code="bos", name="Boston")

@@ -1,8 +1,9 @@
 #!/usr/bin/env sh
 set -e
 
-# Ensure the SQLite directory exists (bind-mounted from the host)
+# Ensure the SQLite and uploaded-file directories exist (bind-mounted from the host)
 mkdir -p "$(dirname "${SQLITE_PATH:-/bcmp/data/db.sqlite3}")"
+mkdir -p "${MEDIA_ROOT:-/bcmp/media}"
 
 echo "==> Applying database migrations"
 python manage.py migrate --noinput

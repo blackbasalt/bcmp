@@ -1,13 +1,17 @@
 import uuid
 
 from django.contrib.auth.models import User
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.db.models import F, Q
 from django.db.models.functions import Lower, Now
 
 
 from dictionary.models import *
 from parties.models import *
+
+from .floor_plan_svg import PlanUnreadable, read_plan
+from .space_tree import spaces_under
 
 # Create your models here.
 class CommonModel(models.Model):
@@ -109,6 +113,143 @@ class Space(CommonModel):
                 return ancestor
             ancestor = ancestor.parent
         return None
+
+
+def plan_file_path(instance, filename):
+    """Чертежи лежат по этажам: в каталоге видно, к чему относится файл."""
+    return f"floor_plans/{instance.floor_id}/{filename}"
+
+
+class FloorPlanQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        """План виден там же, где виден его этаж, — чокпоинт остаётся один (ADR 0001).
+
+        Своей фильтрации по организации здесь нет намеренно: у плана нет `org`, и
+        второе место, решающее чьи данные показывать, — это способ их однажды разойтись.
+        """
+        return self.filter(floor__in=Space.objects.visible_to(user))
+
+    def latest_for(self, floor):
+        """План этажа, который показывает экран, — самый поздний по дате начала.
+
+        Правило действующего плана — какой из периодов идёт сегодня — за тикетом
+        об истории планировок; здесь порядок задаёт только дата начала.
+        """
+        return self.filter(floor=floor).order_by("-valid_from").first()
+
+
+class FloorPlan(CommonModel):
+    """Поэтажный план: чертёж этажа и система координат, в которой лежат контуры.
+
+    Не документ: документ удостоверяет и несёт номер, дату и выдавшую сторону, а план
+    показывает — и является системой координат для помещений. И не поле помещения:
+    план принадлежит этажу и относится к периоду, после перепланировки прежний
+    сохраняется (ADR 0003).
+
+    Файл лежит в защищённом каталоге и раздаётся представлением через тот же чокпоинт,
+    что и всё остальное: `MEDIA_URL` не задан, так что прямую ссылку на него не собрать.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    floor = models.ForeignKey(
+        Space, on_delete=models.CASCADE, related_name="floor_plans", verbose_name="этаж"
+    )
+    file = models.FileField(upload_to=plan_file_path, verbose_name="файл SVG")
+    #: `viewBox` чертежа: с ним же рисуются контуры поверх, иначе они с ним разъедутся.
+    view_box = models.CharField(max_length=128, editable=False, verbose_name="viewBox")
+    valid_from = models.DateField(verbose_name="действует с")
+    valid_to = models.DateField(blank=True, null=True, verbose_name="действует по")
+
+    objects = FloorPlanQuerySet.as_manager()
+
+    class Meta:
+        ordering = ("-valid_from",)
+        verbose_name = "поэтажный план"
+        verbose_name_plural = "поэтажные планы"
+
+    def __str__(self):
+        return f"План {self.floor} от {self.valid_from}"
+
+    @property
+    def aspect_ratio(self):
+        """Соотношение сторон `viewBox` для CSS: чертёж и контуры держат одну рамку."""
+        _, _, width, height = self.view_box.split()
+        return f"{width} / {height}"
+
+    def clean(self):
+        """Причина отказа называется на форме, а не падает пятисоткой при сохранении."""
+        super().clean()
+        if self.floor_id is not None and self.floor.type != DictSpaceType.FLOOR:
+            raise ValidationError({"floor": "План принадлежит этажу, а не помещению в нём."})
+        if self.floor_id is None or not self.file:
+            return
+        try:
+            self._read_contours()
+        except PlanUnreadable as error:
+            raise ValidationError({"file": str(error)}) from error
+
+    def save(self, *args, **kwargs):
+        """План и его контуры появляются одной операцией: порознь они не появляются.
+
+        Разбор идёт до записи: непрочитанный файл не оставляет за собой ни строки в
+        базе, ни файла в хранилище. Повторное сохранение контуры не пересобирает —
+        чертёж разобран один раз и остаётся с теми помещениями, с которыми был
+        нарисован (ADR 0003), поэтому правка периода не переносит план на сегодняшнее
+        дерево помещений. Новая планировка — это новый план, а не новый файл у старого.
+        """
+        if not self._state.adding:
+            super().save(*args, **kwargs)
+            return
+        self.view_box, contours = self._read_contours()
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            Contour.objects.bulk_create(contours)
+
+    def _read_contours(self):
+        """Разобранный чертёж: его `viewBox` и контуры, уже сведённые с помещениями."""
+        spaces = self._spaces_by_code()
+        reading = read_plan(b"".join(self.file.chunks()), spaces.keys())
+        return reading.view_box, [
+            Contour(plan=self, space=spaces[contour.code], path_d=contour.path_d)
+            for contour in reading.contours
+        ]
+
+    def _spaces_by_code(self):
+        """Помещения этажа по кодам — то, с чем сводятся пути чертежа.
+
+        Нутро здания приезжает одним запросом и разбирается тем же спуском, что и
+        дерево на экране: план и дерево должны считать помещениями этажа одно и то же.
+        """
+        inside = Space.objects.filter(building_id=self.floor.building_id)
+        return {space.code: space for space in spaces_under(self.floor, inside) if space.code}
+
+
+class Contour(CommonModel):
+    """Граница помещения на конкретном плане — пара «план + помещение» (ADR 0003).
+
+    Путь лежит текстом, а не отдельным файлом: контур — это несколько сотен байт, и
+    файлами они стоили бы этажу 82 запроса, а совпадение их `viewBox` с планом ничем
+    бы не проверялось.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(
+        FloorPlan, on_delete=models.CASCADE, related_name="contours", verbose_name="план"
+    )
+    space = models.ForeignKey(
+        Space, on_delete=models.CASCADE, related_name="contours", verbose_name="помещение"
+    )
+    path_d = models.TextField(verbose_name="данные пути")
+
+    class Meta:
+        verbose_name = "контур"
+        verbose_name_plural = "контуры"
+        constraints = [
+            models.UniqueConstraint(fields=["plan", "space"], name="contour_uq"),
+        ]
+
+    def __str__(self):
+        return f"Контур {self.space}"
 
 
 class BuildingPassport(CommonModel):

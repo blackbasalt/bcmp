@@ -43,9 +43,10 @@ venv/
 /static/css/
 /static/js/
 
-# collectstatic destination and the persisted SQLite mount
+# collectstatic destination and the persisted SQLite and uploaded-file mounts
 /staticfiles/
 /data/
+/media/
 
 # Local development database
 db.sqlite3
