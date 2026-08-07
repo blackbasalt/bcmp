@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+<rect width="100%" height="100%" fill="#ffffff" />
+<path d="M10 10 H1190 V790 H10 Z" fill="none" stroke="#4b5563" stroke-width="6" />
+<text x="20" y="24" font-family="sans-serif" font-size="14" fill="#9ca3af">4 Этаж — Manhattan</text>
+<path id="man-f4-cor" d="M20 377 H1180 V437 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-g" d="M20 34 H523 V131 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-g1" d="M20 137 H523 V256 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-g2" d="M20 262 H523 V371 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-f" d="M529 34 H750 V252 H529 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-f1" d="M529 258 H750 V371 H529 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-b" d="M756 34 H918 V371 H756 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-d" d="M924 34 H1077 V371 H924 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-i" d="M1083 34 H1180 V371 H1083 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-rr-f-t1" d="M20 443 H316 V608 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-rr-f-t2" d="M20 614 H316 V780 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-rr-m-t1" d="M322 443 H617 V608 H322 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-rr-m-t2" d="M322 614 H617 V780 H322 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-c" d="M623 443 H791 V780 H623 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-a" d="M797 443 H957 V780 H797 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-e" d="M963 443 H1105 V780 H963 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f4-h" d="M1111 443 H1180 V780 H1111 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<text x="600" y="411" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Корридоры 4эт</text>
+<text x="272" y="86" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб406</text>
+<text x="272" y="200" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб408</text>
+<text x="272" y="320" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб407</text>
+<text x="640" y="147" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Комната отдыха 4 эт</text>
+<text x="640" y="318" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Комната отдыха (каморка) 4 эт</text>
+<text x="837" y="206" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб404</text>
+<text x="1000" y="206" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб402</text>
+<text x="1132" y="206" transform="rotate(-90 1132 206)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каморка у туалета</text>
+<text x="168" y="530" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетЖен1 4эт</text>
+<text x="168" y="701" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетЖен2 4эт</text>
+<text x="470" y="530" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетМуж1 4эт</text>
+<text x="470" y="701" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетМуж2 4эт</text>
+<text x="707" y="616" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб403</text>
+<text x="877" y="616" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб405</text>
+<text x="1034" y="616" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каб401</text>
+<text x="1146" y="616" transform="rotate(-90 1146 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Каморка у лестницы</text>
+</svg>

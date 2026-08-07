@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 500" width="700" height="500">
+<rect width="100%" height="100%" fill="#ffffff" />
+<path d="M10 10 H690 V490 H10 Z" fill="none" stroke="#4b5563" stroke-width="6" />
+<text x="20" y="24" font-family="sans-serif" font-size="14" fill="#9ca3af">5 Этаж — Manhattan</text>
+<path id="man-f5-cor" d="M20 227 H680 V287 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f5-a" d="M20 34 H680 V158 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f5-rr" d="M20 164 H680 V221 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f5-sw1" d="M20 293 H680 V480 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<text x="350" y="261" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Коридор на 5 эт</text>
+<text x="350" y="100" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Кабинет на 5 эт</text>
+<text x="350" y="196" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Туалет 5эт</text>
+<text x="350" y="390" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Лестничная клетка на крышу</text>
+</svg>

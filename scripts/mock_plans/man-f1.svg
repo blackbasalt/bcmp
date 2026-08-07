@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+<rect width="100%" height="100%" fill="#ffffff" />
+<path d="M10 10 H1190 V790 H10 Z" fill="none" stroke="#4b5563" stroke-width="6" />
+<text x="20" y="24" font-family="sans-serif" font-size="14" fill="#9ca3af">1 Этаж — Manhattan</text>
+<path id="man-f1-lb" d="M20 377 H1180 V437 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-rr-f-t1" d="M20 34 H303 V200 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-rr-f-t2" d="M20 206 H303 V371 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-g" d="M309 34 H588 V205 H309 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-i1" d="M309 211 H588 V324 H309 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-i2" d="M309 330 H588 V371 H309 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-f" d="M594 34 H744 V371 H594 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-i" d="M750 34 H879 V371 H750 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-sl1" d="M885 34 H979 V371 H885 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-c" d="M985 34 H1080 V371 H985 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-e" d="M1086 34 H1180 V371 H1086 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-rr-m-t1" d="M20 443 H285 V608 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-rr-m-t2" d="M20 614 H285 V780 H20 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-a" d="M291 443 H523 V525 H291 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-a1" d="M291 531 H523 V675 H291 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-a2" d="M291 681 H523 V780 H291 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-b" d="M529 443 H708 V780 H529 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-sw1" d="M714 443 H803 V780 H714 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-sw2" d="M809 443 H897 V780 H809 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-ev" d="M903 443 H991 V780 H903 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-d" d="M997 443 H1086 V780 H997 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<path id="man-f1-h" d="M1092 443 H1180 V780 H1092 Z" fill="#f9fafb" stroke="#6b7280" stroke-width="2" />
+<text x="600" y="411" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Лобби</text>
+<text x="162" y="121" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетЖен1 1эт</text>
+<text x="162" y="292" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетЖен2 1эт</text>
+<text x="448" y="124" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб104</text>
+<text x="448" y="272" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб103 (каморка 1)</text>
+<text x="448" y="354" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб103 (каморка 2)</text>
+<text x="669" y="206" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб105</text>
+<text x="814" y="206" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб103</text>
+<text x="932" y="206" transform="rotate(-90 932 206)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Лифтовая шахта</text>
+<text x="1032" y="206" transform="rotate(-90 1032 206)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб у туалета 1</text>
+<text x="1133" y="206" transform="rotate(-90 1133 206)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб у туалета 3</text>
+<text x="152" y="530" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетМуж1 1эт</text>
+<text x="152" y="701" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">ТуалетМуж2 1эт</text>
+<text x="407" y="488" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб101вход</text>
+<text x="407" y="607" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб101</text>
+<text x="407" y="734" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб101вправо</text>
+<text x="618" y="616" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб102</text>
+<text x="758" y="616" transform="rotate(-90 758 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Лестничная клетка 1</text>
+<text x="853" y="616" transform="rotate(-90 853 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Лестничная клетка 2</text>
+<text x="947" y="616" transform="rotate(-90 947 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Входной Тамбур</text>
+<text x="1042" y="616" transform="rotate(-90 1042 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">каб у туалета 2</text>
+<text x="1136" y="616" transform="rotate(-90 1136 616)" font-family="sans-serif" font-size="11" fill="#374151" text-anchor="middle">Тепловой пункт</text>
+</svg>
