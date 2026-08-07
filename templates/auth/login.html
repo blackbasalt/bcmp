@@ -3,29 +3,28 @@
 {% block title %}Вход — BCMP{% endblock %}
 
 {% block content %}
-  <div class="mx-auto w-full max-w-sm">
-    <div class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <h1 class="card-title">Вход в систему</h1>
+  {# Ширину и центрирование задаёт base.html: экран входа — единственный без оболочки. #}
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body">
+      <h1 class="card-title">Вход в систему</h1>
 
-        <form method="post" action="{% url 'login' %}" class="space-y-4">
-          {% csrf_token %}
+      <form method="post" action="{% url 'login' %}" class="space-y-4">
+        {% csrf_token %}
 
-          <fieldset class="fieldset">
-            <legend class="fieldset-legend">Логин</legend>
-            <input type="text" name="username" value="{{ data.username|default:'' }}"
-                   autocomplete="username" autofocus class="input w-full">
-          </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Логин</legend>
+          <input type="text" name="username" value="{{ data.username|default:'' }}"
+                 autocomplete="username" autofocus class="input w-full">
+        </fieldset>
 
-          <fieldset class="fieldset">
-            <legend class="fieldset-legend">Пароль</legend>
-            <input type="password" name="password" autocomplete="current-password"
-                   class="input w-full">
-          </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Пароль</legend>
+          <input type="password" name="password" autocomplete="current-password"
+                 class="input w-full">
+        </fieldset>
 
-          <button type="submit" class="btn btn-primary w-full">Войти</button>
-        </form>
-      </div>
+        <button type="submit" class="btn btn-primary w-full">Войти</button>
+      </form>
     </div>
   </div>
 {% endblock %}

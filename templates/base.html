@@ -1,5 +1,10 @@
 {% load static %}<!DOCTYPE html>
-<html lang="ru" data-theme="light">
+{% comment %}
+  Скелет документа и ничего больше. Экран без оболочки — вход — наследуется отсюда
+  напрямую и получает содержимое по центру пустой страницы; экраны приложения
+  наследуются от `shell.html`, который добавляет меню и шапку.
+{% endcomment %}
+<html lang="ru" data-theme="bcmp">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,52 +15,14 @@
   <script src="{% static 'js/alpine.min.js' %}" defer></script>
 </head>
 <body class="min-h-screen bg-base-200">
-
-  {% comment %}
-    Навигация плоская: в ней только бизнес-центры. Проект — подпись на карточке,
-    площадка не показывается вовсе.
-  {% endcomment %}
-  <div class="navbar bg-base-100 shadow-sm">
-    <div class="flex-1">
-      <a class="btn btn-ghost text-xl" href="{% url 'building_passport:bc_list' %}">BCMP</a>
-      {% if user.is_authenticated %}
-        <a class="btn btn-ghost" href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a>
-      {% endif %}
-    </div>
-    {% if user.is_authenticated %}
-      <div class="flex-none gap-2">
-        <span class="text-sm opacity-70">{{ user.get_username }}</span>
-        {# Выход POST-ом: общий компьютер оставляют по кнопке, а не по чужой ссылке. #}
-        <form method="post" action="{% url 'logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-outline">Выйти</button>
-        </form>
+  {% block body %}
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <div class="w-full max-w-sm">
+        <p class="mb-6 text-center text-3xl font-light">BCMP</p>
+        {% include "_messages.html" %}
+        {% block content %}{% endblock %}
       </div>
-    {% endif %}
-  </div>
-
-  {% if messages %}
-    <div class="mx-auto w-full max-w-6xl px-4 pt-4 space-y-2">
-      {% for message in messages %}
-        {% comment %}
-          Класс выписан целиком: Tailwind ищет имена классов в тексте шаблона, и
-          собранного из тега класса в стилях не окажется.
-        {% endcomment %}
-        <div class="alert {% if message.level_tag == 'error' %}alert-error{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'success' %}alert-success{% else %}alert-info{% endif %}">
-          <span>{{ message }}</span>
-        </div>
-      {% endfor %}
     </div>
-  {% endif %}
-
-  <main class="mx-auto w-full max-w-6xl px-4 py-6">
-    {% block content %}{% endblock %}
-  </main>
-
-  {% if user.is_authenticated %}
-    {# Панель отвечает про здания клиентов, поэтому до входа её на экране нет. #}
-    {% include "assistant/panel.html" %}
-  {% endif %}
-
+  {% endblock %}
 </body>
 </html>

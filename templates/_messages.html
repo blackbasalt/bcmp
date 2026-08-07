@@ -1,0 +1,17 @@
+{% comment %}
+  Сообщения показываются одинаково на экране входа и внутри оболочки, поэтому
+  разметка одна и включается в оба места.
+{% endcomment %}
+{% if messages %}
+  <div class="mb-4 space-y-2">
+    {% for message in messages %}
+      {% comment %}
+        Класс выписан целиком: Tailwind ищет имена классов в тексте шаблона, и
+        собранного из тега класса в стилях не окажется.
+      {% endcomment %}
+      <div class="alert {% if message.level_tag == 'error' %}alert-error{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'success' %}alert-success{% else %}alert-info{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

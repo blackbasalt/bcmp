@@ -1,22 +1,24 @@
-{% extends "base.html" %}
+{% extends "shell.html" %}
 {% load passport %}
 
 {% block title %}{{ building.name|default:building.code }} — BCMP{% endblock %}
+{% block page_title %}{{ building.name|default:building.code|or_missing }}{% endblock %}
+
+{% comment %}
+  Путь назад к списку — крошка в шапке: между зданиями ходят часто, и он должен
+  попадаться раньше, чем паспорт будет дочитан.
+{% endcomment %}
+{% block breadcrumbs %}
+  <li><a href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a></li>
+  <li>{{ building.name|default:building.code|or_missing }}</li>
+{% endblock %}
 
 {% block content %}
-  {% comment %}
-    Ссылка на список стоит над заголовком: между зданиями ходят часто, и путь назад
-    должен попадаться раньше, чем паспорт будет дочитан.
-  {% endcomment %}
-  <a class="link text-sm" href="{% url 'building_passport:bc_list' %}">← К списку бизнес-центров</a>
-
-  <h1 class="text-2xl font-semibold mt-2">{{ building.name|default:building.code|or_missing }}</h1>
-
   {% comment %}
     Разделы приходят из представления уже отобранными: пустое поле показывается
     прочерком, а раздел без единого значения сюда не доезжает.
   {% endcomment %}
-  <div class="grid gap-4 mt-4 lg:grid-cols-2">
+  <div class="grid gap-4 lg:grid-cols-2">
     {% for section in sections %}
       <section class="card bg-base-100 shadow-sm">
         <div class="card-body gap-3">

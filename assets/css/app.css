@@ -12,10 +12,127 @@
    one location. */
 @source "../../templates";
 
-/* Single light theme, no dark mode: daisyUI is loaded with `light` alone, so no
+/* Single light theme, no dark mode: daisyUI is loaded with one theme, so no
    `prefers-color-scheme` variant is emitted and there is nothing to toggle. */
 @plugin "daisyui" {
-  themes: light --default;
+  themes: false;
+}
+
+/* Палитра админ-панели: зелёный акцент на светло-сером полотне и белых карточках.
+   Тема заведена своя, а не переопределением `light`, чтобы цвета лежали в одном
+   месте и читались как список. */
+@plugin "daisyui/theme" {
+  name: "bcmp";
+  default: true;
+  color-scheme: light;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #f3f3f4;
+  --color-base-300: #e7eaec;
+  --color-base-content: #676a6c;
+
+  --color-primary: #1ab394;
+  --color-primary-content: #ffffff;
+  --color-secondary: #23c6c8;
+  --color-secondary-content: #ffffff;
+  --color-accent: #1c84c6;
+  --color-accent-content: #ffffff;
+  --color-neutral: #2f4050;
+  --color-neutral-content: #ffffff;
+
+  --color-info: #1c84c6;
+  --color-info-content: #ffffff;
+  --color-success: #1ab394;
+  --color-success-content: #ffffff;
+  --color-warning: #f8ac59;
+  --color-warning-content: #ffffff;
+  --color-error: #ed5565;
+  --color-error-content: #ffffff;
+
+  /* Углы почти прямые: карточки паспорта должны читаться как бумага, а не как плитки. */
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.125rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Тёмное меню — единственное место со своими цветами: оно не следует теме
+   страницы и потому не выражается через base-*. */
+@theme {
+  --color-sidebar: #2f4050;
+  --color-sidebar-active: #293846;
+  --color-sidebar-content: #a7b1c2;
+}
+
+/* Меню открыто по умолчанию на широком экране и закрыто на узком, а кнопка в
+   шапке переключает его в другую сторону от умолчания. Состояние держит класс на
+   обёртке, а не классы Tailwind в `:class`: иначе до старта Alpine меню на
+   телефоне успевало бы мелькнуть во всю ширину. */
+:root {
+  /* Ширина меню и отступ содержимого — одно и то же число, поэтому оно одно. */
+  --app-sidebar-width: 14rem;
+  /* Свёрнутое меню на широком экране: полоса ровно под значок с полями по бокам. */
+  --app-sidebar-mini-width: 4rem;
+}
+
+.app-sidebar {
+  width: var(--app-sidebar-width);
+  transform: translateX(-100%);
+  transition:
+    transform 0.2s ease,
+    width 0.2s ease;
+}
+
+.app-content {
+  margin-left: 0;
+  transition: margin-left 0.2s ease;
+}
+
+.nav-toggled .app-sidebar {
+  transform: translateX(0);
+}
+
+@media (width >= 64rem) {
+  .app-sidebar {
+    transform: translateX(0);
+  }
+
+  .app-content {
+    margin-left: var(--app-sidebar-width);
+  }
+
+  /* Свёрнутое меню на широком экране не уезжает за край, а сужается до полосы
+     значков: пункты остаются на виду и переход между экранами не требует
+     сначала открыть меню. Подписи прячутся, значки встают по центру полосы. */
+  .nav-toggled .app-sidebar {
+    width: var(--app-sidebar-mini-width);
+    transform: translateX(0);
+    overflow-x: hidden;
+  }
+
+  .nav-toggled .app-content {
+    margin-left: var(--app-sidebar-mini-width);
+  }
+
+  .nav-toggled .app-sidebar .sidebar-label {
+    display: none;
+  }
+
+  .nav-toggled .app-sidebar .sidebar-profile {
+    padding: 0.75rem 0.5rem;
+    justify-content: center;
+  }
+
+  .nav-toggled .app-sidebar .sidebar-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    /* Полоса слишком узкая для акцентной черты: она сдвинула бы значок с центра,
+       а на выбранном пункте и без неё остаётся тёмная заливка. */
+    border-left-width: 0;
+  }
 }
 
 /* Пока Alpine не стартовал, `x-show` ещё ничего не скрывает, и закрытая панель

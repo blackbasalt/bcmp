@@ -1,11 +1,11 @@
-{% extends "base.html" %}
+{% extends "shell.html" %}
 {% load passport %}
 
 {% block title %}Бизнес-центры — BCMP{% endblock %}
+{% block page_title %}Бизнес-центры{% endblock %}
+{% block breadcrumbs %}<li>Бизнес-центры</li>{% endblock %}
 
 {% block content %}
-  <h1 class="text-2xl font-semibold mb-4">Бизнес-центры</h1>
-
   {% comment %}
     Карточки, а не таблица: на пяти зданиях таблица не даёт ничего, а на ноутбуке
     заставляет скроллить вбок. Сетка ужимается до одной колонки.
