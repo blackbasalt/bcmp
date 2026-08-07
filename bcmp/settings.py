@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    #'django_extensions',
 
     'authentication',
     'assistant',
@@ -61,6 +60,12 @@ INSTALLED_APPS = [
     'engineering_systems',
     'documents',
 ]
+
+# django-extensions (runscript, shell_plus) is a dev dependency and is not
+# installed into the runtime image, so importing it in production would stop the
+# container from starting. It is loaded only where it exists and is used.
+if DEBUG:
+    INSTALLED_APPS.append('django_extensions')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
