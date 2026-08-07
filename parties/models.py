@@ -49,6 +49,23 @@ class Org(CommonModel):
         return self.name
 
 
+class OrgMembership(CommonModel):
+    """Доступ пользователя к организации. Один сотрудник может состоять в нескольких."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="memberships")
+
+    class Meta:
+        db_table = "org_membership"
+        verbose_name = "членство в организации"
+        verbose_name_plural = "членства в организациях"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "org"], name="org_membership_uq"),
+        ]
+
+    def __str__(self):
+        return f"{self.user} → {self.org}"
+
+
 class PartyRole(CommonModel):
     """Роль стороны в конкретном контексте и в конкретный период."""
     class Role(models.TextChoices):

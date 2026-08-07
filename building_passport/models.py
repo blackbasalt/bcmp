@@ -43,6 +43,16 @@ territory → room, parking_spot
 Для territory: открытая парковка, КПП, площадка ТБО, благоустройство/газоны.
 """
 
+class SpaceQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        """Пространства, доступные пользователю, — единственное место фильтрации."""
+        if not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        return self.filter(org_id__in=user.memberships.values("org_id"))
+
+
 class Space(CommonModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     org = models.ForeignKey(Org, null=True, blank=True, on_delete=models.PROTECT, related_name="spaces")
@@ -64,6 +74,7 @@ class Space(CommonModel):
     valid_from = models.DateField(blank=True, null=True)
     valid_to = models.DateField(blank=True, null=True)
 
+    objects = SpaceQuerySet.as_manager()
 
     def __str__(self):
         return f"{self.code} ({self.type})"
