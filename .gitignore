@@ -45,6 +45,9 @@ venv/
 /staticfiles/
 /data/
 
+# Local development database
+db.sqlite3
+
 # Caches
 .cache/
 *.tmp
