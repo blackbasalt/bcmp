@@ -1,13 +1,44 @@
 {% extends "base.html" %}
+{% load passport %}
 
-{% block title %}Карточка БЦ — BCMP{% endblock %}
+{% block title %}{{ building.name|default:building.code }} — BCMP{% endblock %}
 
 {% block content %}
   {% comment %}
-    Экран целиком — следующий тикет: паспорт по разделам и проверка доступа к БЦ.
-    Здесь он существует ровно настолько, чтобы карточка в списке открывалась.
+    Ссылка на список стоит над заголовком: между зданиями ходят часто, и путь назад
+    должен попадаться раньше, чем паспорт будет дочитан.
   {% endcomment %}
-  <h1 class="text-2xl font-semibold mb-4">Карточка БЦ</h1>
+  <a class="link text-sm" href="{% url 'building_passport:bc_list' %}">← К списку бизнес-центров</a>
 
-  <a class="link" href="{% url 'building_passport:bc_list' %}">← К списку бизнес-центров</a>
+  <h1 class="text-2xl font-semibold mt-2">{{ building.name|default:building.code|or_missing }}</h1>
+
+  {% comment %}
+    Разделы приходят из представления уже отобранными: пустое поле показывается
+    прочерком, а раздел без единого значения сюда не доезжает.
+  {% endcomment %}
+  <div class="grid gap-4 mt-4 lg:grid-cols-2">
+    {% for section in sections %}
+      <section class="card bg-base-100 shadow-sm">
+        <div class="card-body gap-3">
+          <h2 class="card-title text-lg">{{ section.title }}</h2>
+          <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            {% for field in section.fields %}
+              <dt class="opacity-60">{{ field.label }}</dt>
+              <dd>{{ field.value|or_missing }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
+      </section>
+    {% empty %}
+      {% comment %}
+        Показывать нечего: паспорта либо ещё нет, либо он пуст целиком. Экран говорит
+        ровно это и не утверждает, какой из двух случаев на руках, — пустой экран
+        читался бы как поломка.
+      {% endcomment %}
+      <div class="alert alert-info lg:col-span-2">
+        <span>По этому бизнес-центру пока не заполнено ни одно поле паспорта. Данные
+          вносит администратор платформы.</span>
+      </div>
+    {% endfor %}
+  </div>
 {% endblock %}

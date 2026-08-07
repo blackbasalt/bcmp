@@ -3,6 +3,7 @@ from django.db.models import Exists, OuterRef, Q
 from django.views.generic import DetailView, ListView
 
 from .models import Space
+from .passport_sections import sections
 
 
 class BCListView(LoginRequiredMixin, ListView):
@@ -36,4 +37,19 @@ class BCDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         """Чужой БЦ отвечает 404, а не 403: ответ не подтверждает, что он существует."""
-        return Space.objects.buildings_visible_to(self.request.user).select_related("passport")
+        return (
+            Space.objects.buildings_visible_to(self.request.user)
+            # Стороны показываются именами, поэтому едут тем же запросом, что и паспорт.
+            .select_related(
+                "passport__owner_party",
+                "passport__operator_party",
+                "passport__designer_party",
+                "passport__builder_party",
+            )
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Паспорт может быть ещё не заведён — это состояние данных, а не ошибка экрана.
+        context["sections"] = sections(getattr(self.object, "passport", None))
+        return context
