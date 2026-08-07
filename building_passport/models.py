@@ -106,12 +106,12 @@ class BuildingPassport(CommonModel):
 
     series_project_type = models.CharField(max_length=512, blank=True, null=True) #1
     number_of_floors = models.CharField(max_length=512, blank=True, null=True) #2
-    building_footprint = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #3
+    building_footprint = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True) #3
     building_volume = models.DecimalField(max_digits=20, decimal_places=2, blank=True, null=True) #4
-    total_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #5
-    balcony_loggia_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #6
-    living_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #7
-    non_residential_area = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True) #8
+    total_area = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True) #5
+    balcony_loggia_area = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True) #6
+    living_area = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True) #7
+    non_residential_area = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True) #8
     apartments_number = models.IntegerField(blank=True, null=True) #9
     total_rooms = models.IntegerField(blank=True, null=True) #10
     wall_material = models.CharField(max_length=512, blank=True, null=True) #11
