@@ -9,8 +9,9 @@ from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
+from leases.models import Lease
 
-from . import plan_completeness, plan_layer, screen_date
+from . import plan_completeness, plan_layer, screen_date, vacancy
 from .models import FloorPlan, Space
 from .passport_sections import sections
 from .plan_upload import FloorPlanForm
@@ -141,21 +142,32 @@ class FloorView(LoginRequiredMixin, DetailView):
         screen = plan_layer.Screen(day=chosen_day, user=self.request.user)
         context["painting"] = layer.build(screen).apply(contours)
         context["layers"] = plan_layer.choices(self.request.GET)
-        # Про день экран говорит только там, где день на что-то влияет: «на 1 января»
-        # рядом с типом помещения было бы утверждением, которого чертёж не делает.
-        # Сегодняшний день не называется вовсе — подпись, стоящая всегда, перестаёт
-        # читаться, — а вот молчащий экран, показывающий январь, врал бы. Там, где
-        # выбранный день выпал из периода плана, экран говорит и это.
-        context["as_of"] = chosen_day if layer.dated and chosen_day != today else None
-        context["outside_the_plan"] = (
-            screen_date.outside_the_plan(plan, chosen_day) if layer.dated else None
-        )
+        # День принадлежит экрану, а не слою: счёт свободного считается на него при
+        # любом слое, и «на 1 января» рядом со счётом — не украшение подписи, а часть
+        # ответа. Сегодняшний день не называется вовсе — подпись, стоящая всегда,
+        # перестаёт читаться, — а вот молчащий экран, показывающий январь, врал бы.
+        # Там, где выбранный день выпал из периода плана, экран говорит и это: чертёж
+        # на экране сегодняшний, а ответ посчитан на другой день (ADR 0010).
+        context["as_of"] = chosen_day if chosen_day != today else None
+        context["outside_the_plan"] = screen_date.outside_the_plan(plan, chosen_day)
         # Всё нутро здания одним запросом: дерево вложено на произвольную глубину,
         # и обход по узлам стоил бы запроса на каждое помещение. Лишнее отсекает
         # само дерево: под этажом оказывается только то, что связано с ним через
         # `parent`.
         inside = visible.filter(building=building).order_by("code", "name")
         context["tree"] = tree_under(self.object, inside)
+        under = spaces_under(self.object, inside)
+        # Вакансия: сколько арендопригодных помещений этажа свободно, сколько это
+        # метров и на скольких договорах счёт стоит. Считается на тот же день, что и
+        # слой, и по тем же помещениям, что и дерево: разойдись они, экран показывал
+        # бы одни помещения, а считал другие.
+        #
+        # Чертежа счёт не спрашивает и без него не молчит, в отличие от полноты:
+        # вакансия — свойство этажа, а не плана, и этаж, чей план не загружен, должен
+        # отвечать на первый вопрос, который управляющей компании задают.
+        context["vacancy"] = vacancy.vacancy_on(
+            chosen_day, under, Lease.objects.visible_to(self.request.user)
+        )
         # Полнота: сколько помещений этажа нанесено, какие остались без контура и
         # какие пути чертежа не нашли помещения. Одним счётом на весь экран — им же
         # помечаются узлы дерева, потому что метка в дереве и число под планом
@@ -165,7 +177,7 @@ class FloorView(LoginRequiredMixin, DetailView):
         # ничего, и «0 из 82» с меткой на каждом узле сообщали бы ровно то же, что и
         # пустой центр экрана.
         context["completeness"] = plan_completeness.completeness_of(
-            spaces_under(self.object, inside) if plan else (),
+            under if plan else (),
             contours,
             plan.unmatched_ids if plan else (),
         )

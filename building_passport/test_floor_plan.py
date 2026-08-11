@@ -8,9 +8,10 @@
 Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
 переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение,
 `data-paint` с `data-legend` на окраске по слою, `data-layer` на слое в переключателе
-слоёв, `data-as-of` на дне, на который посчитан слой, `data-outside-plan` на
+слоёв, `data-as-of` на дне, на который посчитан экран, `data-outside-plan` на
 предупреждении о выходе этого дня за период плана и `data-unmatched` на пути, которому
-не нашлось помещения. Это договор экрана, а не оформление: по ним план и дерево
+не нашлось помещения. Сам счёт свободного, стоящий на том же дне, проверяется своим
+набором (`test_vacancy`). Это договор экрана, а не оформление: по ним план и дерево
 находят друг друга, видно, есть ли на этаже чертёж, какие помещения на него не
 нанесены, чем окрашен каждый контур, какой слой показан, на какой день он посчитан и
 какие `id` в чертеже повисли.
@@ -1321,13 +1322,15 @@ def test_a_floor_without_a_plan_reports_nothing_about_periods(client, member, fi
     assert not marked(page, "data-outside-plan")
 
 
-def test_a_layer_that_does_not_look_at_a_day_says_nothing_about_the_chosen_one(
-    client, member, first_floor
+def test_the_chosen_day_is_named_whatever_layer_the_screen_is_showing(
+    client, member, first_floor, office
 ):
-    """Тип помещения от дня не зависит, и говорить о дне рядом с ним не о чем.
+    """День принадлежит экрану, а не слою: счёт свободного посчитан на него при любом.
 
-    «На 1 января» и предупреждение о выходе за период были бы здесь утверждениями,
-    которых чертёж не делает: помещение остаётся МОП и первого января.
+    Тип помещения от дня и правда не зависит — помещение остаётся МОП и первого
+    января, — но экран отвечает на выбранный день не одним слоем: «свободно 12 из 44»
+    посчитано на него же (#29). Молчащий о дне экран выдал бы январский счёт за
+    сегодняшний, а молчащее предупреждение — сегодняшний чертёж за январский.
     """
     make_plan(
         first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
@@ -1335,5 +1338,5 @@ def test_a_layer_that_does_not_look_at_a_day_says_nothing_about_the_chosen_one(
 
     page = floor_screen(client, member, first_floor, date=day(60).isoformat())
 
-    assert not marked(page, "data-as-of")
-    assert not marked(page, "data-outside-plan")
+    assert marked(page, "data-as-of")
+    assert marked(page, "data-outside-plan")
