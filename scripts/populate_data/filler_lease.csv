@@ -1,0 +1,12 @@
+number,tenant,from_days,to_days,prolongs
+АР-101,astana-logistic,-400,400,
+АР-102,sary-arka-media,-200,45,
+АР-103,turan-consulting,-700,-120,
+АР-104,kaspiy-trade,-300,,
+АР-105,alatau-soft,-150,80,
+АР-106,zhetisu-audit,-500,200,
+АР-107,nura-design,-60,70,
+АР-108,esil-stroy,-800,-100,
+АР-109,esil-stroy,-99,30,АР-108
+АР-110,baiterek-pravo,-250,600,
+АР-111,seitzhanov,-90,150,
