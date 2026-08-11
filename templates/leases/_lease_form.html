@@ -1,0 +1,120 @@
+{% comment %}
+  Форма договора — одна на два экрана: на Списке договоров ею заводят, на карточке
+  правят и расторгают. Отправляется она по адресу того экрана, на котором стоит:
+  отказ возвращается туда же, откуда пришёл, вместе со всем, что уже введено.
+
+  `data-lease-form` — договор экрана: по нему видно, предложено ли действие.
+  Сотруднику без права администратора этой разметки не достаётся вовсе — ни
+  свёрнутой, ни отключённой: предложенное и запрещённое разом читается как поломка.
+
+  Раскрыта форма там, где ею и заниматься: на пустом списке — пустое состояние и
+  есть место, где отсутствие замечают, — с отказом на руках, потому что причина,
+  спрятанная под сводкой, это отказ, которого не видно, и при пролонгации, ради
+  которой на экран и пришли. Последние два спрашиваются у самой формы: чем она
+  занята, знает она, а не разметка. `folded` включающий экран передаёт тем, что у
+  него есть: списку это сами договоры, карточке — уже открытый договор.
+{% endcomment %}
+<details class="rounded-lg border border-base-300 bg-base-100 p-4" data-lease-form="{{ kind }}"
+         {% if not folded or writing.refused or writing.prolongs %}open{% endif %}>
+  <summary class="cursor-pointer font-medium">{{ heading }}</summary>
+
+  {% comment %}
+    Строка предмета добавляется на месте: имена полей формсет читает по счётчику
+    `TOTAL_FORMS`, поэтому добавленная строка получает его нынешнее значение, а
+    счётчик — следующее.
+  {% endcomment %}
+  <form method="post" class="mt-4 space-y-4"
+        x-data="{
+          add() {
+            const counted = document.getElementById('{{ writing.subjects.management_form.TOTAL_FORMS.auto_id }}');
+            this.$refs.rows.insertAdjacentHTML(
+              'beforeend',
+              this.$refs.blank.innerHTML.replaceAll('__prefix__', counted.value)
+            );
+            counted.value = Number(counted.value) + 1;
+          }
+        }">
+    {% csrf_token %}
+
+    {% comment %}
+      Отказ, не относящийся ни к одному полю формы, — пересечение периодов: виноват
+      не срок и не помещение по отдельности, а период целиком, и помещение названо в
+      самом сообщении (ADR 0007).
+    {% endcomment %}
+    {% if writing.form.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ writing.form.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {% for field in writing.form.visible_fields %}
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">{{ field.label }}</legend>
+          {{ field }}
+          {% if field.errors %}
+            <p class="text-sm text-error">{{ field.errors|join:" " }}</p>
+          {% endif %}
+          {% if field.help_text %}
+            <p class="label whitespace-normal">{{ field.help_text }}</p>
+          {% endif %}
+        </fieldset>
+      {% endfor %}
+      {# Ссылка на прежний договор приходит адресом экрана, а не выбором в списке. #}
+      {% for hidden in writing.form.hidden_fields %}{{ hidden }}{% endfor %}
+    </div>
+
+    {% comment %}
+      Предмет — таблицей, а не полем: несколько помещений на одном договоре не
+      исключение, а обычный случай, и заводиться они должны одним действием.
+      Каждое со своей ставкой и своей договорной площадью — офис и склад одним
+      соглашением не обязаны идти по одной ставке.
+    {% endcomment %}
+    <div>
+      <h3 class="text-sm font-medium">Предмет договора</h3>
+      {{ writing.subjects.management_form }}
+      {% if writing.subjects.non_form_errors %}
+        <div class="alert alert-error mt-2" role="alert">
+          <span>{{ writing.subjects.non_form_errors|join:" " }}</span>
+        </div>
+      {% endif %}
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th class="w-1/2">Помещение</th>
+              <th>Ставка</th>
+              <th>Договорная площадь</th>
+              <th>Убрать</th>
+            </tr>
+          </thead>
+          <tbody x-ref="rows">
+            {% for row in writing.subjects %}
+              {% include "leases/_subject_row.html" with row=row %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% comment %}
+        Строк ровно столько, сколько помещений в договоре: договор на десять
+        машиномест не должен разваливаться на два прохода из-за того, что сервер
+        нарисовал четыре строки. Пустая строка приходит от самого формсета
+        (`empty_form`) — с тем же выбором помещений и той же разметкой, — и её номер
+        проставляется при добавлении: имена полей формсет читает по счётчику, и
+        строка с чужим номером до него не доедет.
+
+        Без JavaScript кнопки нет, а форма остаётся рабочей: строки, нарисованные
+        сервером, никуда не деваются, а одиннадцатое машиноместо добавляют правкой.
+      {% endcomment %}
+      <template x-ref="blank">
+        {% include "leases/_subject_row.html" with row=writing.subjects.empty_form %}
+      </template>
+      <button type="button" class="btn btn-ghost btn-sm" x-on:click="add()">
+        Ещё помещение
+      </button>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-sm">{{ submit }}</button>
+  </form>
+</details>

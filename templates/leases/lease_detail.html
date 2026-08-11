@@ -92,5 +92,48 @@
         </div>
       </div>
     </section>
+
+    {% comment %}
+      Правка, расторжение и удаление — только тому, кто вправе вести эту организацию
+      (ADR 0005): читателю карточка остаётся карточкой, и ни одной из этих кнопок он
+      не видит. Стоят они там же, где смотрят договор: другого места у него нет.
+    {% endcomment %}
+    {% if administers %}
+      <section class="lg:col-span-2 space-y-4">
+        {# Расторжение — это дата окончания периода, поэтому оно здесь же, в правке. #}
+        {% include "leases/_lease_form.html" with kind="edit" folded=lease heading="Править договор" submit="Сохранить правку" %}
+
+        {% comment %}
+          Пролонгация — новый договор со ссылкой на прежний, а не передвинутый конец
+          прежнего (ADR 0007), поэтому и заводится она тем же путём, что и любой
+          другой договор. Прежний назван адресом, по которому уходят: ссылку на этот
+          экран можно и переслать.
+        {% endcomment %}
+        <div class="flex flex-wrap items-center gap-3">
+          <a class="btn btn-outline btn-sm" data-lease-prolong
+             href="{% url 'leases:lease_list' %}?prolongs={{ lease.pk }}">Пролонгировать</a>
+        </div>
+
+        {% comment %}
+          Удаление — настоящее: договор исчезает целиком. Расторгнутый договор так не
+          закрывают — он факт истории здания (ADR 0007) и закрывается датой; удаляют
+          опечатку, фактом не бывшую никогда. Поэтому кнопка сложена и сказано, чем
+          одно отличается от другого.
+        {% endcomment %}
+        <details class="rounded-lg border border-error/40 p-4" data-lease-delete>
+          <summary class="cursor-pointer font-medium text-error">Удалить договор</summary>
+          <p class="mt-3 text-sm">
+            Договор исчезнет вместе со своим предметом и в истории здания не
+            останется. Съехавшего арендатора так не убирают: его договор закрывают
+            датой расторжения, и «кто сидел здесь в прошлом году» продолжает иметь
+            ответ.
+          </p>
+          <form class="mt-3" method="post" action="{% url 'leases:lease_delete' lease.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-error btn-sm">Удалить договор</button>
+          </form>
+        </details>
+      </section>
+    {% endif %}
   </div>
 {% endblock %}

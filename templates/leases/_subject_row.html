@@ -1,0 +1,43 @@
+{% comment %}
+  Строка предмета: помещение со своей ставкой и своей договорной площадью. Разметка
+  одна и та же для заведённых строк, для пустых и для той, которую добавляют кнопкой:
+  добавленная строка обязана быть неотличима от нарисованной сервером, иначе она
+  доедет не тем именем и потеряется при отправке.
+{% endcomment %}
+<tr>
+  <td>
+    {{ row.space }}
+    {% if row.space.errors %}
+      <p class="text-sm text-error">{{ row.space.errors|join:" " }}</p>
+    {% endif %}
+    {# Отказ строке целиком: одно помещение, названное договором дважды. #}
+    {% if row.non_field_errors %}
+      <p class="text-sm text-error">{{ row.non_field_errors|join:" " }}</p>
+    {% endif %}
+    {% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}
+  </td>
+  <td>
+    {{ row.rate }}
+    {% if row.rate.errors %}
+      <p class="text-sm text-error">{{ row.rate.errors|join:" " }}</p>
+    {% endif %}
+  </td>
+  <td>
+    {{ row.area_m2 }}
+    {% if row.area_m2.errors %}
+      <p class="text-sm text-error">{{ row.area_m2.errors|join:" " }}</p>
+    {% endif %}
+  </td>
+  <td>
+    {% comment %}
+      Убрать можно то, что в договоре есть: над пустой строкой галочки нет вовсе —
+      убирать в ней нечего. Разметка выписана здесь, а не настроена на поле: класс —
+      дело экрана, а форма предметов общая с админкой, где этих классов нет.
+    {% endcomment %}
+    {% if row.DELETE %}
+      <input type="checkbox" class="checkbox checkbox-sm"
+             name="{{ row.DELETE.html_name }}"
+             {% if row.DELETE.value %}checked{% endif %}>
+    {% endif %}
+  </td>
+</tr>

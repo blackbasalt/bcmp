@@ -20,6 +20,29 @@ def period(lease):
     return f"{lease.valid_from:%d.%m.%Y} — {closes}"
 
 
+def space_named(space):
+    """Помещение называется тем, чем его потом ищут: именем и кодом.
+
+    Одним правилом и в отказе модели, и в выборе предмета на форме: помещение,
+    названное на форме одним, а в отказе под ней другим, пришлось бы искать дважды.
+    """
+    if space.name and space.code:
+        return f"«{space.name}» ({space.code})"
+    return space.name or space.code or str(space)
+
+
+def space_chosen(space):
+    """Помещение в выборе предмета: здание названо рядом, потому что БЦ не один.
+
+    Договор называет помещения нескольких БЦ, и «Склад» без Boston рядом не
+    отличить от склада в Manhattan — тот же довод, что и в таблице предмета на
+    карточке. Здание может быть не проставлено вовсе: тогда остаётся помещение.
+    """
+    named = space_named(space)
+    building = space.building.name if space.building else None
+    return f"{building} — {named}" if building else named
+
+
 def spaces_counted(count):
     """«2 помещения» — число с существительным при нём, а не цифра в столбце.
 

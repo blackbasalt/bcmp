@@ -1,32 +1,12 @@
 """Пока экранов аренды нет, договоры заводятся здесь — договором с предметами сразу."""
 
 from django.contrib import admin
-from django.forms.models import BaseInlineFormSet
 
 from building_passport.models import Space
 from documents.admin_inlines import DocumentLinkInline
 
+from .lease_form import LeaseSubjectFormSet
 from .models import Lease, LeaseSubject
-
-
-class LeaseSubjectFormSet(BaseInlineFormSet):
-    """Предметы проверяются против договора, который в базу ещё не попал.
-
-    Инлайн валидируется раньше, чем сохранён родитель, и спросить договор по
-    ссылке в этот момент нечем — админка вдобавок обнуляет его ключ, пока он не
-    записан. Строки бы прошли проверку, а отказ пришёл бы уже из `save()`:
-    пятисоткой вместо сообщения у поля. Договор передаётся прямо объектом, тем
-    самым, который админка держит в руках.
-    """
-
-    default_error_messages = {
-        "too_few_forms": "Договор без предмета не бывает: назовите хотя бы одно помещение.",
-    }
-
-    def _construct_form(self, index, **kwargs):
-        form = super()._construct_form(index, **kwargs)
-        form.instance.lease = self.instance
-        return form
 
 
 class LeaseSubjectInline(admin.TabularInline):

@@ -45,6 +45,17 @@ class LeaseQuerySet(models.QuerySet):
             return self
         return self.filter(org_id__in=user.memberships.values("org_id"))
 
+    def administered_by(self, user):
+        """Договоры, которые пользователь вправе вести, — чокпоинт записи (ADR 0005).
+
+        Отдельный от `visible_to` вопрос, как и у пространств: читать договоры
+        организации и заводить их — разные права, и второе даётся флагом на
+        членстве. Спрашивается он у организаций, а не у членств напрямую: тот же
+        ответ нужен форме, которая предлагает выбор организации, и два способа его
+        получить однажды разошлись бы.
+        """
+        return self.filter(org__in=Org.objects.administered_by(user))
+
 
 class Lease(CommonModel):
     """Соглашение, по которому сторона занимает помещения на срок за плату.
@@ -144,13 +155,6 @@ class Lease(CommonModel):
                 raise ValidationError(refusal.messages) from refusal
 
 
-def _named(space):
-    """Помещение в отказе называется тем, чем его потом ищут: именем и кодом."""
-    if space.name and space.code:
-        return f"«{space.name}» ({space.code})"
-    return space.name or space.code or str(space)
-
-
 class LeaseSubjectQuerySet(models.QuerySet):
     def overlapping(self, begin, end):
         """Предметы, чьи договоры задевают отрезок от `begin` до `end` включительно.
@@ -244,7 +248,7 @@ class LeaseSubject(CommonModel):
         if self.space.org_id != lease.org_id:
             raise ValidationError(
                 {
-                    "space": f"Помещение {_named(self.space)} принадлежит другой "
+                    "space": f"Помещение {lease_display.space_named(self.space)} принадлежит другой "
                     f"организации. Договор называет помещения только своей: "
                     f"предмет и организация договора расходиться не должны."
                 }
@@ -252,7 +256,7 @@ class LeaseSubject(CommonModel):
         if not self.space.is_leasable:
             raise ValidationError(
                 {
-                    "space": f"Помещение {_named(self.space)} не арендопригодно и "
+                    "space": f"Помещение {lease_display.space_named(self.space)} не арендопригодно и "
                     f"предметом договора не бывает: МОП и техническое помещение "
                     f"арендатору не сдаются."
                 }
@@ -263,7 +267,7 @@ class LeaseSubject(CommonModel):
         if conflicting is not None:
             raise ValidationError(
                 {
-                    "space": f"Помещение {_named(self.space)} уже сдано: "
+                    "space": f"Помещение {lease_display.space_named(self.space)} уже сдано: "
                     f"{conflicting.lease}, "
                     f"{lease_display.period(conflicting.lease)}. "
                     f"У помещения не бывает двух арендаторов на один день: "
