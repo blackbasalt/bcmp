@@ -1,0 +1,260 @@
+"""Договор аренды: факты, которыми красят план и считают свободное (ADR 0006)."""
+
+import uuid
+
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Q
+
+from building_passport.models import Space
+from parties.models import Org, Party
+
+
+class CommonModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True, editable=False)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL,
+                                   editable=False, related_name='+')
+    updated_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL,
+                                   editable=False, related_name='+')
+
+    class Meta:
+        abstract = True
+
+
+class Lease(CommonModel):
+    """Соглашение, по которому сторона занимает помещения на срок за плату.
+
+    Не документ: скан подшивается к договору `Document`'ом, но фактами служит сам
+    договор — слой «сроки договоров» красит контуры запросом к периодам, а счёт
+    свободного — запросом к предмету, и ни то, ни другое не вынимается из JSON
+    внутри вложения (ADR 0006).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    #: Своя организация, а не выведенная из помещений предмета: договор называет
+    #: несколько помещений и не привязан к зданию вовсе, поэтому вывод перестаёт
+    #: быть выводом и становится выбором между утечкой и тихо исчезающей записью
+    #: (ADR 0009). Отступление от образца `FloorPlan` намеренное.
+    org = models.ForeignKey(
+        Org, on_delete=models.PROTECT, related_name="leases", verbose_name="организация"
+    )
+    #: Арендатором Сторону делает договор и только он: отдельной роли «арендатор»
+    #: у Стороны нет, иначе на вопрос «кто здесь арендатор» нашлось бы два ответа
+    #: (ADR 0008).
+    tenant = models.ForeignKey(
+        Party, on_delete=models.PROTECT, related_name="leases", verbose_name="арендатор"
+    )
+    valid_from = models.DateField(verbose_name="действует с")
+    valid_to = models.DateField(blank=True, null=True, verbose_name="действует по")
+    number = models.CharField(max_length=128, blank=True, null=True, verbose_name="номер")
+    signed_at = models.DateField(blank=True, null=True, verbose_name="дата подписания")
+    #: Пролонгация — новый договор со ссылкой на прежний, а не передвинутый конец
+    #: прежнего: при продлении меняется ставка, и правка на месте стёрла бы ответ
+    #: на «по какой ставке помещение сдавалось в марте» (ADR 0007). Прежний договор
+    #: удалением не пропадает: цепочку рвать молча нечем, и снять ссылку придётся
+    #: руками.
+    prolongs = models.ForeignKey(
+        "self",
+        blank=True,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="prolonged_by",
+        verbose_name="продлевает договор",
+    )
+
+    class Meta:
+        ordering = ("-valid_from",)
+        verbose_name = "договор аренды"
+        verbose_name_plural = "договоры аренды"
+
+    def __str__(self):
+        named = f"№{self.number}" if self.number else f"от {self.valid_from:%d.%m.%Y}"
+        return f"Договор {named} — {self.tenant}"
+
+    def clean(self):
+        """Причина отказа называется на форме, а не падает пятисоткой при сохранении."""
+        super().clean()
+        self._validate_period()
+
+    def save(self, *args, **kwargs):
+        """Срок проверяется и здесь, а не только на предмете.
+
+        Пересечение зависит от двух вещей — периода договора и помещения предмета,
+        — и заводятся они порознь. Стой проверка только на предмете, правка срока
+        уже заведённого договора прошла бы мимо неё и наложила бы его на соседний.
+        """
+        self._validate_period()
+        super().save(*args, **kwargs)
+
+    def _validate_period(self):
+        """Период должен быть периодом и не должен задевать соседний по каждому предмету."""
+        if self.valid_from is None:
+            return
+        if self.valid_to is not None and self.valid_to < self.valid_from:
+            raise ValidationError(
+                {"valid_to": "Период заканчивается раньше, чем начинается."}
+            )
+        if self._state.adding:
+            return
+        for subject in self.subjects.select_related("space"):
+            subject._validate(lease=self)
+
+
+def _named(space):
+    """Помещение в отказе называется тем, чем его потом ищут: именем и кодом."""
+    if space.name and space.code:
+        return f"«{space.name}» ({space.code})"
+    return space.name or space.code or str(space)
+
+
+class LeaseSubjectQuerySet(models.QuerySet):
+    def overlapping(self, begin, end):
+        """Предметы, чьи договоры задевают отрезок от `begin` до `end` включительно.
+
+        Оба конца входят в период, поэтому договор, начинающийся в день окончания
+        отрезка, с ним пересекается: в этот день действовали бы оба. Открытый конец
+        — что у договора, что у отрезка — означает «по сей день» и не кончается
+        никогда, так что любое начало после такого договора в него попадает.
+
+        Форма запроса та же, что у периодов планов этажа (`FloorPlanQuerySet`), и по
+        той же причине: правило аренды — прямое продолжение ADR 0004 (ADR 0007).
+        Общего кода у них нет намеренно: там период лежит на самой строке, здесь —
+        на договоре над ней, и склейка ради четырёх строк стоила бы дороже.
+        """
+        began_by_the_end = Q() if end is None else Q(lease__valid_from__lte=end)
+        not_ended_before_the_begin = Q(lease__valid_to__isnull=True) | Q(
+            lease__valid_to__gte=begin
+        )
+        return self.filter(began_by_the_end).filter(not_ended_before_the_begin)
+
+
+class LeaseSubject(CommonModel):
+    """Помещение, названное договором, вместе со своей ставкой и площадью.
+
+    Ставка и договорная площадь принадлежат договору и остаются на нём: арендуемая
+    площадь — это полезная плюс доля МОП по коэффициенту, то есть условие
+    соглашения, а не обмер здания. Ни `Space.area_m2`, ни `SpaceArea` отсюда не
+    пишутся никогда (ADR 0006).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lease = models.ForeignKey(
+        Lease, on_delete=models.CASCADE, related_name="subjects", verbose_name="договор"
+    )
+    space = models.ForeignKey(
+        Space,
+        on_delete=models.PROTECT,
+        related_name="lease_subjects",
+        verbose_name="помещение",
+    )
+    rate = models.DecimalField(
+        max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="ставка"
+    )
+    area_m2 = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="договорная площадь",
+    )
+
+    objects = LeaseSubjectQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "предмет договора"
+        verbose_name_plural = "предметы договора"
+        constraints = [
+            models.UniqueConstraint(fields=["lease", "space"], name="lease_subject_uq"),
+        ]
+
+    def __str__(self):
+        return f"{self.space} по {self.lease}"
+
+    def clean(self):
+        """Причина отказа называется на форме, а не падает пятисоткой при сохранении."""
+        super().clean()
+        self._validate()
+
+    def save(self, *args, **kwargs):
+        """Правило стоит на модели, а не на форме (ADR 0007).
+
+        Админка, будущая форма договора и любой скрипт пишут одним путём и получают
+        один и тот же отказ теми же словами. Иначе «сдано ли помещение сегодня»
+        перестало бы иметь один ответ, а слой красил бы контур тем договором,
+        который выбрала сортировка.
+        """
+        self._validate()
+        super().save(*args, **kwargs)
+
+    def _validate(self, lease=None):
+        """Отказы предмета: чужая организация, неарендопригодное и пересечение.
+
+        Договор передаётся отдельно там, где он ещё не в базе: в админке предметы
+        проверяются раньше, чем сохранён сам договор, и спрашивать его по ссылке
+        в этот момент нечем.
+        """
+        lease = lease or self._lease_in_hand()
+        if lease is None or self.space_id is None:
+            return
+        if self.space.org_id != lease.org_id:
+            raise ValidationError(
+                {
+                    "space": f"Помещение {_named(self.space)} принадлежит другой "
+                    f"организации. Договор называет помещения только своей: "
+                    f"предмет и организация договора расходиться не должны."
+                }
+            )
+        if not self.space.is_leasable:
+            raise ValidationError(
+                {
+                    "space": f"Помещение {_named(self.space)} не арендопригодно и "
+                    f"предметом договора не бывает: МОП и техническое помещение "
+                    f"арендатору не сдаются."
+                }
+            )
+        if lease.valid_from is None:
+            return
+        conflicting = self._conflicting_subjects(lease).select_related("lease").first()
+        if conflicting is not None:
+            closes = (
+                f"{conflicting.lease.valid_to:%d.%m.%Y}"
+                if conflicting.lease.valid_to
+                else "по сей день"
+            )
+            raise ValidationError(
+                {
+                    "space": f"Помещение {_named(self.space)} уже сдано: "
+                    f"{conflicting.lease}, "
+                    f"{conflicting.lease.valid_from:%d.%m.%Y} — {closes}. "
+                    f"У помещения не бывает двух арендаторов на один день: "
+                    f"закройте прежний период датой расторжения."
+                }
+            )
+
+    def _conflicting_subjects(self, lease):
+        """Предметы чужих договоров на то же помещение, чьи периоды задевают этот.
+
+        Проверка ведётся по помещению, а не по договору: договор на три помещения
+        может конфликтовать ровно по одному из них, и назвать надо именно его.
+        Свой договор из выборки исключён — иначе правка предмета спорила бы сама с
+        собой, а не с соседним договором.
+        """
+        others = LeaseSubject.objects.filter(space_id=self.space_id)
+        if lease.pk is not None:
+            others = others.exclude(lease_id=lease.pk)
+        return others.overlapping(lease.valid_from, lease.valid_to)
+
+    def _lease_in_hand(self):
+        """Договор предмета, если он вообще известен, — хоть из памяти, хоть из базы.
+
+        Спрашивается именно ссылкой, а не по `lease_id`: у незаписанного договора
+        ключа ещё нет — админка обнуляет его, пока родитель не сохранён, — но сам
+        объект уже есть, и период с организацией берутся с него. Иначе проверка
+        молча отступала бы ровно там, где договор заводят.
+        """
+        try:
+            return self.lease
+        except Lease.DoesNotExist:
+            return None
