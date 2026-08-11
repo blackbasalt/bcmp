@@ -1,0 +1,55 @@
+{% extends "shell.html" %}
+{% load passport leases %}
+
+{% block title %}Договоры аренды — BCMP{% endblock %}
+{% block page_title %}Договоры аренды{% endblock %}
+{% block breadcrumbs %}<li>Договоры аренды</li>{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Таблица, а не карточки: договоров у клиента десятки, и сравнивают их по сроку —
+    столбец дат читается сверху вниз, а карточки заставляли бы искать дату в каждой.
+  {% endcomment %}
+  {% if leases %}
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Арендатор</th>
+                <th>Срок</th>
+                <th>Номер</th>
+                <th>Предмет</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lease in leases %}
+                <tr class="hover">
+                  <td>
+                    <a class="link link-primary" href="{% url 'leases:lease_detail' lease.pk %}">
+                      {{ lease.tenant.name|or_missing }}
+                    </a>
+                  </td>
+                  {# Открытый конец периода читается «по сей день», как у планов этажа. #}
+                  <td class="whitespace-nowrap">{{ lease|period }}</td>
+                  <td>{{ lease.number|or_missing }}</td>
+                  <td>{{ lease.space_count|spaces_counted }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    {% comment %}
+      Пустой список — состояние нового клиента, а не сломанный экран. Пустая таблица
+      с одними заголовками читалась бы как поломка, поэтому её тут нет вовсе.
+    {% endcomment %}
+    <div class="alert alert-info">
+      <span>Ни одного договора аренды пока не заведено. Пока их нет, BCMP не знает,
+        сдано ли хоть одно помещение: договоры вносит администратор организации.</span>
+    </div>
+  {% endif %}
+{% endblock %}

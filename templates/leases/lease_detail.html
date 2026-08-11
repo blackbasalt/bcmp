@@ -1,0 +1,96 @@
+{% extends "shell.html" %}
+{% load passport leases %}
+
+{% block title %}{{ lease }} — BCMP{% endblock %}
+{% block page_title %}{{ lease }}{% endblock %}
+
+{% comment %}
+  Путь назад к списку — крошка в шапке: договор не принадлежит ни одному БЦ, и другого
+  места, из которого к нему приходят, нет.
+{% endcomment %}
+{% block breadcrumbs %}
+  <li><a href="{% url 'leases:lease_list' %}">Договоры аренды</a></li>
+  {# Договор называет себя сам: правило «№ или дата» стоит на модели, не в разметке. #}
+  <li>{{ lease }}</li>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Договор</h2>
+        <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          <dt class="opacity-60">Арендатор</dt>
+          <dd>{{ lease.tenant.name|or_missing }}</dd>
+
+          <dt class="opacity-60">Срок</dt>
+          <dd>{{ lease|period }}</dd>
+
+          <dt class="opacity-60">Номер</dt>
+          <dd>{{ lease.number|or_missing }}</dd>
+
+          <dt class="opacity-60">Дата подписания</dt>
+          <dd>{{ lease.signed_at|date:"d.m.Y"|or_missing }}</dd>
+
+          {% comment %}
+            Прежний договор называется только у пролонгации: у обычного договора его
+            не «нет данных», а не бывает вовсе, и прочерк утверждал бы, что поле
+            забыли заполнить. Договор, оказавшийся невидимым, сюда не доезжает — его
+            отобрал тот же чокпоинт, что и сам открытый договор.
+          {% endcomment %}
+          {% if prolongs %}
+            <dt class="opacity-60">Пролонгирует</dt>
+            <dd>
+              <a class="link link-primary" href="{% url 'leases:lease_detail' prolongs.pk %}">
+                {{ prolongs }}
+              </a>
+            </dd>
+          {% endif %}
+        </dl>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow-sm lg:col-span-2">
+      <div class="card-body gap-3">
+        {% comment %}
+          Предмет — помещение со своей ставкой и своей договорной площадью: офис и
+          склад одним соглашением не обязаны идти по одной ставке. Здание названо
+          рядом с помещением, потому что договор называет помещения нескольких БЦ.
+        {% endcomment %}
+        <h2 class="card-title text-lg">Предмет договора</h2>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Помещение</th>
+                <th>Бизнес-центр</th>
+                <th>Ставка</th>
+                <th>Договорная площадь</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for subject in subjects %}
+                <tr>
+                  <td>{{ subject.space|space_label }}</td>
+                  <td>{{ subject.space.building|space_label }}</td>
+                  <td>{{ subject.rate|figure|or_missing }}</td>
+                  {# Договорная площадь — условие соглашения, а не обмер здания (ADR 0006). #}
+                  <td>{{ subject.area_m2|area|or_missing }}</td>
+                </tr>
+              {% empty %}
+                {% comment %}
+                  Договор без предмета формой не завести — заводится он вместе с ними,
+                  — но заведённый скриптом остаётся молчаливо пустой записью. На экране
+                  это сказано словами: пустая таблица читалась бы как поломка.
+                {% endcomment %}
+                <tr>
+                  <td colspan="4">В договоре не названо ни одного помещения.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}

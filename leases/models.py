@@ -10,6 +10,8 @@ from django.db.models import Q
 from building_passport.models import Space
 from parties.models import Org, Party
 
+from . import lease_display
+
 
 class CommonModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
@@ -21,6 +23,27 @@ class CommonModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class LeaseQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        """Договоры, доступные пользователю, — единственное место фильтрации аренды.
+
+        Третий чокпоинт рядом с `visible_to` и `administered_by` у пространств и
+        устроен так же: фильтрация в одном месте, а не собранная в каждом
+        представлении. Спрашивается своя организация договора, а не организации
+        помещений предмета — вывод видимости из предмета отклонён (ADR 0009): «видно,
+        если видно любое» отдаёт клиенту A предметы и ставки клиента B, а «видно,
+        если видны все» прячет договор от обоих сразу.
+
+        Суперпользователь видит всё по той же причине, что и у пространств: проблема
+        клиента должна воспроизводиться без выписывания себе членства.
+        """
+        if not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        return self.filter(org_id__in=user.memberships.values("org_id"))
 
 
 class Lease(CommonModel):
@@ -71,6 +94,8 @@ class Lease(CommonModel):
         related_name="prolonged_by",
         verbose_name="пролонгирует договор",
     )
+
+    objects = LeaseQuerySet.as_manager()
 
     class Meta:
         ordering = ("-valid_from",)
@@ -236,16 +261,11 @@ class LeaseSubject(CommonModel):
             return
         conflicting = self._conflicting_subjects(lease).select_related("lease").first()
         if conflicting is not None:
-            closes = (
-                f"{conflicting.lease.valid_to:%d.%m.%Y}"
-                if conflicting.lease.valid_to
-                else "по сей день"
-            )
             raise ValidationError(
                 {
                     "space": f"Помещение {_named(self.space)} уже сдано: "
                     f"{conflicting.lease}, "
-                    f"{conflicting.lease.valid_from:%d.%m.%Y} — {closes}. "
+                    f"{lease_display.period(conflicting.lease)}. "
                     f"У помещения не бывает двух арендаторов на один день: "
                     f"закройте прежний период датой расторжения."
                 }

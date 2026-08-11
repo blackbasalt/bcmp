@@ -1,9 +1,9 @@
 """Договор аренды и его предмет: сущность, отказ и период.
 
-Экранов у аренды пока нет, поэтому шов здесь — сама модель: договор заводится
-`Lease.objects.create()`, предмет — `LeaseSubject.objects.create()`, и отказ
-приходит оттуда же, откуда придёт админке и будущей форме. Так же проверялся
-чокпоинт до появления экранов (`test_scoping`).
+Шов здесь — сама модель: договор заводится `Lease.objects.create()`, предмет —
+`LeaseSubject.objects.create()`, и отказ приходит оттуда же, откуда придёт админке и
+будущей форме. Так же проверялся чокпоинт до появления экранов (`test_scoping`). То,
+что видно по HTTP, стоит рядом — в `test_lease_screens`.
 
 Проверяется то, чего по данным не восстановить: что предмет несёт свою ставку и
 свою площадь, что периоды на одном помещении не пересекаются и что отказ называет
@@ -26,48 +26,8 @@ from parties.models import Party
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def tenant(db):
-    """Сторона, которую арендатором делает договор и только он (ADR 0008)."""
-    return Party.objects.create(
-        kind=Party.Kind.COMPANY, name="Ромашка ТОО", bin_iin="180540035879"
-    )
-
-
-def leasable(space):
-    """Помещение, которое может сдаваться: арендопригодность — свойство помещения."""
-    space.is_leasable = True
-    space.save(update_fields=["is_leasable"])
-    return space
-
-
-@pytest.fixture
-def office(first_floor, make_space):
-    return leasable(make_space(first_floor, "man-f1-101", "Офис 101"))
-
-
-@pytest.fixture
-def boston(downtown, make_floor, make_space):
-    """Второй БЦ той же организации: договор не привязан к зданию вовсе."""
-    building = Space.objects.create(
-        org=downtown, type="building", code="bos", name="Boston"
-    )
-    return make_floor(building, 1)
-
-
-@pytest.fixture
-def warehouse(boston, make_space):
-    return leasable(make_space(boston, "bos-f1-01", "Склад"))
-
-
-def make_lease(org, tenant, valid_from=date(2025, 1, 1), valid_to=None, **fields):
-    return Lease.objects.create(
-        org=org, tenant=tenant, valid_from=valid_from, valid_to=valid_to, **fields
-    )
-
-
 def test_a_lease_names_several_spaces_across_buildings_each_with_its_own_rate(
-    downtown, tenant, office, warehouse
+    downtown, tenant, office, warehouse, make_lease
 ):
     """Арендатор с офисом в Manhattan и складом в Boston — один договор, как на бумаге."""
     lease = make_lease(downtown, tenant, number="12-А", signed_at=date(2024, 12, 20))
@@ -88,10 +48,10 @@ def test_a_lease_names_several_spaces_across_buildings_each_with_its_own_rate(
 
 
 def test_a_lease_conflicting_on_one_space_of_three_names_that_space(
-    downtown, tenant, office, warehouse, first_floor, make_space
+    downtown, tenant, office, warehouse, first_floor, make_lease, make_leasable
 ):
     """Пересечение ищется по каждому помещению отдельно, а не по договору целиком."""
-    kitchen = leasable(make_space(first_floor, "man-f1-102", "Кафе"))
+    kitchen = make_leasable(first_floor, "man-f1-102", "Кафе")
     let = make_lease(downtown, tenant, date(2025, 1, 1), date(2025, 12, 31), number="12-А")
     LeaseSubject.objects.create(lease=let, space=office)
 
@@ -107,7 +67,7 @@ def test_a_lease_conflicting_on_one_space_of_three_names_that_space(
     assert "Кафе" not in said and "Склад" not in said
 
 
-def test_leases_that_do_not_touch_share_one_space(downtown, tenant, office):
+def test_leases_that_do_not_touch_share_one_space(downtown, tenant, office, make_lease):
     """Прежний арендатор съехал, новый заехал: помещение сдаётся второй раз."""
     first = make_lease(downtown, tenant, date(2024, 1, 1), date(2024, 12, 31))
     LeaseSubject.objects.create(lease=first, space=office)
@@ -118,7 +78,7 @@ def test_leases_that_do_not_touch_share_one_space(downtown, tenant, office):
 
 
 def test_a_lease_beginning_on_the_day_another_ends_is_an_overlap(
-    downtown, tenant, office
+    downtown, tenant, office, make_lease
 ):
     """Период включает оба конца: в день закрытия действовали бы оба договора."""
     ending = make_lease(downtown, tenant, date(2024, 1, 1), date(2024, 12, 31))
@@ -129,7 +89,7 @@ def test_a_lease_beginning_on_the_day_another_ends_is_an_overlap(
         LeaseSubject.objects.create(lease=starting, space=office)
 
 
-def test_an_open_ended_lease_blocks_a_lease_starting_after_it(downtown, tenant, office):
+def test_an_open_ended_lease_blocks_a_lease_starting_after_it(downtown, tenant, office, make_lease):
     """Пустая дата окончания читается «по сей день» и не кончается никогда."""
     forever = make_lease(downtown, tenant, date(2020, 1, 1))
     LeaseSubject.objects.create(lease=forever, space=office)
@@ -139,16 +99,7 @@ def test_an_open_ended_lease_blocks_a_lease_starting_after_it(downtown, tenant, 
         LeaseSubject.objects.create(lease=later, space=office)
 
 
-@pytest.fixture
-def their_office(central, make_floor, make_space):
-    """Арендопригодное помещение другого клиента платформы."""
-    building = Space.objects.create(
-        org=central, type="building", code="ctr", name="Central Tower"
-    )
-    return leasable(make_space(make_floor(building, 1), "ctr-f1-01", "Кабинет"))
-
-
-def test_a_space_of_another_organisation_is_refused(downtown, tenant, their_office):
+def test_a_space_of_another_organisation_is_refused(downtown, tenant, their_office, make_lease):
     """Ошибка, которую надо назвать, а не редкий случай, который надо поддержать (ADR 0009)."""
     lease = make_lease(downtown, tenant)
 
@@ -160,7 +111,7 @@ def test_a_space_of_another_organisation_is_refused(downtown, tenant, their_offi
     assert "организации" in said
 
 
-def test_a_space_that_is_not_leasable_is_refused(downtown, tenant, first_floor):
+def test_a_space_that_is_not_leasable_is_refused(downtown, tenant, first_floor, make_lease):
     """Венткамера не должна сдаваться из-за промаха в выпадающем списке."""
     itp = Space.objects.get(code="man-f1-b")
     lease = make_lease(downtown, tenant)
@@ -174,7 +125,7 @@ def test_a_space_that_is_not_leasable_is_refused(downtown, tenant, first_floor):
 
 
 def test_letting_a_parent_space_does_not_let_the_spaces_inside_it(
-    downtown, tenant, office, make_space
+    downtown, tenant, office, make_lease, make_leasable
 ):
     """Тамбур и кабинет за ним сдаются разным арендаторам, и система не возражает.
 
@@ -182,7 +133,7 @@ def test_letting_a_parent_space_does_not_let_the_spaces_inside_it(
     выводящее занятость из иерархии, было бы верно для одного и молча неверно для
     другого. Цена принята и названа, чтобы её не прочли как недосмотр.
     """
-    inner = leasable(make_space(office, "man-f1-101a", "Кабинет в офисе"))
+    inner = make_leasable(office, "man-f1-101a", "Кабинет в офисе")
     outer = make_lease(downtown, tenant, date(2025, 1, 1), date(2025, 12, 31))
     LeaseSubject.objects.create(lease=outer, space=office)
 
@@ -194,7 +145,7 @@ def test_letting_a_parent_space_does_not_let_the_spaces_inside_it(
 
 
 def test_a_renewal_names_the_lease_it_prolongs_and_leaves_its_rate_alone(
-    downtown, tenant, office
+    downtown, tenant, office, make_lease
 ):
     """Пролонгация — новый договор со ссылкой, а не передвинутый конец прежнего.
 
@@ -224,7 +175,7 @@ def test_a_period_that_ends_before_it_begins_is_refused(downtown, tenant):
         lease.save()
 
 
-def test_moving_a_lease_onto_a_period_already_let_is_refused(downtown, tenant, office):
+def test_moving_a_lease_onto_a_period_already_let_is_refused(downtown, tenant, office, make_lease):
     """Проверка стоит и на договоре: иначе правка срока обошла бы её мимо предмета."""
     ended = make_lease(downtown, tenant, date(2024, 1, 1), date(2024, 12, 31))
     LeaseSubject.objects.create(lease=ended, space=office)
@@ -238,7 +189,7 @@ def test_moving_a_lease_onto_a_period_already_let_is_refused(downtown, tenant, o
     assert "man-f1-101" in " ".join(refusal.value.messages)
 
 
-def test_a_scan_is_filed_against_the_lease_itself(downtown, tenant, office):
+def test_a_scan_is_filed_against_the_lease_itself(downtown, tenant, office, make_lease):
     """Скан подшивается к договору: подшить его было не к чему — вида не было (ADR 0006)."""
     lease = make_lease(downtown, tenant)
     LeaseSubject.objects.create(lease=lease, space=office)
@@ -260,7 +211,7 @@ def test_a_scan_is_filed_against_the_lease_itself(downtown, tenant, office):
 
 
 def test_a_lease_writes_neither_the_area_of_the_space_nor_a_measurement(
-    downtown, tenant, office
+    downtown, tenant, office, make_lease
 ):
     """Договорная площадь — условие соглашения, а не обмер здания (ADR 0006).
 
@@ -332,7 +283,7 @@ def administrator(django_user_model):
 
 
 def test_django_admin_receives_the_same_refusal_and_saves_nothing(
-    client, administrator, downtown, tenant, office
+    client, administrator, downtown, tenant, office, make_lease
 ):
     """Отказ приходит с модели и виден на форме, а не пятисоткой при сохранении."""
     let = make_lease(downtown, tenant, date(2025, 1, 1), date(2025, 12, 31), number="12-А")
@@ -364,7 +315,7 @@ def test_a_lease_without_a_single_subject_is_refused_by_the_form(
 
 
 def test_django_admin_names_the_space_when_a_period_is_moved_onto_a_let_one(
-    client, administrator, downtown, tenant, office
+    client, administrator, downtown, tenant, office, make_lease
 ):
     """Отказ по предмету приходит и на страницу договора: правят-то срок.
 
