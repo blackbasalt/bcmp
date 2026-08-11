@@ -30,6 +30,14 @@ class Lease(CommonModel):
     договор — слой «сроки договоров» красит контуры запросом к периодам, а счёт
     свободного — запросом к предмету, и ни то, ни другое не вынимается из JSON
     внутри вложения (ADR 0006).
+
+    Обязательны арендатор, дата начала и хотя бы один предмет (ADR 0007). Первые
+    два стоят на самой модели, а третий — единственное правило аренды, которое на
+    ней стоять не может: предмет ссылается на договор, то есть заводится строкой
+    позже, и проверка на `save()` отказала бы самому первому сохранению. Держит
+    его тот, кто заводит договор целиком, — сейчас инлайн админки, дальше форма
+    (#28). `Lease.objects.create()` без предметов при этом проходит: договор без
+    предмета, заведённый скриптом, останется молчаливо пустой записью.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -61,7 +69,7 @@ class Lease(CommonModel):
         null=True,
         on_delete=models.PROTECT,
         related_name="prolonged_by",
-        verbose_name="продлевает договор",
+        verbose_name="пролонгирует договор",
     )
 
     class Meta:
@@ -89,7 +97,13 @@ class Lease(CommonModel):
         super().save(*args, **kwargs)
 
     def _validate_period(self):
-        """Период должен быть периодом и не должен задевать соседний по каждому предмету."""
+        """Период должен быть периодом и не должен задевать соседний по каждому предмету.
+
+        Отказ предмета переносится сюда без привязки к полю: на странице договора
+        поля «помещение» нет — оно живёт в предмете, — и адресованный ему отказ
+        уронил бы форму вместо того, чтобы на ней показаться. Помещение при этом
+        не теряется: оно названо в самом сообщении.
+        """
         if self.valid_from is None:
             return
         if self.valid_to is not None and self.valid_to < self.valid_from:
@@ -99,7 +113,10 @@ class Lease(CommonModel):
         if self._state.adding:
             return
         for subject in self.subjects.select_related("space"):
-            subject._validate(lease=self)
+            try:
+                subject._validate(lease=self)
+            except ValidationError as refusal:
+                raise ValidationError(refusal.messages) from refusal
 
 
 def _named(space):
@@ -133,10 +150,11 @@ class LeaseSubjectQuerySet(models.QuerySet):
 class LeaseSubject(CommonModel):
     """Помещение, названное договором, вместе со своей ставкой и площадью.
 
-    Ставка и договорная площадь принадлежат договору и остаются на нём: арендуемая
-    площадь — это полезная плюс доля МОП по коэффициенту, то есть условие
-    соглашения, а не обмер здания. Ни `Space.area_m2`, ни `SpaceArea` отсюда не
-    пишутся никогда (ADR 0006).
+    Ставка и договорная площадь стоят на предмете, а не на договоре: офис и склад
+    одним соглашением не обязаны идти по одной ставке. Договорная площадь — это
+    полезная плюс доля МОП по коэффициенту, то есть условие соглашения, а не обмер
+    здания, поэтому ни `Space.area_m2`, ни `SpaceArea` отсюда не пишутся никогда
+    (ADR 0006).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

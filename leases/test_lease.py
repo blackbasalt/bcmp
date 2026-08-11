@@ -215,6 +215,7 @@ def test_a_renewal_names_the_lease_it_prolongs_and_leaves_its_rate_alone(
 
 
 def test_a_period_that_ends_before_it_begins_is_refused(downtown, tenant):
+    """Период должен быть периодом: то же правило и в тех же словах, что у плана."""
     lease = Lease(
         org=downtown, tenant=tenant, valid_from=date(2025, 6, 1), valid_to=date(2025, 1, 1)
     )
@@ -306,6 +307,24 @@ def lease_form(org, tenant, subjects, valid_from="2025-06-01", valid_to="", **fi
     return posted
 
 
+def entered_lease_form(lease, **fields):
+    """Страница заведённого договора со всеми его предметами — так её и правят."""
+    subjects = list(lease.subjects.all())
+    posted = lease_form(
+        lease.org,
+        lease.tenant,
+        [subject.space for subject in subjects],
+        valid_from=f"{lease.valid_from:%Y-%m-%d}",
+        valid_to=f"{lease.valid_to:%Y-%m-%d}" if lease.valid_to else "",
+    )
+    posted.update(fields)
+    posted["subjects-INITIAL_FORMS"] = str(len(subjects))
+    for index, subject in enumerate(subjects):
+        posted[f"subjects-{index}-id"] = str(subject.pk)
+        posted[f"subjects-{index}-lease"] = str(lease.pk)
+    return posted
+
+
 @pytest.fixture
 def administrator(django_user_model):
     """Администратор платформы: пока формы нет, договоры заводятся в админке."""
@@ -344,9 +363,37 @@ def test_a_lease_without_a_single_subject_is_refused_by_the_form(
     assert not Lease.objects.exists()
 
 
+def test_django_admin_names_the_space_when_a_period_is_moved_onto_a_let_one(
+    client, administrator, downtown, tenant, office
+):
+    """Отказ по предмету приходит и на страницу договора: правят-то срок.
+
+    Помещение названо в самом сообщении, поэтому у поля предмета ему стоять не
+    обязательно — а вот падать пятисоткой из-за поля, которого на этой форме нет,
+    оно не должно.
+    """
+    ended = make_lease(downtown, tenant, date(2024, 1, 1), date(2024, 12, 31))
+    LeaseSubject.objects.create(lease=ended, space=office)
+    later = make_lease(downtown, tenant, date(2025, 1, 1), date(2025, 12, 31))
+    LeaseSubject.objects.create(lease=later, space=office)
+    client.force_login(administrator)
+
+    response = client.post(
+        reverse("admin:leases_lease_change", args=[later.pk]),
+        entered_lease_form(later, valid_from="2024-06-01"),
+    )
+
+    assert response.status_code == 200
+    said = response.content.decode()
+    assert "уже сдано" in said and "man-f1-101" in said
+    later.refresh_from_db()
+    assert later.valid_from == date(2025, 1, 1)
+
+
 def test_django_admin_enters_a_lease_with_its_subjects_in_one_action(
     client, administrator, downtown, tenant, office, warehouse
 ):
+    """Несколько помещений уходят в один договор одним действием, а не тремя заходами."""
     client.force_login(administrator)
 
     response = client.post(
