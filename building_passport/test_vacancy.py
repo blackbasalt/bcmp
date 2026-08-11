@@ -1,7 +1,10 @@
-"""Вакансия на экране этажа: «свободно 12 из 44 помещений, 387 из 1529 м²».
+"""Вакансия: «свободно 12 из 44 помещений, 387 из 1529 м²» — на этаже и на здании.
 
-Шов тот же, что у остальных экранов, — граница HTTP: тесты открывают этаж тестовым
+Экранов у одного счёта два, и набор один: карточка БЦ повторяет тот же счёт по
+всему зданию (#31), и разъехаться два описания одного правила не должны. Шов тот же,
+что у остальных экранов, — граница HTTP: тесты открывают этаж и карточку тестовым
 клиентом от имени сотрудника с известным членством и читают то, что экран сказал.
+
 Опора в разметке — атрибут `data-vacancy` на строке счёта и числа при нём:
 `data-free` с `data-leasable` в помещениях, `data-free-m2` с `data-leasable-m2` в
 метрах и `data-leases` — сколько договоров счёт под собой имеет. Это договор экрана,
@@ -16,12 +19,14 @@
 from decimal import Decimal
 
 import pytest
+from django.urls import reverse
 
 from building_passport.models import Space
 
-# Экран этажа открывается и читается тем же, чем и в наборе плана: второй разбор тех
-# же атрибутов однажды разошёлся бы с первым в мелочи вроде пустых тегов, а второй
-# `floor_url` — в имени маршрута.
+# Экраны открываются и читаются тем же, чем и в своих наборах: второй разбор тех же
+# атрибутов однажды разошёлся бы с первым в мелочи вроде пустых тегов, а второй
+# `floor_url` или второй `bc_detail` — в имени маршрута.
+from .test_bc_detail import open_bc
 from .test_floor_plan import day, floor_screen, marked, stated
 
 pytestmark = pytest.mark.django_db
@@ -338,3 +343,187 @@ def test_the_floor_counts_its_vacancy_with_no_plan_on_the_screen(
 
     assert "Поэтажный план" in page
     assert counted_on(page)["data-free"] == "3"
+
+
+# Вакансия здания
+
+
+def bc_screen(client, member, building, **address):
+    """Карточка БЦ глазами сотрудника. `address` — параметры адреса, вроде `date`.
+
+    Открывается она тем же, чем и в своём наборе, по той же причине, по которой этаж
+    открывается `floor_screen`: второе имя маршрута однажды разошлось бы с первым.
+    """
+    client.force_login(member)
+    return open_bc(client, building, **address)[1]
+
+
+@pytest.fixture
+def second_floor(manhattan, make_floor):
+    """Второй этаж Manhattan: одного этажа мало, чтобы «складываются» что-то значило."""
+    return make_floor(manhattan, 2)
+
+
+def test_the_building_card_counts_the_vacancy_of_the_whole_building(
+    client, member, manhattan, first_floor, offices, downtown, tenant, make_lease, make_subject
+):
+    """«Сколько у нас свободно» спрашивают о здании, а не только об этаже.
+
+    Пять этажей, сложенных в уме читателем, — это и есть та выписка, ради ухода от
+    которой счёт заводился.
+    """
+    make_subject(make_lease(downtown, tenant, day(-30)), offices[0])
+
+    page = bc_screen(client, member, manhattan)
+
+    counted = counted_on(page)
+    assert counted["data-free"] == "2"
+    assert counted["data-leasable"] == "3"
+    assert counted["data-free-m2"] == "100.00"
+    assert counted["data-leasable-m2"] == "200.00"
+    assert counted["data-leases"] == "1"
+    assert "Свободно 2 из 3 помещений, 100,00 из 200,00 м²" in stated(page)
+
+
+def test_the_floor_figures_and_the_building_figure_add_up(
+    client,
+    member,
+    manhattan,
+    first_floor,
+    second_floor,
+    offices,
+    make_office,
+    downtown,
+    tenant,
+    make_lease,
+    make_subject,
+):
+    """Тот же счёт по более широкому набору помещений, а не второй счёт того же.
+
+    Разойдись они, читателю пришлось бы решать, какому из двух экранов верить, — и
+    первый же такой случай отменил бы оба числа разом.
+    """
+    upstairs = (
+        make_office(second_floor, "man-f2-201", "Офис 201", "70.00"),
+        make_office(second_floor, "man-f2-202", "Офис 202", "30.00"),
+    )
+    make_subject(make_lease(downtown, tenant, day(-30)), offices[0])
+    make_subject(make_lease(downtown, tenant, day(-30)), upstairs[0])
+
+    floors = [
+        counted_on(floor_screen(client, member, first_floor)),
+        counted_on(floor_screen(client, member, second_floor)),
+    ]
+    building = counted_on(bc_screen(client, member, manhattan))
+
+    for figure in ("data-free", "data-leasable"):
+        assert int(building[figure]) == sum(int(floor[figure]) for floor in floors)
+    for figure in ("data-free-m2", "data-leasable-m2"):
+        assert Decimal(building[figure]) == sum(Decimal(floor[figure]) for floor in floors)
+    assert building["data-free"] == "3"
+    assert building["data-free-m2"] == "130.00"
+
+
+def test_a_building_with_no_leases_does_not_read_as_fully_vacant(
+    client, member, manhattan, first_floor, offices
+):
+    """«Свободно 3 из 3» без единого договора означает, что фактов нет ни одного.
+
+    Сказано это теми же словами, что и на этаже: одна фраза о том же счёте, иначе
+    два экрана начали бы говорить об одном разное.
+    """
+    page = bc_screen(client, member, manhattan)
+
+    assert counted_on(page)["data-leases"] == "0"
+    assert "Ни один договор в этот день не действует" in stated(page)
+
+
+def test_the_building_count_is_computed_as_of_the_day_in_the_address(
+    client, member, manhattan, first_floor, offices, downtown, tenant, make_lease, make_subject
+):
+    """Тот же параметр адреса, что и у экрана этажа: вопрос один и тот же."""
+    make_subject(make_lease(downtown, tenant, day(-365), day(30)), offices[0])
+
+    today = counted_on(bc_screen(client, member, manhattan))
+    later = counted_on(bc_screen(client, member, manhattan, date=day(60).isoformat()))
+
+    assert today["data-vacancy"] == day(0).isoformat()
+    assert today["data-free"] == "2"
+    assert later["data-vacancy"] == day(60).isoformat()
+    assert later["data-free"] == "3"
+    assert later["data-leases"] == "0"
+    assert f"{day(60):%d.%m.%Y}" in stated(
+        bc_screen(client, member, manhattan, date=day(60).isoformat())
+    )
+
+
+def test_the_building_count_names_no_space_of_another_building(
+    client, member, manhattan, first_floor, offices, warehouse
+):
+    """Склад в соседнем БЦ о вакансии этого здания не говорит ничего.
+
+    Здание — единица управления и учёта, и счёт, перешагнувший его границу, отвечал
+    бы на вопрос, которого карточке не задавали.
+    """
+    counted = counted_on(bc_screen(client, member, manhattan))
+
+    assert counted["data-leasable"] == "3"
+    assert counted["data-leasable-m2"] == "200.00"
+
+
+def test_a_building_without_an_interior_keeps_its_existing_treatment(
+    client, member, manhattan
+):
+    """У четырёх БЦ нутра нет вовсе, и «свободно 0 из 0» им сказать не о чем.
+
+    Ноль здесь читался бы обмеренным зданием, целиком занятым, — то же чтение
+    пустой базы как факта, от которого счёт и защищает. Признак тот же, что скрывает
+    раздел «Этажи»: есть ли у здания нутро.
+    """
+    page = bc_screen(client, member, manhattan)
+
+    assert marked(page, "data-vacancy") == []
+    assert "Свободно" not in page
+    assert "Этажи" not in page
+
+
+def test_the_list_of_buildings_gains_no_vacancy_column(
+    client, member, manhattan, first_floor, offices
+):
+    """Четырём БЦ из пяти в этой колонке стоял бы прочерк, и колонка не о чём."""
+    client.force_login(member)
+
+    page = client.get(reverse("building_passport:bc_list")).content.decode()
+
+    assert marked(page, "data-vacancy") == []
+    assert "Свободно" not in page
+
+
+def test_the_building_counts_what_its_floors_count_and_nothing_beside(
+    client, member, manhattan, first_floor, offices, make_office
+):
+    """Заведённое мимо этажа в числе здания молча не появляется.
+
+    Помещение — часть здания внутри этажа, и лежащее мимо этажа — под крышей, под
+    самим зданием — на экране этажа не показывается вовсе. Попади оно в число
+    здания, два числа разошлись бы ровно на него, и читателю пришлось бы решать,
+    какому верить: у `man-roof` с тех помещениями под ней такая связь есть уже
+    сегодня, и арендопригодной её делает одна правка в данных.
+
+    Сам этаж в счёт не входит по той же причине и ещё по одной: его метры — это
+    метры помещений на нём, и сложенные с ними они задваивают этаж целиком.
+    """
+    roof = Space.objects.create(
+        org=manhattan.org, type="roof", parent=manhattan, building=manhattan,
+        code="man-roof", name="Крыша",
+    )
+    make_office(roof, "man-roof-a", "Антенное место", "15.00")
+    Space.objects.filter(pk=first_floor.pk).update(
+        is_leasable=True, area_m2=Decimal("500.00")
+    )
+
+    floor = counted_on(floor_screen(client, member, first_floor))
+    building = counted_on(bc_screen(client, member, manhattan))
+
+    assert building["data-leasable"] == floor["data-leasable"] == "3"
+    assert building["data-leasable-m2"] == floor["data-leasable-m2"] == "200.00"
