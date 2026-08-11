@@ -135,17 +135,46 @@
           </div>
 
           {% comment %}
+            Переключатель слоёв: один план отвечает на два вопроса — как этаж устроен
+            и в каком он коммерческом состоянии, — и выбирают вопрос здесь же, у
+            чертежа. Слой уходит в адрес (`choice.address`), а не в память о последнем
+            выборе: ссылку на вид пересылают коллеге, и открыться у него должно ровно
+            то же. День, на который смотрят, адрес при переключении сохраняет.
+
+            `data-layer` — договор экрана, парный к `data-plan` в переключателе этажей:
+            по нему видно, какие слои есть и который из них показан.
+          {% endcomment %}
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" role="group"
+               aria-label="Слой плана">
+            <span class="opacity-60">Слой:</span>
+            {% for choice in layers %}
+              {% if choice.chosen %}
+                <span class="btn btn-xs btn-primary" data-layer="{{ choice.name }}"
+                      aria-current="true">{{ choice.title }}</span>
+              {% else %}
+                <a class="btn btn-xs btn-ghost" data-layer="{{ choice.name }}"
+                   href="{% url 'building_passport:floor' building.pk floor.pk %}{{ choice.address }}">{{ choice.title }}</a>
+              {% endif %}
+            {% endfor %}
+            {% comment %}
+              День, на который посчитан слой, назван только тогда, когда он не
+              сегодняшний: подпись «на сегодня» стояла бы всегда и перестала бы
+              читаться, а вот молчащий экран, показывающий январь, читался бы как
+              сегодняшний.
+            {% endcomment %}
+            {% if as_of %}
+              <span class="opacity-60" data-as-of="{{ as_of|date:'Y-m-d' }}">на {{ as_of|date:"d.m.Y" }}</span>
+            {% endif %}
+          </div>
+
+          {% comment %}
             Легенда: цвет без неё приходится угадывать, а угаданное читается как факт.
             Собрана она слоем и только из того, что на этом этаже нарисовано, — запись
             о цвете, которого на чертеже нет, была бы подписью к пустому месту.
             Разновидности, у которых заливки нет вовсе, записи не получают.
-
-            Слой назван: план показывает один слой за раз, и читатель должен знать,
-            который. Здесь же встанет и переключатель, когда слоёв станет больше.
           {% endcomment %}
           {% if painting.legend %}
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <span class="opacity-60">Слой: {{ painting.title|lower }}</span>
               {% for paint in painting.legend %}
                 <span class="flex items-center gap-1.5" data-legend="{{ paint.key }}"
                       style="color: {{ paint.colour }}">
@@ -153,6 +182,19 @@
                   <span class="text-base-content">{{ paint.label }}</span>
                 </span>
               {% endfor %}
+            </div>
+          {% endif %}
+
+          {% comment %}
+            Осей времени две, и склеивать их экран не берётся: чертёж всегда
+            сегодняшний — работы планируют по нему, — а слой посчитан на выбранный
+            день. Там, где выбранный день лежит вне периода плана, экран об этом
+            говорит: сегодняшняя планировка с завтрашним арендатором, показанная
+            молча, и есть та самая склейка.
+          {% endcomment %}
+          {% if outside_the_plan %}
+            <div class="alert alert-warning" role="status" data-outside-plan="{{ as_of|date:'Y-m-d' }}">
+              <span>{{ outside_the_plan }}</span>
             </div>
           {% endif %}
 

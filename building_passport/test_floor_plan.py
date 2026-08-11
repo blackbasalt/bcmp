@@ -7,10 +7,13 @@
 
 Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
 переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение,
-`data-paint` с `data-legend` на окраске по слою и `data-unmatched` на пути, которому
+`data-paint` с `data-legend` на окраске по слою, `data-layer` на слое в переключателе
+слоёв, `data-as-of` на дне, на который посчитан слой, `data-outside-plan` на
+предупреждении о выходе этого дня за период плана и `data-unmatched` на пути, которому
 не нашлось помещения. Это договор экрана, а не оформление: по ним план и дерево
 находят друг друга, видно, есть ли на этаже чертёж, какие помещения на него не
-нанесены, чем окрашен каждый контур и какие `id` в чертеже повисли.
+нанесены, чем окрашен каждый контур, какой слой показан, на какой день он посчитан и
+какие `id` в чертеже повисли.
 """
 
 import re
@@ -26,6 +29,7 @@ from django.utils import timezone
 from building_passport import plan_layer
 from building_passport.floor_plan_svg import PlanUnreadable
 from building_passport.models import Contour, FloorPlan, Space
+from leases.models import Lease
 
 pytestmark = pytest.mark.django_db
 
@@ -1010,7 +1014,7 @@ def test_the_floor_screen_opens_on_space_type_unless_the_address_names_another_l
         "man-f1-b": "technical",
     }
     assert list(legend_on(page)) == ["leasable", "common", "technical"]
-    assert "Слой: тип помещения" in stated(page)
+    assert chosen_layers_on(page) == {"space-type"}
 
 
 def test_a_registered_layer_is_reached_by_the_name_it_is_registered_under(
@@ -1030,7 +1034,6 @@ def test_a_registered_layer_is_reached_by_the_name_it_is_registered_under(
     class EverythingLayer:
         def apply(self, contours):
             return plan_layer.Painting(
-                title="Всё разом",
                 contours=tuple(
                     plan_layer.PaintedContour(
                         space=contour.space, path_d=contour.path_d, paint=everything
@@ -1040,10 +1043,297 @@ def test_a_registered_layer_is_reached_by_the_name_it_is_registered_under(
                 legend=(everything,),
             )
 
-    monkeypatch.setitem(plan_layer.LAYERS, "everything", lambda address: EverythingLayer())
+    monkeypatch.setitem(
+        plan_layer.LAYERS,
+        "everything",
+        plan_layer.Registration(title="Всё разом", build=lambda screen: EverythingLayer()),
+    )
 
     page = floor_screen(client, member, coloured_floor, layer="everything")
 
     assert set(painted_on(page).values()) == {"everything"}
     assert list(legend_on(page)) == ["everything"]
-    assert "Слой: всё разом" in stated(page)
+    assert chosen_layers_on(page) == {"everything"}
+    assert "Всё разом" in page
+
+
+# Слой «сроки договоров» и дата в адресе
+
+
+#: Имя слоя сроков в адресе экрана — то же, которым он зарегистрирован.
+LEASE_TERM = "lease-term"
+
+
+@pytest.fixture
+def leased_floor(
+    first_floor, make_space, make_leasable, downtown, tenant, make_lease, make_subject
+):
+    """Этаж, на котором есть все три срока и то, чему срока договора не бывает.
+
+    «Офис 201» сдан бессрочно, «Офис 202» — до дня внутри срока предупреждения,
+    «Офис 203» не сдан вовсе. Рядом с ними ИТП, коридор и лестничная клетка: договор
+    их не называет и назвать не может.
+    """
+    letting = make_leasable(first_floor, "man-f1-201", "Офис 201")
+    expiring = make_leasable(first_floor, "man-f1-202", "Офис 202")
+    make_leasable(first_floor, "man-f1-203", "Офис 203")
+    corridor = make_space(first_floor, "man-f1-c", "Коридор")
+    Space.objects.filter(pk=corridor.pk).update(is_common=True)
+    make_space(first_floor, "man-f1-s", "ЛК-1", type="stairwell")
+    make_subject(make_lease(downtown, tenant, day(-365)), letting)
+    make_subject(make_lease(downtown, tenant, day(-365), day(30)), expiring)
+    make_plan(
+        first_floor,
+        plan_svg(
+            ("man-f1-201", "M0 0 L100 0 L100 100 Z"),
+            ("man-f1-202", "M100 0 L200 0 L200 100 Z"),
+            ("man-f1-203", "M200 0 L300 0 L300 100 Z"),
+            ("man-f1-b", ITP_PATH),
+            ("man-f1-c", "M0 200 L100 200 L100 300 Z"),
+            ("man-f1-s", "M400 200 L500 200 L500 300 Z"),
+        ),
+    )
+    return first_floor
+
+
+def switcher_on(page):
+    """Переключатель слоёв: имя слоя → его запись в переключателе."""
+    return {tag["data-layer"]: tag for tag in marked(page, "data-layer")}
+
+
+def chosen_layers_on(page):
+    """Слои, помеченные в переключателе выбранными, — их должно быть ровно по одному."""
+    return {name for name, tag in switcher_on(page).items() if "aria-current" in tag}
+
+
+def test_the_floor_screen_renders_with_the_lease_layer(client, member, leased_floor):
+    """Экран со слоем сроков отрисовывается: ошибка правила обнаруживается здесь."""
+    client.force_login(member)
+
+    response = client.get(floor_url(leased_floor), {"layer": LEASE_TERM})
+
+    assert response.status_code == 200
+
+
+def test_the_lease_layer_puts_spaces_in_bands_by_their_leases(client, member, leased_floor):
+    """Тот же чертёж отвечает на второй вопрос: что сдано, что освобождается, что пусто.
+
+    Сверяется, в какую полосу попало помещение, а не какого оно цвета: цвет — дело
+    палитры, и назови его тест, он сломался бы на первой же смене темы.
+    """
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert painted_on(page) == {
+        "man-f1-201": "leased",
+        "man-f1-202": "expiring",
+        "man-f1-203": "vacant",
+    }
+
+
+@pytest.mark.parametrize(
+    "ends_in,band",
+    [
+        (plan_layer.RENEWAL_NOTICE_DAYS, "expiring"),
+        (plan_layer.RENEWAL_NOTICE_DAYS + 1, "leased"),
+    ],
+)
+def test_a_lease_ending_within_the_renewal_notice_is_expiring_and_a_day_past_it_is_not(
+    client, member, leased_floor, ends_in, band
+):
+    """Граница названа сроком предупреждения, а не числом в правиле.
+
+    Переговоры о продлении в коммерческой аренде начинают примерно за квартал, и
+    ровно это число слой и знает: день внутри срока — «истекает», день за ним —
+    ещё «действует».
+    """
+    Lease.objects.filter(subjects__space__code="man-f1-202").update(valid_to=day(ends_in))
+
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert painted_on(page)["man-f1-202"] == band
+
+
+def test_what_a_lease_cannot_name_gets_no_fill_on_the_lease_layer(client, member, leased_floor):
+    """МОП, техническое и лестничная клетка нарисованы, но не залиты.
+
+    Срока договора у них не бывает: залить их значило бы ответить за них на вопрос,
+    который им не задавали, — а оставить их ненарисованными значило бы поставить на
+    чертёж необъяснённые провалы.
+    """
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert {"man-f1-b", "man-f1-c", "man-f1-s"} <= set(contours_on(page))
+    assert set(painted_on(page)) == {"man-f1-201", "man-f1-202", "man-f1-203"}
+
+
+def test_the_lease_layer_carries_its_own_legend(client, member, leased_floor):
+    """Цвет, который негде посмотреть, — цвет, который угадывают."""
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert list(legend_on(page)) == ["vacant", "leased", "expiring"]
+    assert "Свободно" in page
+    assert "Действует" in page
+    assert "Истекает" in page
+
+
+def test_the_lease_legend_explains_the_bands_of_this_floor_and_no_others(
+    client, member, leased_floor
+):
+    """Записи о полосе, которой на чертеже нет, быть не должно: это подпись к пустому месту."""
+    Lease.objects.all().delete()
+
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert list(legend_on(page)) == ["vacant"]
+
+
+def test_hovering_a_contour_says_what_its_lease_band_means(client, member, leased_floor):
+    """Слой отвечает и по одному помещению: незачем сверять цвет с легендой глазами."""
+    hovered = {
+        code: tag["title-text"]
+        for code, tag in contours_on(floor_screen(client, member, leased_floor, layer=LEASE_TERM)).items()
+    }
+
+    assert "свободно" in hovered["man-f1-203"]
+    assert "истекает" in hovered["man-f1-202"]
+    assert hovered["man-f1-c"] == "Коридор"
+
+
+# Переключатель слоёв
+
+
+def test_the_screen_offers_a_switch_between_the_two_layers(client, member, leased_floor):
+    """Один план отвечает на два вопроса, и выбирают вопрос на самом экране."""
+    page = floor_screen(client, member, leased_floor)
+
+    assert set(switcher_on(page)) == {"space-type", LEASE_TERM}
+
+
+def test_the_switcher_marks_the_layer_the_screen_is_showing(client, member, leased_floor):
+    """Открывшийся экран показывает тип помещения, и переключатель говорит то же самое."""
+    assert chosen_layers_on(floor_screen(client, member, leased_floor)) == {"space-type"}
+    assert chosen_layers_on(
+        floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+    ) == {LEASE_TERM}
+
+
+def test_switching_the_layer_keeps_the_day_the_screen_is_looking_at(
+    client, member, leased_floor
+):
+    """«Третий этаж, сроки, на 1 января» правят слоем, а не переписывают заново."""
+    chosen = day(60).isoformat()
+
+    page = floor_screen(client, member, leased_floor, layer=LEASE_TERM, date=chosen)
+
+    address = switcher_on(page)["space-type"]["href"]
+    assert "layer=space-type" in address
+    assert f"date={chosen}" in address
+
+
+# Дата в адресе экрана
+
+
+def test_the_lease_layer_is_computed_as_of_the_date_in_the_address(
+    client, member, leased_floor
+):
+    """«Что освобождается к январю» становится вопросом, который экрану можно задать."""
+    today = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+    later = floor_screen(client, member, leased_floor, layer=LEASE_TERM, date=day(60).isoformat())
+
+    assert painted_on(today)["man-f1-202"] == "expiring"
+    assert painted_on(later)["man-f1-202"] == "vacant"
+
+
+def test_the_screen_states_the_day_it_was_asked_about(client, member, leased_floor):
+    """Слой, посчитанный не на сегодня, должен сказать об этом сам.
+
+    Иначе экран показывает вчерашнюю или завтрашнюю картину как сегодняшнюю, а
+    отличить их читателю нечем.
+    """
+    chosen = floor_screen(client, member, leased_floor, layer=LEASE_TERM, date=day(60).isoformat())
+    today = floor_screen(client, member, leased_floor, layer=LEASE_TERM)
+
+    assert f"{day(60):%d.%m.%Y}" in stated(chosen)
+    assert not marked(today, "data-as-of")
+
+
+@pytest.mark.parametrize("chosen", ["", "вчера", "2026-02-30", "01.01.2026"])
+def test_a_date_the_address_cannot_state_leaves_the_screen_on_today(
+    client, member, leased_floor, chosen
+):
+    """Адрес правят и пересылают руками: опечатка в дате открывает сегодня, а не ошибку."""
+    client.force_login(member)
+
+    response = client.get(floor_url(leased_floor), {"layer": LEASE_TERM, "date": chosen})
+    page = response.content.decode()
+
+    assert response.status_code == 200
+    assert painted_on(page)["man-f1-202"] == "expiring"
+    assert not marked(page, "data-as-of")
+
+
+# Две оси времени: план на экране сегодняшний, слой — на выбранный день
+
+
+def test_the_plan_on_screen_is_the_one_in_force_today_whatever_day_is_chosen(
+    client, member, first_floor
+):
+    """Планировку показывает сегодняшний чертёж: осей времени две, и они не смешиваются."""
+    current = make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
+    )
+    future = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(30))
+
+    page = floor_screen(client, member, first_floor, layer=LEASE_TERM, date=day(60).isoformat())
+
+    assert set(contours_on(page)) == {"man-f1-a"}
+    assert file_url(current) in page
+    assert file_url(future) not in page
+
+
+def test_a_day_outside_the_period_of_the_plan_on_screen_is_reported(
+    client, member, first_floor
+):
+    """Сегодняшний чертёж с завтрашним арендатором молча — ровно то, чего экран не делает."""
+    make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
+    )
+
+    page = floor_screen(client, member, first_floor, layer=LEASE_TERM, date=day(60).isoformat())
+
+    assert marked(page, "data-outside-plan")
+    assert f"{day(60):%d.%m.%Y}" in stated(page)
+
+
+def test_a_day_inside_the_period_of_the_plan_on_screen_is_not_reported(
+    client, member, first_floor, in_force
+):
+    """Предупреждение, стоящее всегда, перестаёт читаться."""
+    page = floor_screen(client, member, first_floor, layer=LEASE_TERM, date=day(10).isoformat())
+
+    assert not marked(page, "data-outside-plan")
+
+
+def test_a_floor_without_a_plan_reports_nothing_about_periods(client, member, first_floor):
+    """Чертежа, который можно принять за чертёж выбранного дня, на таком экране нет."""
+    page = floor_screen(client, member, first_floor, layer=LEASE_TERM, date=day(60).isoformat())
+
+    assert not marked(page, "data-outside-plan")
+
+
+def test_a_layer_that_does_not_look_at_a_day_says_nothing_about_the_chosen_one(
+    client, member, first_floor
+):
+    """Тип помещения от дня не зависит, и говорить о дне рядом с ним не о чем.
+
+    «На 1 января» и предупреждение о выходе за период были бы здесь утверждениями,
+    которых чертёж не делает: помещение остаётся МОП и первого января.
+    """
+    make_plan(
+        first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
+    )
+
+    page = floor_screen(client, member, first_floor, date=day(60).isoformat())
+
+    assert not marked(page, "data-as-of")
+    assert not marked(page, "data-outside-plan")

@@ -10,7 +10,7 @@ from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
 
-from . import plan_completeness, plan_layer
+from . import plan_completeness, plan_layer, screen_date
 from .models import FloorPlan, Space
 from .passport_sections import sections
 from .plan_upload import FloorPlanForm
@@ -102,7 +102,8 @@ class FloorView(LoginRequiredMixin, DetailView):
         # Сегодняшний день берётся один раз на весь экран: значок в переключателе и
         # чертёж в центре должны говорить об одном и том же дне, даже если запрос
         # пришёлся на полночь.
-        in_force = plans.in_force_on(timezone.localdate())
+        today = timezone.localdate()
+        in_force = plans.in_force_on(today)
         # Значок плана в переключателе: иначе по этажам щёлкают в надежде найти чертёж.
         # Подзапрос идёт через тот же чокпоинт — чужая строка не должна ставить значок.
         # Обещает он ровно то, что откроется: этаж с одним лишь будущим планом чертежа
@@ -127,9 +128,28 @@ class FloorView(LoginRequiredMixin, DetailView):
         # классов в разметке: следующий слой встанет на это же место, и экрану для него
         # ничего не потребуется. Слой на плане один за раз, и какой — сказано адресом:
         # ссылку на вид пересылают коллеге, и открыться у него должно ровно то же.
-        # Адрес отдаётся слою целиком: собирается слой тем, что ему нужно, и что
-        # именно — его дело, а не экрана.
-        context["painting"] = plan_layer.layer_named_by(self.request.GET).apply(contours)
+        # День, на который смотрит экран, — из адреса, сегодняшний по умолчанию: «что
+        # освобождается к январю» спрашивают ссылкой, которую можно переслать. Сегодня
+        # берётся то же самое, которым выбран чертёж: осей времени две (ADR 0010), и
+        # разъезжаться на полуночном запросе им нельзя.
+        chosen_day = screen_date.named_by(self.request.GET, today)
+        # Экран отдаётся слою целиком: собирается слой тем, что ему нужно — днём, на
+        # который экран смотрит, и договорами, видимыми спросившему, — и что именно,
+        # его дело, а не экрана. Переключатель приходит из того же реестра, что и слой
+        # из адреса: разойтись список слоёв и выбранный слой не могут.
+        layer = plan_layer.chosen_by(self.request.GET)
+        screen = plan_layer.Screen(day=chosen_day, user=self.request.user)
+        context["painting"] = layer.build(screen).apply(contours)
+        context["layers"] = plan_layer.choices(self.request.GET)
+        # Про день экран говорит только там, где день на что-то влияет: «на 1 января»
+        # рядом с типом помещения было бы утверждением, которого чертёж не делает.
+        # Сегодняшний день не называется вовсе — подпись, стоящая всегда, перестаёт
+        # читаться, — а вот молчащий экран, показывающий январь, врал бы. Там, где
+        # выбранный день выпал из периода плана, экран говорит и это.
+        context["as_of"] = chosen_day if layer.dated and chosen_day != today else None
+        context["outside_the_plan"] = (
+            screen_date.outside_the_plan(plan, chosen_day) if layer.dated else None
+        )
         # Всё нутро здания одним запросом: дерево вложено на произвольную глубину,
         # и обход по узлам стоил бы запроса на каждое помещение. Лишнее отсекает
         # само дерево: под этажом оказывается только то, что связано с ним через
