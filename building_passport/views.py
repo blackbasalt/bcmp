@@ -9,7 +9,7 @@ from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
-from leases.models import Lease
+from leases.models import Lease, LeaseSubject
 
 from . import plan_completeness, plan_layer, screen_date, vacancy
 from .models import FloorPlan, Space
@@ -269,7 +269,44 @@ class SpaceCardView(LoginRequiredMixin, DetailView):
         # Этаж над помещением называется, но карточкой не открывается: он не узел
         # дерева, а сам экран, на котором панель и стоит, — ссылка вела бы на месте.
         context["parent_is_a_space"] = parent is not None and parent.type != DictSpaceType.FLOOR
+        # Аренда: кто занимает помещение, на какой срок и по какой ставке — то, ради
+        # чего с точки на плане и приходят. Без этого сотрудник УК видит, что
+        # помещение 301 арендопригодно, и не видит, кто в нём сидит.
+        context["subject"] = self.subject_in_force_today()
         return context
+
+    def subject_in_force_today(self):
+        """Предмет договора, действующего на это помещение сегодня, — или ничего.
+
+        Спрашивается предмет, а не договор: ставка стоит на предмете, и договор,
+        называющий офис и склад, называет две разные. Договор при этом едет тем же
+        запросом — им карточка называет арендатора, срок и адрес самого договора.
+
+        Считается на сегодня, а не на день из адреса экрана этажа, — так сказано в
+        #30. С ADR 0010 это расходится: день там принадлежит экрану, и на выбранный
+        день считается всё, что стоит рядом с чертежом, — а панель стоит именно там.
+        Расхождение видно глазами: на `?date=2027-01-01` слой красит контур свободным,
+        а карточка того же помещения называет сегодняшнего арендатора. Своего адреса
+        с днём у панели при этом нет вовсе — она приезжает по `space/<uuid>/card/`, —
+        так что дальше это либо день в её адресе, либо день, названный на ней самой.
+
+        Договор на помещение в этот день ровно один: периоды по одному помещению не
+        пересекаются, и стоит это правило на модели (ADR 0007). Мимо него проходит то
+        же, что и мимо правила слоя, — `update()`, `bulk_create()` и SQL руками; на
+        разъехавшихся так данных карточка назовёт произвольный из двух, и чинить их
+        придётся тем же способом, каким сломали.
+
+        Договоры отбираются тем же чокпоинтом, что и всё остальное (ADR 0009):
+        карточка не заводит второго места, где решается, чьи данные показывать.
+        """
+        return (
+            LeaseSubject.objects.filter(
+                space=self.object, lease__in=Lease.objects.visible_to(self.request.user)
+            )
+            .in_force_on(timezone.localdate())
+            .select_related("lease__tenant")
+            .first()
+        )
 
 
 class FloorPlanSVGView(LoginRequiredMixin, View):

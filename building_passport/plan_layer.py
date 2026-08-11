@@ -247,7 +247,7 @@ class LeaseTermLayer:
         """
         in_force = (
             LeaseSubject.objects.filter(space_id__in=set(space_ids), lease__in=self.leases)
-            .overlapping(self.day, self.day)
+            .in_force_on(self.day)
             .values_list("space_id", "lease__valid_to")
         )
         return dict(in_force)

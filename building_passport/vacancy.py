@@ -113,7 +113,7 @@ def _in_force(day: date, leasable: list["Space"], leases) -> tuple[set, set]:
     счёту нужны занятые помещения и сами договоры, которых у слоя нет вовсе. Один
     ответ на два вопроса пришлось бы отдавать всем сразу, и каждый вызывающий начал
     бы разбирать чужую половину; правило пересечения при этом всё равно одно и лежит
-    там, где ему и место, — на `LeaseSubjectQuerySet.overlapping` (ADR 0007).
+    там, где ему и место, — на `LeaseSubjectQuerySet.in_force_on` (ADR 0007).
 
     Договоры возвращаются множеством ключей, а не числом строк: один договор называет
     несколько помещений этажа и остаётся при этом одним договором.
@@ -124,7 +124,7 @@ def _in_force(day: date, leasable: list["Space"], leases) -> tuple[set, set]:
         LeaseSubject.objects.filter(
             space_id__in={space.pk for space in leasable}, lease__in=leases
         )
-        .overlapping(day, day)
+        .in_force_on(day)
         .values_list("space_id", "lease_id")
     )
     let_spaces = {space_id for space_id, _ in in_force}
