@@ -23,6 +23,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
+from building_passport import plan_layer
 from building_passport.floor_plan_svg import PlanUnreadable
 from building_passport.models import Contour, FloorPlan, Space
 
@@ -629,9 +630,10 @@ def in_force(first_floor):
     return make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30))
 
 
-def floor_screen(client, member, floor):
+def floor_screen(client, member, floor, **address):
+    """Экран этажа глазами сотрудника. `address` — параметры адреса, вроде `layer`."""
     client.force_login(member)
-    return client.get(floor_url(floor)).content.decode()
+    return client.get(floor_url(floor), address).content.decode()
 
 
 def test_the_floor_screen_renders_the_plan_in_force_today(
@@ -970,3 +972,78 @@ def test_hovering_a_contour_says_what_its_colour_means(coloured):
     assert "общего пользования" in hovered["man-f1-c"]
     assert "техническое" in hovered["man-f1-b"]
     assert hovered["man-f1-s"] == "ЛК-1"
+
+
+# Слой выбирается адресом экрана
+
+
+#: Адреса, на которых экран показывает слой по умолчанию: слой не назван, назван
+#: тип помещения, имя стёрто до пустого и написано с опечаткой. Последние два — не
+#: выдумка теста: адрес пересылают и правят руками, и правка приходит на экран так
+#: же, как имя.
+DEFAULT_LAYER_ADDRESSES = [
+    {},
+    {"layer": "space-type"},
+    {"layer": ""},
+    {"layer": "space_type"},
+]
+
+
+@pytest.mark.parametrize("address", DEFAULT_LAYER_ADDRESSES)
+def test_the_floor_screen_opens_on_space_type_unless_the_address_names_another_layer(
+    client, member, coloured_floor, address
+):
+    """Ни один адрес не роняет экран, и все три показывают один и тот же слой.
+
+    Слой по умолчанию — тип помещения: он считается по данным, заведённым на всех
+    помещениях, и открывшийся экран говорит о здании, а не о полноте данных.
+    """
+    client.force_login(member)
+
+    response = client.get(floor_url(coloured_floor), address)
+    page = response.content.decode()
+
+    assert response.status_code == 200
+    assert painted_on(page) == {
+        "man-f1-a": "leasable",
+        "man-f1-c": "common",
+        "man-f1-b": "technical",
+    }
+    assert list(legend_on(page)) == ["leasable", "common", "technical"]
+    assert "Слой: тип помещения" in stated(page)
+
+
+def test_a_registered_layer_is_reached_by_the_name_it_is_registered_under(
+    client, member, coloured_floor, monkeypatch
+):
+    """Второй слой — строка в реестре: экрану для него не нужно ничего, кроме имени.
+
+    Слой здесь заведён поддельный, потому что проверяется не правило окраски, а то,
+    что правило экрану неизвестно: он берёт слой по имени из адреса и рисует то,
+    что слой дал. Собирается слой из адреса, которым назван, — тем и берёт своё
+    следующий слой, которому мало одних контуров.
+    """
+    everything = plan_layer.Paint(
+        key="everything", label="Всё разом", note="контур", colour="var(--plan-common)"
+    )
+
+    class EverythingLayer:
+        def apply(self, contours):
+            return plan_layer.Painting(
+                title="Всё разом",
+                contours=tuple(
+                    plan_layer.PaintedContour(
+                        space=contour.space, path_d=contour.path_d, paint=everything
+                    )
+                    for contour in contours
+                ),
+                legend=(everything,),
+            )
+
+    monkeypatch.setitem(plan_layer.LAYERS, "everything", lambda address: EverythingLayer())
+
+    page = floor_screen(client, member, coloured_floor, layer="everything")
+
+    assert set(painted_on(page).values()) == {"everything"}
+    assert list(legend_on(page)) == ["everything"]
+    assert "Слой: всё разом" in stated(page)

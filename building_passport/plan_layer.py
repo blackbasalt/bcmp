@@ -10,15 +10,19 @@
 новыми экранами: экран рисует то, что слой ему дал (`Painting`), и о самом правиле
 не знает. План показывает один слой за раз.
 
+Который именно — сказано адресом экрана (`LAYERS`, `chosen`): слой в адресе значит,
+что коллега открывает ровно тот вид, на который вы смотрите. Регистрация слоя —
+строка в реестре, и экрану для нового слоя не нужно ничего, кроме его имени.
+
 Цвет называется переменной, а не значением: палитра проекта лежит одним списком в
 теме (`assets/css/app.css`), и слой выбирает из неё, а не заводит свои цвета рядом.
 Заливка при этом остаётся полупрозрачной — за ней чертёж, который должен читаться
 сквозь окраску.
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from dictionary.models import DictSpaceType
 
@@ -91,6 +95,18 @@ class Painting:
     legend: tuple[Paint, ...]
 
 
+class Layer(Protocol):
+    """Что экран спрашивает у слоя: наложи себя на контуры этажа.
+
+    Больше он не спрашивает ничего. Одному слою хватает признаков помещения, другому
+    нужны дата и договоры, действующие на неё, — и получает он их, когда его собирают,
+    а не когда экран его спрашивает. Поэтому «чем залито это помещение» протоколом не
+    является: вопрос имеет смысл не для всякого слоя.
+    """
+
+    def apply(self, contours: Iterable["Contour"]) -> Painting: ...
+
+
 class SpaceTypeLayer:
     """Слой «тип помещения»: помещение сдаётся, является общим или обслуживает здание.
 
@@ -110,8 +126,8 @@ class SpaceTypeLayer:
     #: переставляться от того, что на чертеже нарисовали первым.
     palette = (LEASABLE, COMMON, TECHNICAL)
 
-    def paint_of(self, space: "Space") -> Paint | None:
-        """Чем залито помещение или `None`, если оно вне слоя."""
+    def _paint_of(self, space: "Space") -> Paint | None:
+        """Чем залито помещение или `None`, если оно вне слоя. Дело этого слоя."""
         if space.type in OUTSIDE_THE_TYPES:
             return None
         if space.is_leasable:
@@ -128,7 +144,7 @@ class SpaceTypeLayer:
         """
         painted = tuple(
             PaintedContour(
-                space=contour.space, path_d=contour.path_d, paint=self.paint_of(contour.space)
+                space=contour.space, path_d=contour.path_d, paint=self._paint_of(contour.space)
             )
             for contour in contours
         )
@@ -140,4 +156,30 @@ class SpaceTypeLayer:
         )
 
 
-SPACE_TYPE = SpaceTypeLayer()
+#: Имя слоя в адресе экрана (`?layer=`) — и то, чем слой из этого адреса делается.
+#: Регистрация слоя — строка здесь: экран берёт слой по имени, а какие они бывают,
+#: не знает. Значение — сборка слоя, а не готовый слой: собирают слой тем, что ему
+#: нужно, и берёт он это из того же адреса, которым назван. Типу помещения не нужно
+#: ничего, кроме самих контуров, и адрес он не читает.
+LAYERS: dict[str, Callable[[Mapping[str, str]], Layer]] = {
+    "space-type": lambda address: SpaceTypeLayer(),
+}
+
+#: Слой, которым экран открывается. Тип помещения считается по данным, заведённым на
+#: всех помещениях: слой, открывающийся пустым, рассказывал бы о полноте данных, а не
+#: о здании.
+DEFAULT_LAYER = "space-type"
+
+
+def layer_named_by(address: Mapping[str, str]) -> Layer:
+    """Слой, названный адресом экрана; неназванный и неизвестный — слой по умолчанию.
+
+    Адрес пересылают и правят руками, поэтому опечатка в имени слоя открывает экран
+    со слоем по умолчанию, а не ошибку: сломать экран правкой его адреса не должно
+    быть возможно.
+
+    Слой берётся из адреса, а не из памяти о последнем выборе: невидимое состояние
+    показывало бы двоим, открывшим «один и тот же экран», разное.
+    """
+    build = LAYERS.get(address.get("layer", ""), LAYERS[DEFAULT_LAYER])
+    return build(address)
