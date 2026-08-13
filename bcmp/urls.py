@@ -24,6 +24,5 @@ urlpatterns = [
     path("login/", login_views.LoginView.as_view(), name="login"),
     path("logout/", login_views.LogoutView.as_view(), name="logout"),
     path("assistant/", include("assistant.urls")),
-    path("leases/", include("leases.urls")),
     path("", include("building_passport.urls")),
 ]

@@ -1,19 +1,13 @@
-"""Организации, здание и договоры, над которыми ставятся тесты.
+"""Организации и здание, над которыми ставятся тесты.
 
 Здание одно на весь набор: этаж и его помещения нужны и экрану этажа, и плану, и
 двух определений одного и того же Manhattan быть не должно. Там, где тесту нужно
-несколько штук — этажи, помещения, договоры, — фикстура отдаёт фабрику, а не готовый
-объект. Аренда живёт здесь по той же причине: договор проверяется и моделью, и двумя
-своими экранами, и один и тот же «Офис 101» не должен заводиться в каждом наборе
-заново.
+несколько штук — этажи, помещения, — фикстура отдаёт фабрику, а не готовый объект.
 """
-
-from datetime import date
 
 import pytest
 
 from building_passport.models import Space
-from leases.models import Lease, LeaseSubject
 from parties.models import Org, OrgMembership, Party
 
 
@@ -93,84 +87,3 @@ def first_floor(manhattan, make_floor, make_space):
     make_space(entrance, "man-f1-a1", "каб101")
     make_space(floor, "man-f1-b", "ИТП")
     return floor
-
-
-@pytest.fixture
-def make_leasable(make_space):
-    """Помещение, которое может сдаваться: арендопригодность — свойство помещения.
-
-    Отдельная фабрика, а не флаг у `make_space`: предметом договора бывает только
-    арендопригодное, и в тестах аренды это не одна из настроек помещения, а условие,
-    без которого договор не заводится вовсе.
-    """
-
-    def _make_leasable(parent, code, name):
-        space = make_space(parent, code, name)
-        space.is_leasable = True
-        space.save(update_fields=["is_leasable"])
-        return space
-
-    return _make_leasable
-
-
-@pytest.fixture
-def tenant(db):
-    """Сторона, которую арендатором делает договор и только он (ADR 0008)."""
-    return Party.objects.create(
-        kind=Party.Kind.COMPANY, name="Ромашка ТОО", bin_iin="180540035879"
-    )
-
-
-@pytest.fixture
-def office(first_floor, make_leasable):
-    return make_leasable(first_floor, "man-f1-101", "Офис 101")
-
-
-@pytest.fixture
-def boston(downtown, make_floor):
-    """Второй БЦ той же организации: договор не привязан к зданию вовсе."""
-    building = Space.objects.create(
-        org=downtown, type="building", code="bos", name="Boston"
-    )
-    return make_floor(building, 1)
-
-
-@pytest.fixture
-def warehouse(boston, make_leasable):
-    return make_leasable(boston, "bos-f1-01", "Склад")
-
-
-@pytest.fixture
-def their_office(central, make_floor, make_leasable):
-    """Арендопригодное помещение другого клиента платформы — и предмет, и утечка.
-
-    Одно на весь набор: им проверяется и отказ предмета (`test_lease`), и то, что
-    чужой договор не доезжает до экрана (`test_lease_screens`), — а Central Tower,
-    заведённая дважды, однажды разъехалась бы сама с собой.
-    """
-    building = Space.objects.create(
-        org=central, type="building", code="ctr", name="Central Tower"
-    )
-    return make_leasable(make_floor(building, 1), "ctr-f1-01", "Кабинет")
-
-
-@pytest.fixture
-def make_lease(db):
-    """Договор аренды. Открытый конец — умолчание: он же означает «по сей день»."""
-
-    def _make_lease(org, tenant, valid_from=date(2025, 1, 1), valid_to=None, **fields):
-        return Lease.objects.create(
-            org=org, tenant=tenant, valid_from=valid_from, valid_to=valid_to, **fields
-        )
-
-    return _make_lease
-
-
-@pytest.fixture
-def make_subject(db):
-    """Предмет договора: помещение со своей ставкой и своей договорной площадью."""
-
-    def _make_subject(lease, space, **fields):
-        return LeaseSubject.objects.create(lease=lease, space=space, **fields)
-
-    return _make_subject

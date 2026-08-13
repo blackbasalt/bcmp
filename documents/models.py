@@ -81,9 +81,6 @@ class DocumentLink(models.Model):
         SURVEY = "element_survey", "Обследование"
         REPAIR = "element_repair", "Ремонт"
         PARTY = "party", "Контрагент"
-        #: Скан договора аренды подшивается к самому договору, а не заменяет его:
-        #: фактами служит договор, документ — удостоверяет (ADR 0006).
-        LEASE = "lease", "Договор аренды"
 
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="links")
     entity_type = models.CharField(max_length=32, choices=EntityType.choices)

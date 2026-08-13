@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.urls import reverse
 
-from parties.models import Org, OrgMembership, PartyRole
+from parties.models import Org, OrgMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -69,13 +69,3 @@ def test_the_user_page_in_admin_carries_the_memberships_of_that_user(client):
 
     assert page.status_code == 200
     assert "memberships-0-org" in page.content.decode()
-
-
-def test_a_party_carries_no_tenant_role_of_its_own():
-    """Арендатором Сторону делает договор аренды и только он (ADR 0008).
-
-    Оставленное в choices значение — это приглашение завести арендатора мимо
-    договора: без предмета, без ставки и без проверки пересечений. Тогда помещение
-    оказалось бы сдано по одной таблице и свободно по другой.
-    """
-    assert "tenant" not in dict(PartyRole.Role.choices)

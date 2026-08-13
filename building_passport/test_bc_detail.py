@@ -86,11 +86,8 @@ def fill_passport(building, **overrides):
     return BuildingPassport.objects.create(space=building, **fields)
 
 
-def open_bc(client, building, **address):
-    """Карточка БЦ. `address` — параметры адреса, вроде `date`, которым считают счёт."""
-    response = client.get(
-        reverse("building_passport:bc_detail", args=[building.pk]), address
-    )
+def open_bc(client, building):
+    response = client.get(reverse("building_passport:bc_detail", args=[building.pk]))
     return response, response.content.decode()
 
 

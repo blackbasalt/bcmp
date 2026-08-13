@@ -10,40 +10,19 @@
 это договор экрана, а не оформление.
 """
 
-from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from django.urls import reverse
-from django.utils import timezone
 
 from building_passport.models import Space
 from dictionary.models import DictSpaceSubtype
-
-# Раздел «Аренда» читается тем же разбором атрибутов, что и счёт свободного на экране
-# этажа: второй разбор той же разметки однажды разошёлся бы с первым.
-from .test_floor_plan import marked
 
 pytestmark = pytest.mark.django_db
 
 
 def card_url(space):
     return reverse("building_passport:space_card", args=[space.pk])
-
-
-def lease_url(lease):
-    return reverse("leases:lease_detail", args=[lease.pk])
-
-
-def lease_on(page):
-    """Раздел «Аренда» — один на карточку, поэтому и берётся один.
-
-    Его нет вовсе у помещения, которое не сдаётся: `None` здесь означает не «нет
-    договора», а «вопроса об аренде этому помещению не задают».
-    """
-    found = marked(page, "data-lease")
-    assert len(found) <= 1
-    return found[0] if found else None
 
 
 def open_card(client, space):
@@ -169,113 +148,6 @@ def test_the_card_names_no_space_of_another_organisation_above(
     _, page = open_card(client, ours)
 
     assert "Чужое помещение" not in page
-
-
-# Аренда
-
-
-@pytest.fixture
-def free_office(office):
-    """«Офис 101» без единого договора — арендопригодный и пустой.
-
-    Подтип и площадь заведены нарочно: прочерков на карточке должно быть ровно
-    столько, сколько на ней пустых мест, и незаполненные поля паспорта не должны
-    выдавать себя за отсутствующий договор.
-    """
-    office.subtype = DictSpaceSubtype.objects.create(
-        type="room", name="Офис", short_name="Офис"
-    )
-    office.area_m2 = Decimal("52.30")
-    office.save()
-    return office
-
-
-def test_the_card_names_who_rents_the_space_and_leads_to_the_lease(
-    client, member, downtown, tenant, free_office, make_lease, make_subject
-):
-    """От точки на плане — к контрагенту: сотрудник УК видит, кто сидит в помещении.
-
-    Ставка стоит на предмете, а не на договоре: договор на офис и склад не обязан
-    идти по одной ставке, и карточка называет ту, что записана про это помещение.
-    """
-    lease = make_lease(downtown, tenant, date(2025, 1, 1), number="12-А")
-    make_subject(lease, free_office, rate=Decimal("450000.00"))
-    client.force_login(member)
-
-    _, page = open_card(client, free_office)
-
-    assert lease_on(page)["data-lease"] == "leased"
-    assert "Ромашка ТОО" in page  # арендатор
-    assert "01.01.2025 — по сей день" in page  # срок
-    assert "450 000,00" in page  # ставка, неразрывными пробелами
-    assert lease_url(lease) in page
-
-
-def test_a_space_with_no_lease_reads_as_no_data_rather_than_an_empty_tenant_row(
-    client, member, free_office
-):
-    """Отсутствие должно читаться отсутствием — то же правило, что и в паспорте (#5).
-
-    Пустая строка «Арендатор» читалась бы как незаполненное поле, а прочерк говорит,
-    что договора на это помещение нет вовсе. Прочерк на карточке при этом ровно один:
-    подтип и площадь у «Офиса 101» заведены.
-    """
-    client.force_login(member)
-
-    _, page = open_card(client, free_office)
-
-    assert lease_on(page)["data-lease"] == "vacant"
-    assert "Арендатор" not in page
-    assert page.count("— нет данных") == 1
-
-
-def test_a_lease_without_a_rate_reads_as_no_data(
-    client, member, downtown, tenant, free_office, make_lease, make_subject
-):
-    """Ставку заводят не сразу, и пустая клетка прочиталась бы как «бесплатно».
-
-    Арендатор и срок при этом названы: прочерков ровно столько, сколько незаведённых
-    фактов, а не столько, сколько строк в разделе.
-    """
-    make_subject(make_lease(downtown, tenant), free_office)
-    client.force_login(member)
-
-    _, page = open_card(client, free_office)
-
-    assert "Ромашка ТОО" in page
-    assert page.count("— нет данных") == 1  # ставка
-
-
-def test_a_lease_that_ended_before_today_leaves_the_space_free(
-    client, member, downtown, tenant, free_office, make_lease, make_subject
-):
-    """Карточка читается на сегодня: съехавший арендатор в ней больше не сидит.
-
-    Договор из истории здания не пропадает — он остаётся на своих экранах, — но
-    помещение сегодня свободно, и панель говорит именно это.
-    """
-    yesterday = timezone.localdate() - timedelta(days=1)
-    lease = make_lease(downtown, tenant, yesterday - timedelta(days=365), yesterday)
-    make_subject(lease, free_office, rate=Decimal("450000.00"))
-    client.force_login(member)
-
-    _, page = open_card(client, free_office)
-
-    assert lease_on(page)["data-lease"] == "vacant"
-    assert "Ромашка ТОО" not in page
-
-
-def test_a_space_that_is_not_leasable_is_not_asked_about_leases(client, member, first_floor):
-    """У МОП и технического помещения арендатора не бывает: раздела нет вовсе.
-
-    Прочерк здесь означал бы, что договор на ИТП забыли завести, — а его не бывает.
-    """
-    client.force_login(member)
-
-    _, page = open_card(client, Space.objects.get(code="man-f1-b"))
-
-    assert lease_on(page) is None
-    assert "Аренда" not in page
 
 
 # Чего в панели нет

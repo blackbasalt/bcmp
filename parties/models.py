@@ -33,26 +33,6 @@ class Party(CommonModel):
         return self.name
 
 
-class OrgQuerySet(models.QuerySet):
-    def administered_by(self, user):
-        """Организации, данные которых пользователь вправе вести (ADR 0005).
-
-        Отвечает на вопрос «чьи данные», тогда как `Space.objects.administered_by` и
-        `Lease.objects.administered_by` — на вопрос «какие строки»: последний
-        спрашивает этот, а не собирает членства во второй раз. Спрашивают его же и
-        форма договора, предлагающая выбор организации, и экран, решающий, показать
-        ли её вообще: показанная кнопка и принятый запрос должны отвечать одинаково.
-
-        Суперпользователь администрирует всё по той же причине, по которой всё
-        видит: он и так пишет через админку Django.
-        """
-        if not user.is_authenticated:
-            return self.none()
-        if user.is_superuser:
-            return self
-        return self.filter(memberships__user=user, memberships__is_admin=True)
-
-
 class Org(CommonModel):
     """Арендатор платформы. Тонкий слой над Party, не дубль."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -60,8 +40,6 @@ class Org(CommonModel):
     plan = models.CharField(max_length=32, blank=True, null=True)
     settings = models.JSONField(default=dict, blank=True, db_default={})
     is_active = models.BooleanField(default=True, db_default=True)
-
-    objects = OrgQuerySet.as_manager()
 
     @property
     def name(self):
@@ -97,17 +75,12 @@ class OrgMembership(CommonModel):
 
 
 class PartyRole(CommonModel):
-    """Роль стороны в конкретном контексте и в конкретный период.
-
-    Арендатора среди ролей нет намеренно: им Сторону делает договор аренды и
-    только он (ADR 0008). Роль `tenant` знала одно помещение на строку, не знала
-    ставки и не проверяла пересечений, поэтому оставленная рядом с договором она
-    была бы вторым ответом на вопрос «кто здесь арендатор».
-    """
+    """Роль стороны в конкретном контексте и в конкретный период."""
     class Role(models.TextChoices):
         OWNER = "owner", "Собственник"
         OPERATOR = "operator", "Управляющая компания"
         CONTRACTOR = "contractor", "Подрядчик"
+        TENANT = "tenant", "Арендатор"
         SUPPLIER = "supplier", "Поставщик"
         EXPERT = "expert", "Эксперт"
         DESIGNER = "designer", "Проектировщик"
