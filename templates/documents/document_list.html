@@ -1,0 +1,65 @@
+{% extends "shell.html" %}
+{% load passport %}
+
+{% block title %}Документы — BCMP{% endblock %}
+{% block page_title %}Документы{% endblock %}
+{% block breadcrumbs %}<li>Документы</li>{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Таблица, а не карточки: документов сотни, и различают их реквизиты — номер,
+    дата, кем выдан, — которые читаются колонками, а карточками расползлись бы на
+    несколько экранов.
+
+    Фильтр «— нет данных» тот же, что и в паспорте здания: правило одно на проект,
+    и второе его определение здесь разошлось бы с первым.
+  {% endcomment %}
+  {% if documents %}
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <div class="overflow-x-auto">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                {% if organisation_named %}<th>Организация</th>{% endif %}
+                <th>Вид</th>
+                <th>Название</th>
+                <th>Номер</th>
+                <th>Дата выдачи</th>
+                <th>Кем выдан</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for document in documents %}
+                {# `data-document` — договор экрана: по нему видно, что показано и в каком порядке. #}
+                <tr data-document="{{ document.pk }}">
+                  {% if organisation_named %}<td class="opacity-60">{{ document.org.name }}</td>{% endif %}
+                  <td class="whitespace-nowrap">{{ document.get_kind_display }}</td>
+                  <td>{{ document.title }}</td>
+                  <td class="whitespace-nowrap">{{ document.doc_no|or_missing }}</td>
+                  <td class="whitespace-nowrap">{{ document.issued_at|date:"d.m.Y"|or_missing }}</td>
+                  <td>{{ document.issuer_party.name|or_missing }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %}
+          Счёт под таблицей: сколько документов на полке — вопрос, который задают
+          первым, и на него отвечает фраза, а не длина списка на глаз.
+        {% endcomment %}
+        <p class="text-sm opacity-70">{{ shown }}</p>
+      </div>
+    </div>
+  {% else %}
+    {% comment %}
+      Пустой раздел говорит о своей пустоте вслух: «ничего не загружено» должно
+      отличаться от «что-то сломалось», а пустая таблица с шапкой читается вторым.
+    {% endcomment %}
+    <div class="alert alert-info">
+      <span>Ни одного документа пока не загружено. Документы загружает администратор
+        организации.</span>
+    </div>
+  {% endif %}
+{% endblock %}
