@@ -17,7 +17,7 @@ class CommonModel(models.Model):
 
 
 class Party(CommonModel):
-    """Любая сторона: юрлицо или физлицо. Один раз на всю систему."""
+    """Any party: a legal entity or a natural person. Once for the whole system."""
     class Kind(models.TextChoices):
         COMPANY = "company", "Организация"
         PERSON = "person", "Физлицо"
@@ -34,7 +34,7 @@ class Party(CommonModel):
 
 
 class Org(CommonModel):
-    """Арендатор платформы. Тонкий слой над Party, не дубль."""
+    """A tenant of the platform. A thin layer over Party, not a duplicate."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     party = models.OneToOneField(Party, on_delete=models.PROTECT, related_name="tenancy")
     plan = models.CharField(max_length=32, blank=True, null=True)
@@ -50,14 +50,15 @@ class Org(CommonModel):
 
 
 class OrgMembership(CommonModel):
-    """Доступ пользователя к организации. Один сотрудник может состоять в нескольких."""
+    """A user's access to an organisation. One employee may belong to several."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
     org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="memberships")
-    #: Право вести данные этой организации из приложения, а не только читать их.
-    #: Стоит на членстве, а не на пользователе: администраторство принадлежит паре
-    #: «сотрудник + организация», и сотрудник, ведущий одного клиента, остаётся
-    #: обычным читателем у другого. Глобальный `is_staff` этого не выражает — тот же
-    #: довод, что и у самой изоляции по организациям (ADR 0001, ADR 0005).
+    #: The right to maintain this organisation's data from the application, not merely to
+    #: read it. It sits on the membership rather than on the user: being an administrator
+    #: belongs to the pair "employee + organisation", and an employee who maintains one
+    #: client stays an ordinary reader for another. A global `is_staff` does not express
+    #: that — the same argument as for the isolation by organisation itself (ADR 0001,
+    #: ADR 0005).
     is_admin = models.BooleanField(
         default=False, db_default=False, verbose_name="администратор организации"
     )
@@ -75,7 +76,7 @@ class OrgMembership(CommonModel):
 
 
 class PartyRole(CommonModel):
-    """Роль стороны в конкретном контексте и в конкретный период."""
+    """A party's role in a particular context and over a particular period."""
     class Role(models.TextChoices):
         OWNER = "owner", "Собственник"
         OPERATOR = "operator", "Управляющая компания"

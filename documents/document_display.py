@@ -1,25 +1,25 @@
-"""Как раздел документов читается на экране.
+"""How the documents section reads on screen.
 
-Здесь одно правило — счёт показанного. Число называется фразой, а не цифрой сбоку
-от таблицы: «Показано 12 документов» отвечает на вопрос, а «12» рядом с таблицей
-величина, о которой читателю надо догадаться. Тот же приём, что и «нанесено 47 из
-82 помещений» на этаже.
+There is one rule here — the count of what is shown. The number is said as a phrase rather
+than a figure beside the table: «Показано 12 документов» answers a question, while «12»
+next to a table is a quantity the reader has to guess at. The same device as «нанесено 47
+из 82 помещений» on a floor.
 
-Согласование с числительным считается тут, а не собирается в разметке: «Показано 1
-документов» читается сбоем экрана, а не единственным документом, и разбираться в
-этом должно место, а не шаблон.
+Agreement with the numeral is worked out here rather than assembled in the markup:
+«Показано 1 документов» reads as a glitch on the screen, not as a single document, and it
+is a place, not a template, that should sort this out.
 """
 
-#: Неразрывный пробел: число и слово при нём не должны разъезжаться по строкам —
-#: то же правило, что и у площадей в паспорте здания.
+#: A non-breaking space: a number and the word attached to it must not drift apart across
+#: lines — the same rule as for the areas in the building passport.
 NBSP = "\u00a0"
 
 
 def agreeing_with(count, one, few, many):
-    """Форма слова при числе: 1 документ, 2 документа, 5 документов.
+    """The form of the word for a number: 1 документ, 2 документа, 5 документов.
 
-    Одиннадцать — не «одиннадцать документ»: вторая цифра числа отменяет первую,
-    поэтому десятки проверяются раньше единиц.
+    Eleven is not «одиннадцать документ»: the second digit of the number cancels the
+    first, so tens are checked before ones.
     """
     if 11 <= count % 100 <= 14:
         return many
@@ -32,10 +32,10 @@ def agreeing_with(count, one, few, many):
 
 
 def documents_shown(count):
-    """Сколько документов на экране — фразой, целиком согласованной с числом."""
+    """How many documents are on screen — as a phrase, fully agreeing with the number."""
     documents = agreeing_with(count, "документ", "документа", "документов")
-    # Сказуемое согласуется с тем же числом, что и существительное: «Показан 1
-    # документ», но «Показано 2 документа». Отдельно оно не считается — иначе
-    # появилось бы второе место, где решается, единственное это число или нет.
+    # The predicate agrees with the same number as the noun: «Показан 1 документ», but
+    # «Показано 2 документа». It is not worked out separately — that would create a second
+    # place deciding whether the number is singular.
     shown = "Показан" if documents == "документ" else "Показано"
     return f"{shown} {count}{NBSP}{documents}"

@@ -68,7 +68,8 @@ class ZoneSpace(CommonModel):
 
 
 class AssetServesZone(CommonModel):
-    """asset_id — ссылка на реестр оборудования платформы, FK включается в 0004."""
+    """asset_id is a reference to the platform's equipment registry; the FK is switched on
+    in 0004."""
 
     pk = models.CompositePrimaryKey("asset_id", "zone_id", "role")
 
@@ -88,7 +89,7 @@ class AssetServesZone(CommonModel):
 
 
 class AssetServesSpace(CommonModel):
-    """Фанкойл обслуживает конкретную комнату, а не зону целиком."""
+    """A fan coil serves one particular room, not a whole zone."""
 
     pk = models.CompositePrimaryKey("asset_id", "space_id", "role")
 
@@ -109,7 +110,7 @@ class AssetServesSpace(CommonModel):
 
 
 class AssetLink(CommonModel):
-    """Топология: без неё агент не ответит, что погаснет при снятии ЩС-3."""
+    """Topology: without it the agent cannot answer what goes dark when ЩС-3 is taken out."""
 
     class Medium(models.TextChoices):
         ELECTRICITY = "electricity", "Электроэнергия"

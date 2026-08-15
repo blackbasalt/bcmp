@@ -23,28 +23,27 @@ class CommonModel(models.Model):
 
 
 def document_file_path(instance, filename):
-    """Файлы лежат по организациям: в каталоге видно, чьи они.
+    """Files are laid out by organisation: the directory shows whose they are.
 
-    Тот же приём, что и у чертежей, разложенных по этажам, и по той же причине:
-    каталог — последнее место, где по файлу можно понять, откуда он взялся, если
-    до базы дела уже нет.
+    The same device as with the drawings laid out by floor, and for the same reason: the
+    directory is the last place where a file can tell you where it came from, once the
+    database is out of reach.
     """
     return f"documents/{instance.org_id}/{filename}"
 
 
 class DocumentQuerySet(models.QuerySet):
     def visible_to(self, user):
-        """Документы, доступные пользователю, — единственное место фильтрации (ADR 0006).
+        """The documents available to a user — the only place of filtering (ADR 0006).
 
-        Свой чокпоинт, а не видимость по цели привязки, как у плана: у документа
-        привязок может быть несколько, а может не быть ни одной, и Стороны заведены
-        на всю систему. Унаследованная видимость и утекала бы (скан договора виден
-        всем, кому видна Сторона), и прятала бы (документ без привязки не виден
-        никому). Приводить документы «к единообразию» с `FloorPlan` — значит открыть
-        эту утечку.
+        Its own chokepoint, rather than visibility through the target of a link as with a
+        plan: a document may have several links, or none at all, and Parties are set up
+        system-wide. Inherited visibility would both leak (a scan of a contract visible to
+        everyone who can see the Party) and hide (a document without links visible to no
+        one). Bringing documents "into line" with `FloorPlan` means opening that leak.
 
-        Форма та же, что и у пространств (ADR 0001): суперпользователь видит всё,
-        аноним — ничего, остальные — организации своих членств.
+        The shape is the same as for spaces (ADR 0001): a superuser sees everything, an
+        anonymous visitor nothing, everyone else the organisations of their memberships.
         """
         if not user.is_authenticated:
             return self.none()
@@ -54,17 +53,17 @@ class DocumentQuerySet(models.QuerySet):
 
 
 class Document(CommonModel):
-    """Файл, приложенный к сущности паспорта: акт, сертификат, протокол, разрешение.
+    """A file attached to a passport entity: an act, a certificate, a protocol, a permit.
 
-    Из документа ничего не считают: то, у чего есть собственное состояние, заводится
-    сущностью, а документ лишь прикладывается к ней. Поэтому договор аренды — сущность
-    со своим предметом, а не документ вида `contract`, и поэтажный план — не документ:
-    план показывает, документ удостоверяет.
+    Nothing is computed from a document: whatever has a state of its own is created as an
+    entity, and a document is merely attached to it. Hence a lease is an entity with its
+    own subject rather than a document of kind `contract`, and a floor plan is not a
+    document: a plan shows, a document attests.
 
-    Виден по своей организации, а не по той сущности, к которой привязан (ADR 0006).
-    Файл лежит в том же защищённом каталоге, что и чертежи, и `MEDIA_URL` не задан,
-    так что прямую ссылку на него не собрать: раздавать его будет представление через
-    тот же чокпоинт, каким документ и читается.
+    It is visible through its own organisation, not through the entity it is linked to
+    (ADR 0006). The file lies in the same protected directory as the drawings, and
+    `MEDIA_URL` is unset, so no direct link to it can be assembled: it will be served by a
+    view through the same chokepoint the document itself is read by.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -84,43 +83,46 @@ class Document(CommonModel):
         PHOTO = "photo", "Фотофиксация"
         OTHER = "other", "Прочее"
 
-    #: Чей документ. Обязателен: документ без организации не отфильтруется ничем и
-    #: покажется всем — это не смягчение правила видимости, а его отсутствие.
+    #: Whose document it is. Mandatory: a document without an organisation is filtered by
+    #: nothing and shown to everyone — that is not a softening of the visibility rule but
+    #: its absence.
     org = models.ForeignKey(Org, on_delete=models.PROTECT, related_name="documents")
     kind = models.CharField(max_length=16, choices=Kind.choices)
     title = models.CharField(max_length=512)
     doc_no = models.CharField(max_length=128, blank=True, null=True)
-    #: Сам файл, а не путь к нему: путь строкой описывал бы место, о котором проект
-    #: ничего не знает, тогда как чертежи уже лежат в защищённом каталоге и
-    #: раздаются представлением. Двух рассказов о том, где лежит загруженное, быть
-    #: не должно.
+    #: The file itself, not a path to it: a path as a string would describe a place the
+    #: project knows nothing about, whereas the drawings already lie in a protected
+    #: directory and are served by a view. There must not be two accounts of where an
+    #: upload lives.
     #:
-    #: Длина — как у названия, а не стандартные 100: в пути лежит `uuid` организации,
-    #: и на само имя файла от него остаётся полсотни символов. Имена в папках УК
-    #: длиннее, и обрезаны они были бы молча.
+    #: The length matches the title rather than the default 100: the path holds the
+    #: organisation's `uuid`, leaving some fifty characters for the file name itself. Names
+    #: in the management company's folders are longer, and they would be truncated
+    #: silently.
     file_uri = models.FileField(upload_to=document_file_path, max_length=512, blank=True)
     file_hash = models.CharField(max_length=128, blank=True, null=True)
     issued_at = models.DateField(blank=True, null=True)
-    #: Поле без поведения: срок хранится и показывается, но ничем не грозит и ничего
-    #: не считает — реестра сроков никто пока не заказывал.
+    #: A field without behaviour: the deadline is stored and shown, but threatens nothing
+    #: and counts nothing — no one has ordered a register of deadlines yet.
     valid_until = models.DateField(blank=True, null=True)
     issuer_party = models.ForeignKey(Party, null=True, blank=True, on_delete=models.SET_NULL, related_name="issued_documents")
-    #: Тоже без поведения: связи «взамен такого-то» между документами нет, и с нулём
-    #: хранимых документов любая её форма была бы догадкой.
+    #: Also without behaviour: there is no "supersedes such-and-such" relation between
+    #: documents, and with zero documents stored any shape for it would be a guess.
     revision = models.CharField(max_length=32, blank=True, null=True)
     attrs = models.JSONField(default=dict, blank=True, db_default={})
 
     objects = DocumentQuerySet.as_manager()
 
     class Meta:
-        # Порядок — по загрузке, а не по дате выдачи: пакет, который только что
-        # перенесли, читатель ищет сверху, а акт 2019 года, загруженный сегодня,
-        # уехал бы по дате выдачи в хвост списка.
+        # The order is by upload, not by issue date: a batch that has just been
+        # transferred is looked for at the top, whereas an act from 2019 uploaded today
+        # would slide down to the tail of the list by its issue date.
         #
-        # Название вторым ключом — не украшение: пакетом приезжают сотни файлов, и
-        # у попавших в одно мгновение порядок иначе не определён вовсе, то есть
-        # таблица меняла бы его от запроса к запросу. Внутри одного мгновения
-        # «по загрузке» не значит ничего, и папка читается так же, как выглядела.
+        # The title as a second key is not decoration: hundreds of files arrive in a
+        # batch, and for those landing in the same instant the order would otherwise be
+        # undefined altogether, that is, the table would change it from request to
+        # request. Within one instant "by upload" means nothing, and the folder reads the
+        # way it looked.
         ordering = ["-created_at", "title"]
         indexes = [
             models.Index(fields=["kind", "-issued_at"], name="document_kind_idx"),
@@ -136,7 +138,7 @@ class Document(CommonModel):
 
 
 class DocumentLink(models.Model):
-    """Полиморфная привязка документа к любой сущности паспорта."""
+    """A polymorphic link from a document to any passport entity."""
 
     class EntityType(models.TextChoices):
         SPACE = "space", "Пространство"

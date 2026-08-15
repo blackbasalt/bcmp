@@ -5,8 +5,8 @@
 {% block page_title %}{{ building|space_label }}{% endblock %}
 
 {% comment %}
-  Путь назад к списку — крошка в шапке: между зданиями ходят часто, и он должен
-  попадаться раньше, чем паспорт будет дочитан.
+  The way back to the list is a breadcrumb in the header: people move between buildings
+  often, and it must come to hand before the passport has been read to the end.
 {% endcomment %}
 {% block breadcrumbs %}
   <li><a href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a></li>
@@ -15,8 +15,8 @@
 
 {% block content %}
   {% comment %}
-    Вход внутрь здания. У четырёх БЦ без нутра этажей нет — раздел не показывается
-    вовсе, и «не загружено» остаётся на том же месте, где было.
+    The way into the building. The four BCs with no innards have no floors — the section
+    is not shown at all, and "not uploaded" stays exactly where it was.
   {% endcomment %}
   {% if floors %}
     <section class="card mb-4 bg-base-100 shadow-sm">
@@ -33,8 +33,8 @@
   {% endif %}
 
   {% comment %}
-    Разделы приходят из представления уже отобранными: пустое поле показывается
-    прочерком, а раздел без единого значения сюда не доезжает.
+    The sections arrive from the view already selected: an empty field is shown as a dash,
+    while a section without a single value never gets here.
   {% endcomment %}
   <div class="grid gap-4 lg:grid-cols-2">
     {% for section in sections %}
@@ -51,9 +51,9 @@
       </section>
     {% empty %}
       {% comment %}
-        Показывать нечего: паспорта либо ещё нет, либо он пуст целиком. Экран говорит
-        ровно это и не утверждает, какой из двух случаев на руках, — пустой экран
-        читался бы как поломка.
+        There is nothing to show: either the passport does not exist yet, or it is empty
+        throughout. The screen says exactly that and does not claim which of the two cases
+        is at hand — an empty screen would read as a breakage.
       {% endcomment %}
       <div class="alert alert-info lg:col-span-2">
         <span>По этому бизнес-центру пока не заполнено ни одно поле паспорта. Данные

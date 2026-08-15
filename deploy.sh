@@ -132,7 +132,7 @@ log "Ensuring remote directories exist"
 REMOTE_USER="$(ssh_run 'id -un')"
 REMOTE_GROUP="$(ssh_run 'id -gn')"
 # Whole command runs as root via `sh -c` so the chown isn't left to the login user.
-# media/ holds the uploaded поэтажные планы: it is bind-mounted like data/ so a
+# media/ holds the uploaded floor plans: it is bind-mounted like data/ so a
 # redeploy does not discard them, and nginx never gets a location for it — the
 # app serves those files through its own chokepoint (ADR 0001).
 ssh_sudo "sh -c 'mkdir -p \"${REMOTE_DIR}/data\" \"${REMOTE_DIR}/media\" \"${REMOTE_DIR}/staticfiles\" && chown -R ${REMOTE_USER}:${REMOTE_GROUP} \"${REMOTE_DIR}\"'"

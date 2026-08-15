@@ -1,19 +1,20 @@
 {% comment %}
-  Пункт меню: раздел приложения, его подпись и значок. Открытый раздел решается не
-  здесь — он приходит в `section`, и пункт лишь сравнивает его со своим.
+  A menu item: a section of the application, its label and its icon. Which section is open
+  is not decided here — it arrives in `section`, and the item merely compares it with its
+  own.
 
-  Заведён отдельным файлом, потому что пунктов стало два и станет больше: подсветка,
-  классы и `title` иначе переписывались бы в каждом, а разошедшийся пункт погасил бы
-  подсветку именно там, где она была нужна.
+  It lives in a file of its own because there are now two items and there will be more:
+  the highlighting, the classes and the `title` would otherwise be rewritten in each one,
+  and an item that drifted apart would put out the highlight exactly where it was needed.
 
-  Ждёт: `section` — открытый раздел, `name` — раздел этого пункта, `url`, `label` и
-  `icon` — контур значка.
+  Expects: `section` — the open section, `name` — this item's section, `url`, `label`, and
+  `icon` — the outline of the icon.
 {% endcomment %}
-{# Подпись у свёрнутого меню скрыта, поэтому название пункта дублируется в `title`. #}
+{# The label is hidden when the menu is collapsed, so the item's name is duplicated in `title`. #}
 <a href="{{ url }}" title="{{ label }}"
-   {# `data-section` — договор разметки: по нему видно, какие разделы предложены. #}
+   {# `data-section` is a contract of the markup: it shows which sections are offered. #}
    data-section="{{ name }}"
-   {# Открытый раздел называется и читателю экрана, и тесту, а не одним лишь цветом. #}
+   {# The open section is named to the screen reader and to the test, not by colour alone. #}
    {% if section == name %}aria-current="page"{% endif %}
    class="sidebar-link flex items-center gap-3 border-l-4 px-5 py-3 text-sm {% if section == name %}border-primary bg-sidebar-active text-white{% else %}border-transparent hover:text-white{% endif %}">
   <svg class="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">

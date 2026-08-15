@@ -24,9 +24,9 @@ urlpatterns = [
     path("login/", login_views.LoginView.as_view(), name="login"),
     path("logout/", login_views.LogoutView.as_view(), name="logout"),
     path("assistant/", include("assistant.urls")),
-    # Раздел документов стоит рядом с паспортами, а не внутри них: до него не
-    # открывают здание, и своё пространство имён нужно ему в том числе затем, чтобы
-    # меню отличало один раздел от другого.
+    # The documents section sits beside the passports rather than inside them: it is
+    # reached without opening a building, and it needs its own namespace partly so that
+    # the menu can tell one section from the other.
     path("documents/", include("documents.urls")),
     path("", include("building_passport.urls")),
 ]

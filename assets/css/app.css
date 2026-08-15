@@ -18,9 +18,9 @@
   themes: false;
 }
 
-/* Палитра админ-панели: зелёный акцент на светло-сером полотне и белых карточках.
-   Тема заведена своя, а не переопределением `light`, чтобы цвета лежали в одном
-   месте и читались как список. */
+/* The admin panel's palette: a green accent on a light-grey canvas and white cards.
+   A theme of its own rather than an override of `light`, so that the colours lie in
+   one place and read as a list. */
 @plugin "daisyui/theme" {
   name: "bcmp";
   default: true;
@@ -49,7 +49,7 @@
   --color-error: #ed5565;
   --color-error-content: #ffffff;
 
-  /* Углы почти прямые: карточки паспорта должны читаться как бумага, а не как плитки. */
+  /* The corners are almost square: the passport's cards must read as paper, not as tiles. */
   --radius-selector: 0.25rem;
   --radius-field: 0.25rem;
   --radius-box: 0.125rem;
@@ -58,22 +58,24 @@
   --noise: 0;
 }
 
-/* Тёмное меню — единственное место со своими цветами: оно не следует теме
-   страницы и потому не выражается через base-*. */
+/* The dark menu is the only place with colours of its own: it does not follow the
+   page's theme and therefore is not expressed through base-*. */
 @theme {
   --color-sidebar: #2f4050;
   --color-sidebar-active: #293846;
   --color-sidebar-content: #a7b1c2;
 }
 
-/* Меню открыто по умолчанию на широком экране и закрыто на узком, а кнопка в
-   шапке переключает его в другую сторону от умолчания. Состояние держит класс на
-   обёртке, а не классы Tailwind в `:class`: иначе до старта Alpine меню на
-   телефоне успевало бы мелькнуть во всю ширину. */
+/* The menu is open by default on a wide screen and closed on a narrow one, and the
+   button in the header toggles it away from that default. The state is held by a class
+   on the wrapper rather than by Tailwind classes in `:class`: otherwise, before Alpine
+   starts, the menu on a phone would manage to flash at full width. */
 :root {
-  /* Ширина меню и отступ содержимого — одно и то же число, поэтому оно одно. */
+  /* The menu's width and the content's offset are one and the same number, so there is
+     only one of it. */
   --app-sidebar-width: 14rem;
-  /* Свёрнутое меню на широком экране: полоса ровно под значок с полями по бокам. */
+  /* The collapsed menu on a wide screen: a strip exactly the width of an icon plus side
+     margins. */
   --app-sidebar-mini-width: 4rem;
 }
 
@@ -103,9 +105,9 @@
     margin-left: var(--app-sidebar-width);
   }
 
-  /* Свёрнутое меню на широком экране не уезжает за край, а сужается до полосы
-     значков: пункты остаются на виду и переход между экранами не требует
-     сначала открыть меню. Подписи прячутся, значки встают по центру полосы. */
+  /* On a wide screen the collapsed menu does not slide off the edge but narrows to a
+     strip of icons: the items stay in view and moving between screens does not require
+     opening the menu first. The labels hide, the icons centre within the strip. */
   .nav-toggled .app-sidebar {
     width: var(--app-sidebar-mini-width);
     transform: translateX(0);
@@ -129,17 +131,18 @@
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
-    /* Полоса слишком узкая для акцентной черты: она сдвинула бы значок с центра,
-       а на выбранном пункте и без неё остаётся тёмная заливка. */
+    /* The strip is too narrow for an accent rule: it would push the icon off centre,
+       and the selected item keeps its dark fill without it anyway. */
     border-left-width: 0;
   }
 }
 
-/* Экран этажа: дерево, план и — когда помещение выбрано — карточка справа. Ширины
-   колонок держит класс, а не `:class` с классами Tailwind: правило «карточки нет —
-   план во всю ширину» тогда лежит в одном месте и не зависит от того, в каком порядке
-   Tailwind выпустил два одинаково весомых `grid-cols`. Та же развязка, что у меню
-   в `nav-toggled`. На узком экране колонок нет вовсе: карточка встаёт под планом. */
+/* The floor screen: the tree, the plan and — when a space is selected — the card on the
+   right. The column widths are held by a class rather than by `:class` with Tailwind
+   classes: the rule "no card means the plan takes the full width" then lies in one place
+   and does not depend on the order in which Tailwind emitted two equally weighted
+   `grid-cols`. The same decoupling as the menu's `nav-toggled`. On a narrow screen there
+   are no columns at all: the card goes beneath the plan. */
 .floor-layout {
   display: grid;
   gap: 1rem;
@@ -155,21 +158,22 @@
   }
 }
 
-/* Выбранное помещение — одно на весь экран, и подсвечено оно с обеих сторон разом:
-   и узлом дерева, и контуром на плане. Признак выбора — `data-selected`, тот же
-   договор экрана, что и остальные `data-*`: подсветка не должна зависеть от того,
-   какими классами оформлены узел и контур. */
+/* There is one selected space for the whole screen, and it is highlighted from both
+   sides at once: by the tree node and by the contour on the plan. The mark of selection is
+   `data-selected`, the same screen contract as the other `data-*`: the highlight must not
+   depend on which classes dress the node and the contour. */
 .tree-node[data-selected="yes"] {
   background-color: var(--color-base-200);
   font-weight: 600;
 }
 
-/* Рамка чертежа держит соотношение сторон плана, но не выше окна: колонка на
-   широком экране шире, чем экран высок, и чертёж, растянутый по всей её ширине,
-   уезжал бы за нижний край — этаж переставал бы читаться целиком. Ограничение
-   задаётся ширине, а не высоте: высота из соотношения сторон следует за шириной, и
-   рамка обнимает чертёж с обеих сторон, не оставляя пустых полей. `--plan-ratio` —
-   то же соотношение, что и `aspect-ratio` в разметке, только участвует в счёте. */
+/* The drawing's frame keeps the plan's aspect ratio, but no taller than the window: on a
+   wide screen the column is wider than the screen is tall, and a drawing stretched across
+   its whole width would run past the bottom edge — the floor would stop reading as a
+   whole. The limit is set on the width, not the height: the height follows the width via
+   the aspect ratio, and the frame hugs the drawing on both sides without leaving empty
+   margins. `--plan-ratio` is the same ratio as `aspect-ratio` in the markup, only it takes
+   part in the arithmetic. */
 .floor-plan {
   --floor-plan-height: min(58vh, 30rem);
   position: relative;
@@ -178,50 +182,50 @@
   margin-inline: auto;
 }
 
-/* Палитра слоя «тип помещения»: три цвета, которыми залиты контуры на плане.
-   Значения — те же цвета темы, что и на всём экране: палитра проекта лежит одним
-   списком выше, и слой выбирает из неё. Имена здесь ради слоя, а не ради оформления:
-   `plan_layer` называет цвет этим именем, и следующему слою достаточно завести свои
-   строки рядом, ничего в разметке не трогая. */
+/* The palette of the "тип помещения" layer: the three colours the contours on the plan
+   are filled with. The values are the same theme colours as everywhere else on the screen:
+   the project's palette lies as one list above, and the layer picks from it. The names here
+   exist for the layer, not for the styling: `plan_layer` calls a colour by this name, and
+   the next layer need only add its own lines alongside, touching nothing in the markup. */
 :root {
   --plan-leasable: var(--color-success);
   --plan-common: var(--color-info);
   --plan-technical: var(--color-warning);
-  /* Плотность заливки — одно число на план и на образец в легенде: легенда объясняет
-     цвет, которым залит контур, и разойтись они не должны. */
+  /* The density of the fill is one number for the plan and for the legend's swatch: the
+     legend explains the colour a contour is filled with, and the two must not diverge. */
   --plan-fill-opacity: 0.18;
 }
 
-/* Контур помещения на поэтажном плане: линия и полупрозрачная заливка поверх
-   чертежа, который должен читаться сквозь неё. Цвет берётся из `currentColor`, а не
-   задаётся здесь: его ставит на контур слой (`plan_layer`), а контур вне слоя —
-   шахта, лестничная клетка, проём второго света — приходит с `fill: none` и остаётся
-   одной линией. Толщина линии не зависит от `viewBox`: масштаб у чертежей разный,
-   а линия должна быть одинаковой (`vector-effect` в разметке). */
+/* A space's contour on a floor plan: a line and a translucent fill over the drawing,
+   which must read through it. The colour is taken from `currentColor` rather than set
+   here: it is the layer (`plan_layer`) that puts it on the contour, while a contour outside
+   any layer — a shaft, a stairwell, a double-height opening — arrives with `fill: none` and
+   stays a single line. The line's thickness does not depend on the `viewBox`: the drawings
+   differ in scale, but the line must be the same (`vector-effect` in the markup). */
 .floor-contour {
   fill: currentColor;
   fill-opacity: var(--plan-fill-opacity);
   stroke: currentColor;
   stroke-opacity: 0.55;
   stroke-width: 1.5;
-  /* Контур — то, чем помещение выбирают: курсор говорит об этом раньше, чем щелчок. */
+  /* The contour is what a space is selected by: the cursor says so before the click does. */
   cursor: pointer;
   transition:
     fill-opacity 0.15s ease,
     stroke-opacity 0.15s ease;
 }
 
-/* Отклик на наведение — и заливкой, и линией: у контура без заливки откликаться
-   больше нечему, а этаж просматривают, ведя по нему указателем. */
+/* The hover response comes from both the fill and the line: a contour without a fill has
+   nothing else to respond with, and a floor is surveyed by running the pointer over it. */
 .floor-contour:hover {
   fill-opacity: 0.3;
   stroke-opacity: 1;
 }
 
-/* Образец цвета в легенде выглядит контуром, а не плиткой: та же полупрозрачная
-   заливка и та же сплошная линия, что на плане, — иначе легенда объясняет цвет,
-   которого на чертеже не видно. Цвет приходит сверху, `currentColor`, тем же
-   способом, что и на контуре. */
+/* The legend's colour swatch looks like a contour, not a tile: the same translucent fill
+   and the same solid line as on the plan — otherwise the legend explains a colour not
+   visible on the drawing. The colour comes from above, through `currentColor`, the same way
+   as on a contour. */
 .plan-legend-swatch {
   width: 0.875rem;
   height: 0.875rem;
@@ -234,17 +238,17 @@
   border: 1.5px solid currentColor;
 }
 
-/* Выбранный контур виден и тогда, когда указатель ушёл с него в дерево или в
-   карточку, — иначе подсветка держалась бы ровно до движения мыши. */
+/* The selected contour stays visible even once the pointer has left it for the tree or
+   the card — otherwise the highlight would last exactly until the mouse moved. */
 .floor-contour[data-selected="yes"] {
   fill-opacity: 0.35;
   stroke-opacity: 1;
   stroke-width: 2.5;
 }
 
-/* Пока Alpine не стартовал, `x-show` ещё ничего не скрывает, и закрытая панель
-   ИИ-управляющего успела бы мигнуть на экране. Правило снимается вместе с
-   атрибутом при инициализации. */
+/* Until Alpine has started, `x-show` hides nothing yet, and the closed AI manager panel
+   would manage to blink on the screen. The rule is removed together with the attribute on
+   initialisation. */
 [x-cloak] {
   display: none !important;
 }

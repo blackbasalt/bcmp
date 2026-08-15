@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 
 {% comment %}
-  Оболочка админ-панели: тёмное меню слева, шапка и полоса заголовка справа.
-  Все экраны приложения наследуются отсюда и заполняют `content`; заголовок и
-  хлебные крошки задаются блоками `page_title` и `breadcrumbs`.
+  The admin panel's shell: a dark menu on the left, the header and the title band on the
+  right. Every screen of the application inherits from here and fills in `content`; the
+  title and the breadcrumbs are set by the `page_title` and `breadcrumbs` blocks.
 {% endcomment %}
 
 {% block body %}
   {% comment %}
-    Меню и содержимое лежат рядом, а не одно внутри другого: меню закреплено на
-    экране и прокручивается само по себе, длинный паспорт его не уносит.
+    The menu and the content lie side by side rather than one inside the other: the menu
+    is fixed on the screen and scrolls by itself, so a long passport does not carry it away.
   {% endcomment %}
   <div x-data="{ navToggled: false }" :class="navToggled && 'nav-toggled'">
 
     {% comment %}
-      Навигация плоская: в ней разделы приложения и ничего под ними. Проект —
-      подпись на карточке БЦ, площадка не показывается вовсе.
+      The navigation is flat: it holds the application's sections and nothing beneath
+      them. A project is a caption on the BC card; a site is not shown at all.
     {% endcomment %}
     <aside class="app-sidebar fixed inset-y-0 left-0 z-40 overflow-y-auto bg-sidebar text-sidebar-content">
       {% comment %}
-        Классы `sidebar-*` — точки, за которые свёрнутое меню держится в CSS:
-        по ним прячутся подписи и центрируются значки. Без них состояние пришлось
-        бы разносить по всем пунктам вручную.
+        The `sidebar-*` classes are the footholds by which the collapsed menu is held in
+        the CSS: through them the labels are hidden and the icons centred. Without them
+        the state would have to be spread across every item by hand.
       {% endcomment %}
       <div class="sidebar-profile flex px-6 py-6">
         <div>
-          {# Аватара у сотрудника нет, поэтому кружок с первой буквой имени, а не пустое место. #}
+          {# The employee has no avatar, hence a circle with the first letter of their name rather than an empty space. #}
           <div class="flex size-12 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-content">
             {{ user.get_username|slice:":1"|upper }}
           </div>
@@ -39,18 +39,19 @@
       </div>
 
       {% comment %}
-        Какой раздел открыт, решается один раз на всё меню, а каждый пункт лишь
-        называет свой. Пока раздел был один, условие подсветки и было им самим —
-        со вторым разделом такое условие пришлось бы переписывать в каждом пункте,
-        и первый же несовпавший ответ погасил бы подсветку там, где она была.
+        Which section is open is decided once for the whole menu, and each item merely
+        names its own. While there was one section, the highlighting condition was that
+        section itself — with a second one, such a condition would have to be rewritten in
+        every item, and the first mismatched answer would put out the highlight where it
+        belonged.
 
-        Раздел — это пространство имён адресов: пункт подсвечен на всех экранах
-        своего раздела, а не только на первом. С карточки БЦ и с экрана этажа
-        читателю одинаково нужно видеть, где он находится.
+        A section is a namespace of addresses: an item is highlighted on every screen of
+        its section, not only on the first. From the BC card and from the floor screen the
+        reader equally needs to see where they are.
 
-        Сам пункт — отдельный файл: разделов уже два, и подсветку с классами не
-        стоит переписывать в каждом. Здесь остаётся список разделов, читаемый как
-        список.
+        The item itself is a separate file: there are already two sections, and the
+        highlighting and the classes should not be rewritten in each. What remains here is
+        a list of sections, readable as a list.
       {% endcomment %}
       {% with section=request.resolver_match.app_name %}
         <nav>
@@ -63,7 +64,7 @@
       {% endwith %}
     </aside>
 
-    {# Подложка только на узком экране: там открытое меню лежит поверх содержимого. #}
+    {# The backdrop appears only on a narrow screen: there the open menu lies over the content. #}
     <div x-show="navToggled" x-cloak x-transition.opacity
          class="fixed inset-0 z-30 bg-black/40 lg:hidden"
          x-on:click="navToggled = false"></div>
@@ -80,7 +81,7 @@
 
         <div class="ml-auto flex items-center gap-4">
           <span class="hidden text-sm opacity-70 sm:inline">{{ user.get_username }}</span>
-          {# Выход POST-ом: общий компьютер оставляют по кнопке, а не по чужой ссылке. #}
+          {# Sign-out by POST: a shared computer is left by pressing a button, not by following someone else's link. #}
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-ghost btn-sm gap-2">
@@ -95,8 +96,8 @@
       </header>
 
       {% comment %}
-        Полоса заголовка: как называется экран и как он найден. Экран, которому она
-        не нужна, перекрывает блок `page_heading` целиком.
+        The title band: what the screen is called and how it was reached. A screen that
+        does not need it overrides the `page_heading` block entirely.
       {% endcomment %}
       {% block page_heading %}
         <div class="border-b border-base-300 bg-base-100 px-6 py-5">
@@ -117,6 +118,6 @@
     </div>
   </div>
 
-  {# Панель отвечает про здания клиентов, поэтому до входа её на экране нет. #}
+  {# The panel answers about clients' buildings, so before sign-in it is not on the screen. #}
   {% include "assistant/panel.html" %}
 {% endblock %}

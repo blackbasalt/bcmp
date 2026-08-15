@@ -1,17 +1,18 @@
 {% load passport %}
 {% comment %}
-  Карточка помещения: то, что BCMP знает о выбранном помещении. Приезжает в правую
-  панель экрана этажа отдельным запросом, поэтому это кусок разметки, а не экран, —
-  план и дерево при её открытии никуда не деваются.
+  A space card: what BCMP knows about the selected space. It arrives in the right-hand
+  panel of the floor screen by a separate request, so this is a chunk of markup rather than
+  a screen — the plan and the tree do not go anywhere when it opens.
 
-  Разделов «Документы» и «Системы» здесь нет намеренно: таблицы за ними пусты, а
-  раздел, обещающий данные, которых нет, хуже своего отсутствия.
+  The "Документы" and "Системы" sections are deliberately absent here: the tables behind
+  them are empty, and a section promising data that does not exist is worse than its own
+  absence.
 {% endcomment %}
 <h3 class="text-base font-semibold">{{ space|space_label }}</h3>
 
 {% comment %}
-  Пустое поле показывается прочерком — тем же «— нет данных», что и в паспорте (#5):
-  пустое место можно прочитать как ноль, а прочерк нельзя.
+  An empty field is shown as a dash — the same «— нет данных» as in the passport (#5):
+  blank space can be read as a zero, a dash cannot.
 {% endcomment %}
 <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
   <dt class="opacity-60">Код</dt>
@@ -27,14 +28,14 @@
 </dl>
 
 {% comment %}
-  Место в дереве. Названо «выше» и «ниже», а не «входит в» и «содержит»: связь
-  `parent` означает и вложенность (кабины в уборной), и объединение соседних
-  помещений (тамбур и кабинеты за ним), и карточка не должна утверждать, какая из
-  двух здесь на руках.
+  The place in the tree. It is called «выше» and «ниже» rather than "belongs to" and
+  "contains": the `parent` relation means both nesting (cubicles in a lavatory) and the
+  grouping of neighbouring spaces (a vestibule and the offices behind it), and the card
+  must not claim which of the two is at hand.
 
-  Соседи по дереву — кнопки, а не ссылки: они переставляют эту же панель, а не
-  уводят с экрана этажа, ради которого панель и заведена. Выбирают они помещение
-  тем же, чем узел дерева и контур на плане (`_space_select.html`).
+  The tree neighbours are buttons, not links: they re-fill this same panel rather than
+  leading away from the floor screen the panel exists for. They select a space by the same
+  means as a tree node and a contour on the plan (`_space_select.html`).
 {% endcomment %}
 <div class="border-t border-base-300 pt-3 text-sm">
   <h4 class="mb-1 opacity-60">Место в дереве</h4>

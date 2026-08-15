@@ -1,9 +1,9 @@
-"""Показ связанных документов в changelist любой сущности паспорта.
+"""Showing linked documents in the changelist of any passport entity.
 
-DocumentLink полиморфна и не имеет FK на цель: entity_type — текстовый код,
-entity_id — UUID. GenericRelation и prefetch_related тут неприменимы (они
-требуют ContentType), поэтому документы подтягиваются подзапросом в тот же
-запрос, что и сам список: N+1 не возникает независимо от размера страницы.
+DocumentLink is polymorphic and has no FK to its target: entity_type is a text code,
+entity_id a UUID. GenericRelation and prefetch_related are inapplicable here (they require
+ContentType), so the documents are pulled in by a subquery within the same query as the
+list itself: no N+1 arises, whatever the page size.
 """
 
 from django.contrib import admin
@@ -14,24 +14,24 @@ from django.utils.safestring import mark_safe
 
 from .models import DocumentLink
 
-SEP = "\u241f"  # разделитель, который не встретится в названии документа
+SEP = "\u241f"  # a separator that will not occur in a document title
 EMPTY = mark_safe('<span style="color:#999">—</span>')
 
 
 class LinkedDocumentsMixin:
-    """Добавляет в список колонку с документами, привязанными к строке.
+    """Adds a column to the list with the documents linked to the row.
 
-    Использование:
+    Usage:
 
         @admin.register(Space)
         class SpaceAdmin(LinkedDocumentsMixin, admin.ModelAdmin):
-            document_entity_type = "space"      # или оставить автоопределение
+            document_entity_type = "space"      # or leave auto-detection
             list_display = ("code", "name", "documents")
     """
 
-    #: код в DocumentLink.entity_type. По умолчанию — имя таблицы модели.
+    #: the code in DocumentLink.entity_type. Defaults to the model's table name.
     document_entity_type = None
-    #: сколько названий показывать в ячейке, остальные уходят в подсказку
+    #: how many titles to show in the cell; the rest go into the tooltip
     documents_preview = 2
 
     def get_document_entity_type(self):
@@ -82,7 +82,7 @@ class LinkedDocumentsMixin:
 
     @admin.display(description="Документы")
     def documents_detail(self, obj):
-        """Для readonly_fields на странице объекта: список ссылок на документы."""
+        """For readonly_fields on the object page: a list of links to documents."""
         links = (
             DocumentLink.objects
             .filter(entity_type=self.get_document_entity_type(), entity_id=obj.pk)
@@ -106,9 +106,9 @@ class LinkedDocumentsMixin:
 
 
 class DocumentLookupsMixin:
-    """Разрешает DocumentAdmin фильтрацию по links__entity_type / links__entity_id.
+    """Allows DocumentAdmin to filter by links__entity_type / links__entity_id.
 
-    Без этого ссылка из колонки «Документы» упирается в DisallowedModelAdminLookup.
+    Without this, the link from the "Документы" column runs into DisallowedModelAdminLookup.
     """
 
     allowed_document_lookups = ("links__entity_type", "links__entity_id")

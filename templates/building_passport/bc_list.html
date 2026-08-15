@@ -7,8 +7,8 @@
 
 {% block content %}
   {% comment %}
-    Карточки, а не таблица: на пяти зданиях таблица не даёт ничего, а на ноутбуке
-    заставляет скроллить вбок. Сетка ужимается до одной колонки.
+    Cards, not a table: with five buildings a table gives nothing, and on a laptop it
+    forces sideways scrolling. The grid squeezes down to a single column.
   {% endcomment %}
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for building in buildings %}
@@ -18,7 +18,7 @@
           <div class="flex items-start justify-between gap-2">
             <h2 class="card-title">{{ building.name|default:building.code|or_missing }}</h2>
             {% if not building.has_spaces %}
-              {# Здание без помещений — «ещё не загрузили», а не пустая страница. #}
+              {# A building without spaces means "not uploaded yet", not an empty page. #}
               <span class="badge badge-warning whitespace-nowrap">Помещения не загружены</span>
             {% endif %}
           </div>
@@ -42,7 +42,7 @@
         </div>
       </a>
     {% empty %}
-      {# Пустой список — нормальное состояние нового сотрудника, а не сломанный экран. #}
+      {# An empty list is a new employee's normal state, not a broken screen. #}
       <div class="alert alert-info sm:col-span-2 lg:col-span-3">
         <span>Ни один бизнес-центр вам пока не доступен. Доступ к организации выдаёт
           администратор платформы.</span>

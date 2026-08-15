@@ -6,7 +6,7 @@ from parties.admin import MembershipsOfUserInline
 
 
 class UserWithMembershipsAdmin(UserAdmin):
-    """Доступы к организациям видны там же, где заводится пользователь."""
+    """Access to organisations is visible in the same place where the user is created."""
     inlines = [*UserAdmin.inlines, MembershipsOfUserInline]
 
 

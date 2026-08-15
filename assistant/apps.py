@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class AssistantConfig(AppConfig):
-    """ИИ-управляющий. Моделей нет: переписка живёт в сессии."""
+    """The AI manager. There are no models: the conversation lives in the session."""
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "assistant"

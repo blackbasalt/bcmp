@@ -1,13 +1,14 @@
-"""Раздел «Документы» — то, что сотрудник УК видит по HTTP.
+"""The "Документы" section — what an employee of the management company sees over HTTP.
 
-Шов один: граница HTTP. Тесты ходят тестовым клиентом по именованным адресам от
-имени пользователя с известным членством и проверяют наблюдаемое — какие документы
-на экране, что о них написано и каким кодом отвечает запрос. Ниже HTTP шва нет:
-чокпоинт видимости проверяется тем же экраном, потому что через него он и читается.
+There is one seam: the HTTP boundary. The tests walk named addresses with the test client
+on behalf of a user with a known membership and check what is observable — which documents
+are on screen, what is said about them and what code the request answers with. Below HTTP
+there is no seam: the visibility chokepoint is checked through the same screen, because
+that is how it is read.
 
-Опора в разметке — атрибут `data-document` на строке таблицы. Это договор экрана:
-по нему видно, какие документы показаны и в каком порядке, и перестройка вёрстки
-не переписывает набор тестов.
+The foothold in the markup is the `data-document` attribute on a table row. That is the
+screen's contract: it shows which documents are displayed and in what order, and a rebuild
+of the layout does not rewrite the test suite.
 """
 
 import re
@@ -21,24 +22,25 @@ from parties.models import OrgMembership, Party
 
 pytestmark = pytest.mark.django_db
 
-#: Строка таблицы вместе с ключом документа: договор экрана и всё, что в строке
-#: написано. Разбором по тегам это не читается — спрашивают у строки не структуру,
-#: а текст, и найтись он должен именно в ней, а не где-то на странице.
+#: A table row together with the document's key: the screen's contract and everything
+#: written in the row. It is not read by parsing tags — what is asked of a row is not its
+#: structure but its text, and that text must be found in the row itself, not somewhere on
+#: the page.
 ROW = re.compile(r'<tr[^>]*data-document="(?P<key>[^"]+)"[^>]*>(?P<cells>.*?)</tr>', re.DOTALL)
 
 
 def stated(text):
-    """Текст одной строкой: фраза не должна ломаться о перенос в разметке."""
+    """The text on a single line: a phrase must not break on a line wrap in the markup."""
     return " ".join(text.split())
 
 
 def rows_on(page):
-    """Строки таблицы по ключу документа: что написано в каждой из них."""
+    """The table rows by document key: what is written in each of them."""
     return {row["key"]: stated(re.sub(r"<[^>]+>", " ", row["cells"])) for row in ROW.finditer(page)}
 
 
 def documents_on(page):
-    """Ключи показанных документов сверху вниз — порядок строк тоже проверяется."""
+    """The keys of the documents shown, top to bottom — the order of the rows is checked too."""
     return [row["key"] for row in ROW.finditer(page)]
 
 
@@ -48,33 +50,33 @@ def section(client):
 
 
 def make_document(org, title, **fields):
-    """Документ организации. Всё, кроме вида и названия, необязательно — как в жизни."""
+    """An organisation's document. Everything but kind and title is optional — as in life."""
     fields.setdefault("kind", Document.Kind.ACT)
     return Document.objects.create(org=org, title=title, **fields)
 
 
 @pytest.fixture
 def issuer(db):
-    """Сторона, выдавшая документ, — она же «кем выдан» в строке таблицы."""
+    """The party that issued the document — the same as «кем выдан» in the table row."""
     return Party.objects.create(kind=Party.Kind.COMPANY, name="ТОО Промэнерго")
 
 
 @pytest.fixture
 def both_clients(django_user_model, downtown, central):
-    """Сотрудник, ведущий двух клиентов сразу: их документы не должны смешаться."""
+    """An employee handling two clients at once: their documents must not get mixed up."""
     user = django_user_model.objects.create_user("manager")
     OrgMembership.objects.create(user=user, org=downtown)
     OrgMembership.objects.create(user=user, org=central)
     return user
 
 
-# Доступ и изоляция
+# Access and isolation
 
 
 def test_a_member_sees_the_documents_of_their_own_organisation_only(
     client, member, downtown, central
 ):
-    """Изоляция клиентов на экране — ровно то, ради чего у документа свой чокпоинт."""
+    """Client isolation on screen — exactly what a document has its own chokepoint for."""
     make_document(downtown, "Акт разграничения балансовой принадлежности")
     make_document(central, "Договор с чужим подрядчиком")
     client.force_login(member)
@@ -89,10 +91,10 @@ def test_a_member_sees_the_documents_of_their_own_organisation_only(
 def test_a_member_of_two_organisations_sees_each_organisation_under_its_own_name(
     client, both_clients, downtown, central
 ):
-    """Два клиента у одного сотрудника — две полки, а не одна общая куча.
+    """Two clients for one employee — two shelves, not one common heap.
 
-    Названо это должно быть в самой строке: имена обеих организаций где-то на
-    странице ничего не различают — они сошлись бы и перепутанными местами.
+    This must be said in the row itself: the names of both organisations somewhere on the
+    page distinguish nothing — they would match even with their places swapped.
     """
     ours = make_document(downtown, "Акт разграничения")
     theirs = make_document(central, "Акт допуска")
@@ -110,10 +112,10 @@ def test_a_member_of_two_organisations_sees_each_organisation_under_its_own_name
 def test_the_organisation_is_named_even_when_the_second_client_has_nothing_yet(
     client, both_clients, downtown
 ):
-    """Подпись держится за читателя, а не за данные.
+    """The label holds on to the reader, not to the data.
 
-    Пропасть она должна была бы ровно тогда, когда у второго клиента документов ещё
-    нет, — то есть когда ведущему двоих особенно нужно знать, чья это полка.
+    It would have to vanish exactly when the second client has no documents yet — that is,
+    when whoever handles two of them most needs to know whose shelf this is.
     """
     ours = make_document(downtown, "Акт разграничения")
     client.force_login(both_clients)
@@ -126,7 +128,7 @@ def test_the_organisation_is_named_even_when_the_second_client_has_nothing_yet(
 def test_a_reader_of_one_client_is_not_told_the_same_name_in_every_row(
     client, member, downtown
 ):
-    """Колонка, повторяющая одно имя во всю таблицу, не различает ничего."""
+    """A column repeating one name down the whole table distinguishes nothing."""
     ours = make_document(downtown, "Акт разграничения")
     client.force_login(member)
 
@@ -136,7 +138,7 @@ def test_a_reader_of_one_client_is_not_told_the_same_name_in_every_row(
 
 
 def test_an_anonymous_visitor_is_sent_to_the_login_screen(client, downtown):
-    """До входа не показывается ничего — даже пустая полка."""
+    """Before sign-in nothing is shown — not even an empty shelf."""
     make_document(downtown, "Акт разграничения")
 
     response = client.get(reverse("documents:document_list"))
@@ -145,11 +147,11 @@ def test_an_anonymous_visitor_is_sent_to_the_login_screen(client, downtown):
     assert response["Location"].startswith("/login/")
 
 
-# Таблица
+# The table
 
 
 def test_a_row_shows_what_tells_the_documents_apart(client, member, downtown, issuer):
-    """Вид, название, номер, дата выдачи и кем выдан — прямо в строке."""
+    """Kind, title, number, issue date and issuer — right there in the row."""
     make_document(
         downtown,
         "Акт разграничения балансовой принадлежности",
@@ -171,21 +173,21 @@ def test_a_row_shows_what_tells_the_documents_apart(client, member, downtown, is
 
 
 def test_a_field_nobody_filled_in_reads_as_no_data(client, member, downtown):
-    """Пустое место в строке можно прочитать как ноль; «— нет данных» — нельзя."""
+    """Blank space in a row can be read as a zero; «— нет данных» cannot."""
     make_document(downtown, "Акт без реквизитов")
     client.force_login(member)
 
     _, page = section(client)
     (row,) = rows_on(page).values()
 
-    assert row.count("— нет данных") == 3  # номер, дата выдачи и кем выдан
+    assert row.count("— нет данных") == 3  # number, issue date and issuer
 
 
 def test_the_newest_uploads_are_at_the_top(client, member, downtown):
-    """Порядок — по загрузке: пакет, который только что перенесли, лежит сверху.
+    """The order is by upload: the batch that has just been transferred lies on top.
 
-    Дата выдачи порядка не задаёт: акт 2019 года, загруженный сегодня, ищут там же,
-    где и остальной сегодняшний пакет, а не в хвосте списка.
+    The issue date sets no order: an act from 2019 uploaded today is looked for in the same
+    place as the rest of today's batch, not at the tail of the list.
     """
     older = make_document(downtown, "Загружен первым", issued_at=date(2024, 3, 14))
     newer = make_document(downtown, "Загружен вторым", issued_at=date(2019, 1, 9))
@@ -197,18 +199,18 @@ def test_the_newest_uploads_are_at_the_top(client, member, downtown):
 
 
 def test_the_section_states_how_many_documents_it_shows(client, member, downtown):
-    """Число на экране словами: «сколько всего» — вопрос, который задают первым."""
+    """The number on screen in words: «сколько всего» is the question asked first."""
     for number in range(3):
         make_document(downtown, f"Акт {number}")
     client.force_login(member)
 
     _, page = section(client)
 
-    assert "Показано 3\u00a0документа" in page  # число и слово не разъезжаются
+    assert "Показано 3\u00a0документа" in page  # the number and the word do not drift apart
 
 
 def test_a_single_document_is_counted_in_the_singular(client, member, downtown):
-    """«Показано 1 документов» читается сбоем экрана, а не единственным документом."""
+    """«Показано 1 документов» reads as a glitch on the screen, not as a single document."""
     make_document(downtown, "Единственный акт")
     client.force_login(member)
 
@@ -220,7 +222,7 @@ def test_a_single_document_is_counted_in_the_singular(client, member, downtown):
 def test_eleven_documents_are_counted_by_the_tens_rather_than_by_the_last_digit(
     client, member, downtown
 ):
-    """Одиннадцать — не «одиннадцать документ»: вторая цифра числа отменяет первую."""
+    """Eleven is not «одиннадцать документ»: the second digit of the number cancels the first."""
     for number in range(11):
         make_document(downtown, f"Акт {number}")
     client.force_login(member)
@@ -233,7 +235,7 @@ def test_eleven_documents_are_counted_by_the_tens_rather_than_by_the_last_digit(
 def test_an_empty_section_states_its_emptiness_rather_than_showing_an_empty_table(
     client, member, downtown, central
 ):
-    """«Ничего не загружено» должно отличаться от «что-то сломалось»."""
+    """"Nothing has been uploaded" must differ from "something has broken"."""
     make_document(central, "Чужой акт")
     client.force_login(member)
 
@@ -245,7 +247,7 @@ def test_an_empty_section_states_its_emptiness_rather_than_showing_an_empty_tabl
 
 
 def test_a_row_carries_the_document_handle(client, member, downtown):
-    """`data-document` — договор разметки, тот же приём, что и у контуров плана."""
+    """`data-document` is a contract of the markup, the same device as the plan's contours."""
     document = make_document(downtown, "Акт разграничения")
     client.force_login(member)
 
@@ -255,7 +257,7 @@ def test_a_row_carries_the_document_handle(client, member, downtown):
 
 
 def test_the_page_carries_no_leftover_template_comments(client, member, downtown):
-    """Многострочный `{# … #}` Django комментарием не считает и печатает на экране."""
+    """Django does not treat a multi-line `{# … #}` as a comment and prints it on the screen."""
     make_document(downtown, "Акт разграничения")
     client.force_login(member)
 

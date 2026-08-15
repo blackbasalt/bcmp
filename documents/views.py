@@ -9,48 +9,52 @@ from .models import Document
 
 
 class DocumentListView(LoginRequiredMixin, ListView):
-    """Раздел «Документы» — вся полка организации одним экраном.
+    """The "Документы" section — an organisation's whole shelf on one screen.
 
-    Первый экран проекта, до которого не открывают здание: документ может быть
-    привязан к нескольким БЦ, а может не быть привязан ни к одному, и вход через
-    здание прятал бы устав и лицензию, которые не относятся ни к какому зданию.
+    The first screen in the project reached without opening a building: a document may be
+    linked to several BCs and may be linked to none, and an entry through a building would
+    hide the charter and the licence, which belong to no building at all.
     """
 
     template_name = "documents/document_list.html"
     context_object_name = "documents"
 
     def get_queryset(self):
-        """Данные берутся через чокпоинт документов (ADR 0006), фильтр здесь не собирается."""
+        """The data is taken through the documents chokepoint (ADR 0006); no filter is
+        assembled here."""
         return (
             Document.objects.visible_to(self.request.user)
-            # Организация и выдавшая сторона называются именами, поэтому едут тем же
-            # запросом, что и сами документы.
+            # The organisation and the issuing party are said by name, so they travel in
+            # the same query as the documents themselves.
             .select_related("org__party", "issuer_party")
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         documents = context["documents"]
-        # Счёт считается по тому же набору, который поедет в таблицу: число под ней
-        # и строки в ней разойтись не должны.
+        # The count is worked out over the same set that will go into the table: the
+        # number beneath it and the rows within it must not diverge.
         context["shown"] = documents_shown(len(documents))
-        # Организация называется тому, кто ведёт не одного клиента: ему полка общая,
-        # и «чья это бумага» — вопрос, который он задаёт о каждой строке. Сотруднику
-        # одного клиента колонка повторяла бы одно имя во всю таблицу.
+        # The organisation is named for whoever handles more than one client: for them
+        # the shelf is shared, and "whose paper is this" is a question they ask of every
+        # row. For an employee of a single client the column would repeat one name down
+        # the whole table.
         #
-        # Спрашивается это о читателе, а не о показанном: колонка, зависящая от
-        # данных, пропала бы ровно тогда, когда у второго клиента документов ещё
-        # нет, — а это тот самый случай, когда назвать организацию и надо.
+        # This is asked about the reader, not about what is shown: a column depending on
+        # the data would disappear exactly when the second client has no documents yet —
+        # and that is precisely the case where the organisation does need naming.
         context["organisation_named"] = self.organisations_of_the_reader > 1
         return context
 
     @cached_property
     def organisations_of_the_reader(self):
-        """Скольких клиентов ведёт читатель — вопрос о нём, а не о его документах.
+        """How many clients the reader handles — a question about them, not about their
+        documents.
 
-        Правами он не распоряжается и строк не отбирает: чьи документы показывать,
-        решает один чокпоинт (ADR 0006), а здесь считается, надо ли их подписывать.
-        Суперпользователь читает за всех, поэтому и организаций у него все.
+        It disposes of no permissions and selects no rows: whose documents to show is
+        decided by the single chokepoint (ADR 0006), while what is worked out here is
+        whether they need labelling. A superuser reads on everyone's behalf, so all the
+        organisations are theirs.
         """
         user = self.request.user
         if user.is_superuser:

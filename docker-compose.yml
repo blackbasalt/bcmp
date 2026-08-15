@@ -8,7 +8,7 @@ services:
     environment:
       # SQLite lives in the persisted bind-mounted data/ dir, not the image
       SQLITE_PATH: /bcmp/data/db.sqlite3
-      # Uploaded поэтажные планы live beside it, for the same reason
+      # Uploaded floor plans live beside it, for the same reason
       MEDIA_ROOT: /bcmp/media
     volumes:
       - ./data:/bcmp/data                # persisted database

@@ -94,8 +94,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                # Панель ИИ-управляющего стоит в общем макете, её переписка нужна
-                # на каждом экране.
+                # The AI manager panel sits in the shared layout, so its conversation
+                # is needed on every screen.
                 'assistant.context_processors.conversation',
             ],
         },
@@ -156,7 +156,7 @@ AXES_LOCKOUT_TEMPLATE = 'auth/locked_out.html'
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-# Интерфейс русскоязычный целиком — вместе с админкой и страницами ошибок.
+# The interface is entirely Russian-language — together with the admin and the error pages.
 LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
@@ -179,10 +179,10 @@ STATICFILES_DIRS = [
 # and served by nginx. Must not overlap STATICFILES_DIRS.
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Uploaded files (поэтажные планы). A bind-mounted directory next to the SQLite
+# Uploaded files (floor plans). A bind-mounted directory next to the SQLite
 # database, so a redeploy does not discard them.
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
-# MEDIA_URL is deliberately left unset. Uploaded планы are served by a view that
+# MEDIA_URL is deliberately left unset. Uploaded plans are served by a view that
 # goes through the scoped-queryset chokepoint (ADR 0001); nginx has no /media/
 # location, and without a MEDIA_URL `FieldFile.url` raises rather than quietly
 # handing out a direct address to another client's floor plan.

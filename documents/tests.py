@@ -1,13 +1,14 @@
-"""Адреса раздела «Документы»: собственное пространство имён под `/documents/`.
+"""The addresses of the "Документы" section: its own namespace under `/documents/`.
 
-Отдельное пространство имён нужно не для порядка в коде, а для меню: пункт
-подсвечивается по разделу, в котором стоит читатель, и различить два раздела
-можно только тем, что у них разные имена.
+A separate namespace is needed not for tidiness in the code but for the menu: an item is
+highlighted by the section the reader is standing in, and the only way to tell two sections
+apart is that their names differ.
 """
 
 from django.urls import reverse
 
 
 def test_the_section_reverses_under_its_own_namespace():
-    """Имя адреса и include проекта договорились — иначе шаблон падает на `url`."""
+    """The address name and the project's include agree — otherwise the template crashes on
+    `url`."""
     assert reverse("documents:document_list") == "/documents/"

@@ -1,16 +1,16 @@
 {% comment %}
-  Форма загрузки плана — она же единственный путь записи вне админки Django.
-  Стоит на экране этажа и отправляется по его же адресу: загружают там, где
-  смотрят, и отказ возвращается на этот же экран, рядом с деревом и чертежом.
+  The plan upload form — also the only write path outside the Django admin. It stands on
+  the floor screen and posts to that screen's own address: uploading happens where looking
+  happens, and a refusal comes back to this same screen, next to the tree and the drawing.
 
-  `data-upload` — договор экрана: по нему видно, предложена ли загрузка. Сотруднику
-  без права администратора этой разметки не достаётся вовсе — ни свёрнутой, ни
-  отключённой: предложенное и запрещённое разом читается как поломка.
+  `data-upload` is the screen's contract: it shows whether uploading is on offer. An
+  employee without the administrator right does not get this markup at all — neither
+  collapsed nor disabled: offered and forbidden at once reads as a breakage.
 
-  Раскрыта форма ровно там, где ей и заниматься: на этаже без действующего плана —
-  пустое состояние и есть место, где отсутствие замечают, — и с отказом на руках,
-  потому что причина, спрятанная под сводкой, это отказ, которого не видно. Рядом с
-  готовым чертежом она сложена: перепланировка бывает реже, чем на неё смотрят.
+  The form is open exactly where there is work for it: on a floor without a current plan —
+  the empty state is where the absence gets noticed — and with a refusal at hand, because a
+  reason hidden under a summary is a refusal nobody sees. Beside a finished drawing it is
+  folded away: a re-layout happens less often than people look at one.
 {% endcomment %}
 <details class="rounded-lg border border-base-300 p-3" data-upload="plan"
          {% if not plan or form.errors %}open{% endif %}>
@@ -20,8 +20,9 @@
     {% csrf_token %}
 
     {% comment %}
-      Причина отказа, не относящаяся ни к одному полю, — пересечение периодов:
-      виноват не файл и не дата по отдельности, а период целиком (ADR 0004).
+      A reason for refusal that belongs to no single field — overlapping periods: it is
+      neither the file nor the date on its own that is at fault, but the whole period
+      (ADR 0004).
     {% endcomment %}
     {% if form.non_field_errors %}
       <div class="alert alert-error" role="alert">
@@ -31,16 +32,16 @@
 
     <fieldset class="fieldset">
       <legend class="fieldset-legend">{{ form.file.label }}</legend>
-      {# Контуры снимаются с путей файла: геометрия руками не заводится (ADR 0003). #}
+      {# The contours are taken from the file's paths: geometry is never entered by hand (ADR 0003). #}
       <input type="file" name="{{ form.file.html_name }}" accept=".svg,image/svg+xml"
              required class="file-input w-full">
       {% if form.file.errors %}
         <p class="text-sm text-error">{{ form.file.errors|join:" " }}</p>
       {% endif %}
       {% comment %}
-        Контракт файла назван на форме, а не только в гайде: чертёж экспортируют
-        рядом с этим полем, и опечатку в `id` дешевле не сделать, чем найти потом
-        по списку повисших путей.
+        The file's contract is stated on the form, not only in a guide: the drawing is
+        exported right next to this field, and a typo in an `id` is cheaper not to make
+        than to find afterwards from a list of dangling paths.
       {% endcomment %}
       <p class="label">Контур — путь, чей <code>id</code> равен коду помещения.</p>
     </fieldset>
@@ -48,8 +49,8 @@
     <fieldset class="fieldset">
       <legend class="fieldset-legend">{{ form.valid_from.label }}</legend>
       {% comment %}
-        Дату называет загружающий, и умолчания у неё нет: подставленное сегодня
-        записало бы перепланировку административным днём (ADR 0004).
+        The date is stated by whoever uploads, and it has no default: today's date filled
+        in for them would record the re-layout on an administrative day (ADR 0004).
       {% endcomment %}
       <input type="date" name="{{ form.valid_from.html_name }}"
              value="{{ form.valid_from.value|default_if_none:'' }}"

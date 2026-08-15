@@ -11,9 +11,9 @@ class PartyAdmin(admin.ModelAdmin):
 
 
 class MembershipsOfUserInline(admin.TabularInline):
-    """Организации, к которым допущен пользователь."""
+    """The organisations the user is admitted to."""
     model = OrgMembership
-    fk_name = "user"  # CommonModel добавляет created_by/updated_by на того же User
+    fk_name = "user"  # CommonModel adds created_by/updated_by pointing at the same User
     extra = 1
     autocomplete_fields = ("org",)
     verbose_name = "доступ к организации"
@@ -21,7 +21,7 @@ class MembershipsOfUserInline(admin.TabularInline):
 
 
 class MembersOfOrgInline(admin.TabularInline):
-    """Пользователи, допущенные к организации."""
+    """The users admitted to the organisation."""
     model = OrgMembership
     fk_name = "org"
     extra = 1
@@ -40,11 +40,11 @@ class OrgAdmin(admin.ModelAdmin):
 
 @admin.register(OrgMembership)
 class OrgMembershipAdmin(admin.ModelAdmin):
-    """Здесь администратор платформы и выдаёт администраторство (ADR 0005).
+    """This is where the platform administrator grants administratorship (ADR 0005).
 
-    Право стоит на членстве, то есть на паре «сотрудник + организация», поэтому и
-    список фильтруется обоими: вопрос «кто ведёт данные этого клиента» задают и от
-    организации, и от пользователя.
+    The right sits on the membership, that is, on the pair "employee + organisation", so
+    the list is filtered by both: the question "who maintains this client's data" is asked
+    both from the organisation's side and from the user's.
     """
 
     list_display = ("user", "org", "is_admin")

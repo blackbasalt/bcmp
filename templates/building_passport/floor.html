@@ -7,8 +7,8 @@
 {% block breadcrumbs %}
   <li><a href="{% url 'building_passport:bc_list' %}">Бизнес-центры</a></li>
   {% comment %}
-    Крошка здания — она же путь назад к паспорту: с этажа возвращаются часто, и
-    отдельной кнопке для этого места на экране не находится.
+    The building's breadcrumb is also the way back to the passport: people return from a
+    floor often, and there is no room on the screen for a separate button.
   {% endcomment %}
   <li><a href="{% url 'building_passport:bc_detail' building.pk %}">{{ building|space_label }}</a></li>
   <li>{{ floor|space_label }}</li>
@@ -16,15 +16,15 @@
 
 {% block content %}
   {% comment %}
-    Переключатель этажей: между пятью этажами ходят чаще, чем между зданиями, и
-    возвращаться ради этого на Карточку БЦ незачем.
+    The floor switcher: people move between five floors more often than between buildings,
+    and there is no need to go back to the BC card for that.
   {% endcomment %}
   {% comment %}
-    `data-plan` — договор экрана: этаж с действующим чертежом помечен точкой, чтобы по
-    этажам не щёлкали в надежде его найти. Точка обещает ровно то, что откроется, —
-    поэтому у этажа, чей единственный план назначен на будущее, её нет. Подпись к точке
-    уходит в `title`: значок без слов ничего не сообщает тому, кто читает страницу не
-    глазами.
+    `data-plan` is the screen's contract: a floor with a current drawing is marked with a
+    dot, so that nobody clicks through the floors hoping to find one. The dot promises
+    exactly what will open — which is why a floor whose only plan is scheduled for the
+    future does not have one. The dot's caption goes into `title`: an icon without words
+    tells nothing to someone who reads the page other than by eye.
   {% endcomment %}
   <nav class="mb-4 flex flex-wrap items-center gap-2" aria-label="Этажи здания">
     {% for other in floors %}
@@ -48,20 +48,21 @@
   </nav>
 
   {% comment %}
-    Дерево слева, поэтажный план в центре, карточка помещения справа. Дерево и план —
-    два вида одного выбора: выбранное помещение здесь одно на весь экран (`selected`),
-    поэтому щелчок по контуру подсвечивает узел, а щелчок по узлу — контур. Держится
-    выбор на стороне браузера, а не адресом экрана: перезагрузка страницы ради
-    подсветки увела бы читателя с чертежа, который он и разглядывает.
+    The tree on the left, the floor plan in the centre, the space card on the right. The
+    tree and the plan are two views of one selection: the selected space here is one for
+    the whole screen (`selected`), so a click on a contour highlights the node, and a click
+    on a node the contour. The selection is held on the browser's side rather than in the
+    screen's address: reloading the page for the sake of a highlight would take the reader
+    away from the very drawing they are studying.
 
-    Ключ выбора — `pk`, а не код: код может быть и пустым, и тогда одним щелчком
-    подсветилось бы всё безымянное разом.
+    The key of the selection is `pk`, not the code: a code may be empty, and then a single
+    click would highlight everything nameless at once.
 
-    Правая колонка появляется только вместе с выбранным помещением: пока его нет,
-    вся ширина принадлежит плану (`.floor-layout` и `rail-open` в CSS). Пока карточка
-    едет, панель пуста: иначе в ней оставались бы факты о предыдущем помещении — а
-    панель, показывающая чужую площадь, врёт ровно так же, как пустое место вместо
-    прочерка.
+    The right-hand column appears only together with a selected space: while there is none,
+    the whole width belongs to the plan (`.floor-layout` and `rail-open` in the CSS). While
+    the card is on its way the panel is empty: otherwise facts about the previous space
+    would linger in it — and a panel showing someone else's area lies exactly as much as
+    blank space in place of a dash.
   {% endcomment %}
   <div x-data="{ selected: null }" class="floor-layout"
        :class="selected && 'rail-open'"
@@ -73,7 +74,7 @@
         {% if tree %}
           {% include "building_passport/_space_tree.html" with nodes=tree %}
         {% else %}
-          {# Этаж без помещений — состояние данных, а не пустая колонка. #}
+          {# A floor without spaces is a state of the data, not an empty column. #}
           <p class="text-sm opacity-70">На этом этаже не заведено ни одного помещения.</p>
         {% endif %}
       </div>
@@ -84,17 +85,18 @@
         <h2 class="card-title text-lg">Поэтажный план</h2>
         {% if plan %}
           {% comment %}
-            Чертёж и контуры — две картинки в одной рамке: у обеих один `viewBox` и
-            одно соотношение сторон, поэтому контур ложится ровно туда, где помещение
-            нарисовано. Рамка задаётся соотношением из плана, а не размерами файла:
-            экспорт может не объявлять ни ширины, ни высоты.
+            The drawing and the contours are two pictures in one frame: both share a
+            `viewBox` and an aspect ratio, so a contour falls exactly where the space is
+            drawn. The frame is set by the ratio from the plan rather than by the file's
+            dimensions: an export may declare neither width nor height.
 
-            Сам чертёж приходит картинкой по адресу приложения — скрипты внутри SVG
-            так не выполняются, а файл всё равно едет через чокпоинт.
+            The drawing itself arrives as an image from the application's own address —
+            scripts inside an SVG are not executed that way, and the file still travels
+            through the chokepoint.
 
-            Размер рамки ограничен высотой окна (`.floor-plan`): план — часть экрана
-            этажа, а не сам экран, и рядом с ним должны оставаться видны дерево слева
-            и карточка помещения справа.
+            The frame's size is limited by the window's height (`.floor-plan`): the plan is
+            part of the floor screen, not the screen itself, and the tree on the left and
+            the space card on the right must stay visible beside it.
           {% endcomment %}
           <div class="floor-plan overflow-hidden rounded-lg border border-base-300"
                style="aspect-ratio: {{ plan.aspect_ratio }}; --plan-ratio: {{ plan.aspect_ratio }}">
@@ -102,23 +104,24 @@
                  src="{% url 'building_passport:floor_plan_svg' plan.pk %}"
                  alt="Поэтажный план: {{ floor|space_label }}">
             {% comment %}
-              `data-contour` — договор экрана, парный к `data-space` в дереве: по коду
-              помещения план и дерево находят друг друга. Заливка полупрозрачная,
-              чтобы чертёж читался сквозь неё.
+              `data-contour` is the screen's contract, paired with `data-space` in the
+              tree: it is by a space's code that the plan and the tree find each other. The
+              fill is translucent so that the drawing reads through it.
 
-              Цвет приходит от слоя посчитанным (`plan_layer`) и ставится прямо на
-              контур, а не выбирается здесь по классу: следующий слой — долги
-              арендаторов, сроки договоров — встанет на это же место, и разметке для
-              него ничего не потребуется. `data-paint` называет разновидность тем же
-              ключом, что и запись легенды.
+              The colour arrives from the layer already computed (`plan_layer`) and is put
+              straight on the contour rather than chosen here by class: the next layer —
+              tenants' arrears, contract deadlines — will take this same place, and the
+              markup will need nothing for it. `data-paint` names the variety by the same
+              key as the legend entry does.
 
-              Контур вне слоя — лестничная клетка, шахта, проём второго света — остаётся
-              одной линией без заливки: на чертеже не должно быть необъяснённых провалов,
-              но и выдавать их за тип помещения нельзя. Слой не даёт им ничего, поэтому
-              и подпись у них одно имя.
+              A contour outside any layer — a stairwell, a shaft, a double-height opening —
+              stays a single line without a fill: there must be no unexplained gaps on the
+              drawing, but neither can they be passed off as a type of space. The layer
+              gives them nothing, so their caption is a name and nothing more.
 
-              Контур выбирают тем же, чем и узел дерева (`_space_select.html`): так
-              план и становится тем, что можно расспрашивать, показывая пальцем.
+              A contour is selected by the same means as a tree node
+              (`_space_select.html`): that is how the plan becomes something you can
+              question by pointing at it.
             {% endcomment %}
             <svg class="absolute inset-0 h-full w-full text-base-content"
                  viewBox="{{ plan.view_box }}" aria-label="Контуры помещений">
@@ -127,7 +130,7 @@
                       {% if painted.paint %}data-paint="{{ painted.paint.key }}" style="color: {{ painted.paint.colour }}"{% else %}style="fill: none"{% endif %}
                       {% include "building_passport/_space_select.html" with space=painted.space %}
                       d="{{ painted.path_d }}" vector-effect="non-scaling-stroke">
-                  {# Подпись контура: имя помещения и строка слоя — что означает его цвет. #}
+                  {# The contour's caption: the space's name and the layer's line — what its colour means. #}
                   <title>{{ painted.space|space_label }}{% if painted.paint %} — {{ painted.paint.note }}{% endif %}</title>
                 </path>
               {% endfor %}
@@ -135,13 +138,13 @@
           </div>
 
           {% comment %}
-            Легенда: цвет без неё приходится угадывать, а угаданное читается как факт.
-            Собрана она слоем и только из того, что на этом этаже нарисовано, — запись
-            о цвете, которого на чертеже нет, была бы подписью к пустому месту.
-            Разновидности, у которых заливки нет вовсе, записи не получают.
+            The legend: without it a colour has to be guessed, and a guess reads as a fact.
+            It is assembled by the layer and only out of what is drawn on this floor — an
+            entry for a colour absent from the drawing would be a caption to an empty
+            space. Varieties with no fill at all get no entry.
 
-            Слой назван: план показывает один слой за раз, и читатель должен знать,
-            который. Здесь же встанет и переключатель, когда слоёв станет больше.
+            The layer is named: the plan shows one layer at a time, and the reader must
+            know which. The switcher will stand here too, once there are more layers.
           {% endcomment %}
           {% if painting.legend %}
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
@@ -157,31 +160,32 @@
           {% endif %}
 
           {% comment %}
-            Полнота: экран называет, сколько помещений этажа на чертёж не попало.
-            Это самое ценное, что план умеет сказать, — пространственный эквивалент
-            «— нет данных» в паспорте здания: и ненарисованное помещение, и
-            незаведённое видно одним числом, не сличая дерево с картинкой глазами.
+            Completeness: the screen states how many of the floor's spaces did not make it
+            onto the drawing. This is the most valuable thing the plan can say — the
+            spatial equivalent of «— нет данных» in the building passport: both an undrawn
+            space and an unrecorded one are visible in a single number, without comparing
+            the tree against the picture by eye.
 
-            Счёт в помещениях, а не в м²: масштаба план не объявляет, а площадь
-            заведена не у всех, и цифра в метрах выглядела бы точной, не будучи
-            таковой. Непокрытый остаток этажа при этом ничем не закрашен — разрыв
-            между площадью этажа и суммой помещений и есть находка.
+            The count is in spaces, not in m²: the plan declares no scale, and not every
+            space has an area recorded, so a figure in metres would look precise without
+            being so. The uncovered remainder of the floor is meanwhile filled with
+            nothing — the gap between the floor's area and the sum of its spaces is itself
+            the finding.
           {% endcomment %}
           {% if completeness.space_count %}
             <p class="text-sm opacity-70">Нанесено {{ completeness.drawn_count }} из {{ completeness.space_count }} помещений</p>
           {% endif %}
 
           {% comment %}
-            Путь, чей `id` не совпал ни с одним помещением этажа, назван вслух:
-            план с ним загрузился (иначе опечатка стоила бы всего чертежа), но
-            контуром путь не стал — и молча потерянный путь означал бы потерянное
-            помещение. `data-unmatched` — договор экрана: по нему видно, какие
-            именно `id` повисли.
+            A path whose `id` matched none of the floor's spaces is named out loud: the
+            plan loaded with it (otherwise a typo would cost the whole drawing), but the
+            path did not become a contour — and a path lost silently would mean a lost
+            space. `data-unmatched` is the screen's contract: it shows exactly which `id`s
+            are left dangling.
 
-            Сказано «при загрузке»: сведение состоялось однажды и не повторяется
-            (ADR 0003). Заведённое потом помещение свой контур на этом плане уже
-            не получит — его нарисуют на следующем, и до тех пор путь остаётся
-            непривязанным.
+            It says "при загрузке": the matching happened once and is not repeated
+            (ADR 0003). A space recorded afterwards will not get its contour on this plan —
+            it will be drawn on the next one, and until then the path stays unmatched.
           {% endcomment %}
           {% if completeness.unmatched %}
             <div class="alert alert-warning" role="status">
@@ -194,13 +198,13 @@
           {% endif %}
         {% else %}
           {% comment %}
-            Постоянное пустое состояние, а не заглушка: план может отсутствовать и
-            после того, как загрузка появится, и тогда экран говорит ровно это.
+            A permanent empty state, not a stub: a plan may be missing even after uploading
+            exists, and then the screen says exactly that.
 
-            Сказано именно «нет действующего», а не «не загружен»: плана может не быть
-            и у этажа, планы которого загружены, — назначенный на будущее до своей даты
-            не действует, а закрытый остаётся историей. «Не загружен» было бы про такой
-            этаж неправдой.
+            It says «нет действующего» rather than «не загружен»: a floor whose plans have
+            been uploaded may still have none in force — one scheduled for the future is
+            not in force before its date, and a closed one remains history. «Не загружен»
+            would be untrue about such a floor.
           {% endcomment %}
           <div class="alert alert-info">
             <span>Для этого этажа нет действующего поэтажного плана. Помещения этажа перечислены слева.</span>
@@ -208,12 +212,12 @@
         {% endif %}
 
         {% comment %}
-          Загрузка стоит там, где план и разглядывают, — в том числе на этаже, где
-          его нет: пустое состояние и есть то место, где отсутствие замечают, и
-          отсылать оттуда в админку Django значило бы не чинить его, а называть.
+          Uploading stands where the plan is studied — including on a floor that has none:
+          the empty state is the very place where the absence is noticed, and sending
+          people from there to the Django admin would name the problem rather than fix it.
 
-          Формы нет вовсе у того, кто загружать не вправе (`upload` пуст): показанная
-          и отклоняемая кнопка предлагает действие, которого не совершить.
+          Whoever has no right to upload gets no form at all (`upload` is empty): a button
+          that is shown and then refuses offers an action that cannot be performed.
         {% endcomment %}
         {% if upload %}
           {% include "building_passport/_plan_upload.html" with form=upload %}
@@ -222,24 +226,24 @@
     </section>
 
     {% comment %}
-      Карточка помещения — колонка страницы, а не всплывающее окно поверх неё: план
-      остаётся на экране, и пространственный контекст, приведший читателя к
-      помещению, не тратится на чтение о нём. Панель ИИ-управляющего при этом
-      плавает поверх всего, включая эту колонку, — за правый край они больше не спорят.
+      The space card is a column of the page, not a popup over it: the plan stays on the
+      screen, and the spatial context that brought the reader to the space is not spent on
+      reading about it. The AI manager panel meanwhile floats above everything, this column
+      included — the two no longer compete for the right-hand edge.
 
-      Приезжает карточка отдельным запросом в `#space-card`: соседи по дереву внутри
-      неё переставляют ту же панель, поэтому по иерархии ходят, не уходя с этажа.
-      Сама колонка при этом не пересобирается — заголовок и крестик остаются на месте.
+      The card arrives by a separate request into `#space-card`: the tree neighbours inside
+      it re-fill the same panel, so the hierarchy is walked without leaving the floor. The
+      column itself is not rebuilt — the heading and the close cross stay in place.
 
-      `x-cloak` снимается со стартом Alpine: до него `x-show` ещё ничего не скрывает,
-      и пустая колонка успела бы мигнуть на экране.
+      `x-cloak` is removed when Alpine starts: before that `x-show` hides nothing yet, and
+      an empty column would manage to blink on the screen.
     {% endcomment %}
     <section x-show="selected" x-cloak class="card bg-base-100 shadow-sm"
              aria-label="Карточка помещения">
       <div class="card-body gap-3">
         <div class="flex items-center justify-between gap-2">
           <h2 class="card-title text-lg">Карточка помещения</h2>
-          {# Закрыть — вернуть плану всю ширину: этаж просматривают целиком чаще, чем читают одно помещение. #}
+          {# Closing gives the plan back its full width: a floor is surveyed whole more often than one space is read. #}
           <button type="button" class="btn btn-sm btn-ghost" x-on:click="selected = null"
                   aria-label="Закрыть карточку помещения">✕</button>
         </div>

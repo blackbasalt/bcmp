@@ -7,12 +7,12 @@
 
 {% block content %}
   {% comment %}
-    Таблица, а не карточки: документов сотни, и различают их реквизиты — номер,
-    дата, кем выдан, — которые читаются колонками, а карточками расползлись бы на
-    несколько экранов.
+    A table, not cards: there are hundreds of documents, and what tells them apart are
+    their particulars — the number, the date, the issuer — which read as columns, whereas
+    as cards they would sprawl across several screens.
 
-    Фильтр «— нет данных» тот же, что и в паспорте здания: правило одно на проект,
-    и второе его определение здесь разошлось бы с первым.
+    The «— нет данных» filter is the same as in the building passport: the rule is one for
+    the whole project, and a second definition of it here would drift from the first.
   {% endcomment %}
   {% if documents %}
     <div class="card bg-base-100 shadow-sm">
@@ -31,7 +31,7 @@
             </thead>
             <tbody>
               {% for document in documents %}
-                {# `data-document` — договор экрана: по нему видно, что показано и в каком порядке. #}
+                {# `data-document` is the screen's contract: it shows what is displayed and in what order. #}
                 <tr data-document="{{ document.pk }}">
                   {% if organisation_named %}<td class="opacity-60">{{ document.org.name }}</td>{% endif %}
                   <td class="whitespace-nowrap">{{ document.get_kind_display }}</td>
@@ -46,16 +46,16 @@
         </div>
 
         {% comment %}
-          Счёт под таблицей: сколько документов на полке — вопрос, который задают
-          первым, и на него отвечает фраза, а не длина списка на глаз.
+          The count beneath the table: how many documents are on the shelf is the question
+          asked first, and it is answered by a phrase, not by the length of the list by eye.
         {% endcomment %}
         <p class="text-sm opacity-70">{{ shown }}</p>
       </div>
     </div>
   {% else %}
     {% comment %}
-      Пустой раздел говорит о своей пустоте вслух: «ничего не загружено» должно
-      отличаться от «что-то сломалось», а пустая таблица с шапкой читается вторым.
+      An empty section says its emptiness out loud: "nothing has been uploaded" must differ
+      from "something has broken", and an empty table with a header reads as the latter.
     {% endcomment %}
     <div class="alert alert-info">
       <span>Ни одного документа пока не загружено. Документы загружает администратор

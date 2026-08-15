@@ -1,17 +1,17 @@
-"""Переписка с ИИ-управляющим, живущая в сессии.
+"""The conversation with the AI manager, living in the session.
 
-Ни `Conversation`, ни `Message`: чем ограничена одна переписка — бизнес-центром,
-сотрудником, рабочим днём — сейчас неизвестно, и модель закрепила бы ответ раньше,
-чем он появится. Сессия хранит переписку ровно столько, сколько длится вход, и
-переживает переход с одного БЦ на другой — то самое поведение, которое проверяется
-на этом этапе.
+Neither `Conversation` nor `Message`: what bounds a single conversation — a business
+centre, an employee, a working day — is unknown right now, and a model would fix the
+answer before it appears. The session keeps the conversation for exactly as long as the
+sign-in lasts, and survives moving from one BC to another — precisely the behaviour
+checked at this stage.
 
-Сообщения лежат словарями, потому что сессия сериализуется в JSON.
+Messages are stored as dicts, because the session is serialised to JSON.
 """
 
 SESSION_KEY = "assistant_conversation"
 
-# Ответ один на все вопросы: модель не вызывается, поиск по паспорту — следующий этап.
+# One reply to every question: no model is called, search over the passport is the next stage.
 CANNED_REPLY = (
     "Пока я не подключён к данным паспорта — отвечаю заглушкой. "
     "Полноценные ответы появятся на следующем этапе."
@@ -19,19 +19,19 @@ CANNED_REPLY = (
 
 
 def history(session) -> list[dict]:
-    """Переписка целиком — то, что панель показывает при открытии экрана."""
+    """The whole conversation — what the panel shows when a screen opens."""
     return session.get(SESSION_KEY, [])
 
 
 def ask(session, question: str) -> list[dict]:
-    """Записывает вопрос с ответом и возвращает переписку целиком.
+    """Records the question with its answer and returns the whole conversation.
 
-    Целиком, а не одну пару: панель получает от этого же значения и первый показ на
-    странице, и обновление после отправки, поэтому собирается одним и тем же кодом.
+    The whole one, not a single pair: the panel gets both its first render on the page and
+    its update after sending from this same value, so it is built by the same code.
     """
     question = question.strip()
     if not question:
-        # Пустая отправка переписку не меняет: пузырю без текста отвечать нечем.
+        # An empty send does not change the conversation: a bubble without text has nothing to answer.
         return history(session)
 
     conversation = history(session) + [

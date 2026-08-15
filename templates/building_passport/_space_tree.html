@@ -1,14 +1,14 @@
 {% load passport %}
 {% comment %}
-  Ветка дерева помещений, включающая саму себя: вложенность в данных произвольной
-  глубины, и разметка повторяет её один в один, а не разворачивается в плоский список.
+  A branch of the tree of spaces, including itself: nesting in the data is of arbitrary
+  depth, and the markup repeats it one to one rather than unrolling into a flat list.
 
-  `data-space` — договор экрана, а не оформление: по коду помещения план и дерево
-  находят друг друга.
+  `data-space` is the screen's contract, not styling: it is by a space's code that the plan
+  and the tree find each other.
 
-  Узел — кнопка, а не подпись: помещение выбирают отсюда, и для ненанесённых на план
-  это единственный способ — щёлкнуть по ним на чертеже негде. Чем именно выбирают —
-  в `_space_select.html`, одинаково для узла и для контура.
+  A node is a button, not a caption: a space is selected from here, and for those not drawn
+  on the plan this is the only way — there is nowhere on the drawing to click them. What
+  exactly does the selecting is in `_space_select.html`, the same for a node and a contour.
 {% endcomment %}
 <ul class="space-y-1 {% if nested %}ml-3 border-l border-base-300 pl-3{% endif %}">
   {% for node in nodes %}
@@ -19,11 +19,11 @@
               {% include "building_passport/_space_select.html" with space=node.space %}>
         <span class="grow">{{ node.space|space_label }}</span>
         {% comment %}
-          Помещение без контура помечено, и видно это в дереве: план — инструмент,
-          которым находят незаведённое, поэтому ненанесённое не должно молчать.
-          Пометка появляется только там, где есть с чем сравнивать: на этаже без
-          действующего плана не нанесено вообще ничего, и метка на каждом узле
-          сообщала бы ровно то же, что и пустой центр экрана.
+          A space without a contour is marked, and that is visible in the tree: the plan is
+          the tool by which what has not been recorded is found, so what has not been drawn
+          must not stay silent. The mark appears only where there is something to compare
+          against: on a floor without a current plan nothing at all is drawn, and a mark on
+          every node would say exactly the same as the empty centre of the screen.
         {% endcomment %}
         {% if node.space.pk in completeness.undrawn %}
           <span class="badge badge-sm badge-ghost shrink-0"

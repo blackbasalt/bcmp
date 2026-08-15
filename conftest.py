@@ -1,8 +1,9 @@
-"""Организации и здание, над которыми ставятся тесты.
+"""The organisations and the building the tests are staged on.
 
-Здание одно на весь набор: этаж и его помещения нужны и экрану этажа, и плану, и
-двух определений одного и того же Manhattan быть не должно. Там, где тесту нужно
-несколько штук — этажи, помещения, — фикстура отдаёт фабрику, а не готовый объект.
+There is one building for the whole suite: the floor and its spaces are needed both by the
+floor screen and by the plan, and there must not be two definitions of one and the same
+Manhattan. Where a test needs several of something — floors, spaces — the fixture hands
+out a factory rather than a ready-made object.
 """
 
 import pytest
@@ -22,19 +23,20 @@ def make_org(db):
 
 @pytest.fixture
 def downtown(make_org):
-    """Организация существующих пяти БЦ."""
+    """The organisation of the five existing BCs."""
     return make_org("DownTown Management ТОО", "180540035878")
 
 
 @pytest.fixture
 def central(make_org):
-    """Второй клиент — его данные не должны попадать к первому."""
+    """The second client — its data must not reach the first one."""
     return make_org("Central City Properties ТОО", "201140031473")
 
 
 @pytest.fixture
 def member(django_user_model, downtown):
-    """Сотрудник УК с членством в одной организации — обычный читатель экранов."""
+    """A management-company employee with a membership in one organisation — the ordinary
+    reader of the screens."""
     user = django_user_model.objects.create_user("engineer")
     OrgMembership.objects.create(user=user, org=downtown)
     return user
@@ -42,7 +44,7 @@ def member(django_user_model, downtown):
 
 @pytest.fixture
 def manhattan(downtown):
-    """Единственный БЦ с нутром — на нём и проверяется всё, что внутри здания."""
+    """The only BC with any innards — everything inside a building is checked on it."""
     return Space.objects.create(org=downtown, type="building", code="man", name="Manhattan")
 
 
@@ -64,7 +66,7 @@ def make_floor(db):
 
 @pytest.fixture
 def make_space(db):
-    """Помещение под другим пространством. Тип задаётся: контур несёт не только `room`."""
+    """A space under another space. The type is given: a contour carries more than `room`."""
 
     def _make_space(parent, code, name, type="room"):
         return Space.objects.create(
@@ -81,7 +83,7 @@ def make_space(db):
 
 @pytest.fixture
 def first_floor(manhattan, make_floor, make_space):
-    """Первый этаж Manhattan с вложенностью: «каб101» стоит под «каб101вход»."""
+    """Manhattan's first floor with nesting: «каб101» sits under «каб101вход»."""
     floor = make_floor(manhattan, 1)
     entrance = make_space(floor, "man-f1-a", "каб101вход")
     make_space(entrance, "man-f1-a1", "каб101")

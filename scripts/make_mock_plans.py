@@ -1,19 +1,21 @@
-"""Мок-планы этажей Manhattan: SVG с `id`, равными `Space.code`, и таблица контуров.
+"""Mock plans of Manhattan's floors: SVGs whose `id`s equal `Space.code`, plus a table of
+contours.
 
-Настоящих чертежей у нас пока нет, а модель, разбор и отрисовка проверяются только
-на файле. Скрипт строит правдоподобный чертёж по тем же данным, что и база
-(`scripts/populate_data/space.csv`): коридор посередине, помещения двумя рядами по
-сторонам от него, ширина — по записанной площади. Кто рисуется, решает занимаемая
-площадь: уборная, которая лишь содержит свои кабины, контура не имеет, а
-объединяющий «каб101вход», у которого есть своя часть этажа, — имеет. Контуры не
-пересекаются: вложенные помещения делят место родителя, а не ложатся поверх него.
+We have no real drawings yet, while the model, the parse and the rendering can only be
+checked against a file. The script builds a plausible drawing from the same data as the
+database (`scripts/populate_data/space.csv`): a corridor down the middle, spaces in two
+rows on either side of it, widths taken from the recorded area. What gets drawn is decided
+by the floor area a space occupies: a lavatory, which merely contains its own cubicles, has
+no contour, whereas the grouping «каб101вход», which has a part of the floor of its own,
+does. The contours do not overlap: nested spaces share their parent's place rather than
+lying on top of it.
 
     uv run python manage.py runscript make_mock_plans
-    uv run python manage.py runscript make_mock_plans --script-args <каталог>
+    uv run python manage.py runscript make_mock_plans --script-args <directory>
 
-По умолчанию складывает `man-fN.svg` и `contours.csv` в `scripts/mock_plans/`. Базу
-скрипт не трогает: он читает те же посевные данные и пишет файлы, а планы заводятся
-из них в админке.
+By default it puts `man-fN.svg` and `contours.csv` into `scripts/mock_plans/`. The script
+does not touch the database: it reads the same seed data and writes files, and the plans
+are created from them in the admin.
 """
 
 import csv
@@ -24,20 +26,20 @@ from pathlib import Path
 SEED = Path(__file__).parent / "populate_data" / "space.csv"
 OUT = Path(__file__).parent / "mock_plans"
 
-#: Площадь помещения, которой в данных нет: чем-то делить место всё равно надо.
+#: A space's area when the data has none: the place has to be divided by something anyway.
 DEFAULT_AREA = 15.0
-#: Уборная только содержит свои кабины и своего места на этаже не занимает.
+#: A lavatory merely contains its own cubicles and occupies no place of its own on the floor.
 CONTAINERS = ("-rr-f", "-rr-m")
 
 MARGIN = 20
-#: Полоса под названием этажа: подпись стоит над чертежом, а не на наружной стене.
+#: The band under the floor's name: the caption stands above the drawing, not on the outer wall.
 HEADER = 34
 CORRIDOR = 60
 GAP = 6
 
 
 def load_floors():
-    """Этажи Manhattan и то, что под ними, — деревом, как в базе."""
+    """Manhattan's floors and what lies under them — as a tree, the way it is in the database."""
     rows = list(csv.DictReader(SEED.open(encoding="utf-8")))
     children = defaultdict(list)
     for row in rows:
@@ -53,21 +55,23 @@ def area_of(space):
 
 
 def weight_of(space):
-    """Место на чертеже — по корню из площади: иначе каморка в 2 м² выходит щелью.
+    """Place on the drawing goes by the square root of the area: otherwise a 2 m² cubbyhole
+    comes out as a slit.
 
-    Настоящий чертёж и не обязан быть в масштабе — плана с объявленным масштабом у
-    нас нет вовсе, — а вот прочитанным он быть обязан.
+    A real drawing is not obliged to be to scale — we have no plan with a declared scale at
+    all — but it is obliged to be legible.
     """
     return area_of(space) ** 0.5
 
 
 def is_drawn(space):
-    """Помещение занимает собственную часть этажа — значит, у него есть контур."""
+    """The space occupies a part of the floor of its own — so it has a contour."""
     return not space["code"].endswith(CONTAINERS)
 
 
 def unit_of(space, children):
-    """Помещение вместе с вложенными: они делят одно место на чертеже, не накладываясь."""
+    """A space together with those nested in it: they share one place on the drawing without
+    overlapping."""
     family = [space, *children[space["code"]]]
     return {
         "members": [child for child in family if is_drawn(child)],
@@ -80,15 +84,15 @@ def rect(x, y, width, height):
 
 
 def lay_out(floor, children, width, height):
-    """Коридор посередине, помещения двумя рядами: типовой офисный этаж."""
+    """A corridor down the middle, spaces in two rows: a typical office floor."""
     units = [unit_of(space, children) for space in children[floor["code"]]]
     corridor = next(
         (unit for unit in units if unit["members"] and _is_corridor(unit["members"][0])), None
     )
     rest = [unit for unit in units if unit is not corridor]
 
-    # Два ряда одной высоты и коридор между ними делят всё, что остаётся между
-    # заголовком и наружной стеной: иначе нижний ряд уезжает за стену.
+    # Two rows of the same height and the corridor between them share everything left
+    # between the heading and the outer wall: otherwise the bottom row runs past the wall.
     row_height = (height - MARGIN - HEADER - CORRIDOR - 2 * GAP) / 2
     band_y = HEADER + row_height + GAP
 
@@ -107,7 +111,7 @@ def _is_corridor(space):
 
 
 def _balance(units):
-    """Тяжёлые помещения раскладываются по рядам поочерёдно, чтобы ряды вышли соразмерными."""
+    """Heavy spaces are dealt out to the rows in turn, so that the rows come out comparable."""
     top, bottom = [], []
     for unit in sorted(units, key=lambda unit: -unit["weight"]):
         (top if sum(u["weight"] for u in top) <= sum(u["weight"] for u in bottom) else bottom).append(unit)
@@ -115,7 +119,7 @@ def _balance(units):
 
 
 def _row(units, x, y, width, height):
-    """Помещения ряда по горизонтали; вложенные делят место родителя стопкой."""
+    """The spaces of a row go horizontally; nested ones share the parent's place in a stack."""
     drawn = []
     total = sum(unit["weight"] for unit in units) or 1
     left = x
@@ -132,7 +136,8 @@ def _row(units, x, y, width, height):
 
 
 def render(floor, drawn, width, height):
-    """Чертёж: стены и подписи — обычные элементы, контуры — пути с `id` помещения."""
+    """The drawing: walls and captions are ordinary elements, contours are paths carrying a
+    space's `id`."""
     wall = rect(MARGIN / 2, MARGIN / 2, width - MARGIN, height - MARGIN)
     parts = [
         (
@@ -140,7 +145,8 @@ def render(floor, drawn, width, height):
             f' width="{width}" height="{height}">'
         ),
         '<rect width="100%" height="100%" fill="#ffffff" />',
-        # Наружная стена и подпись — сам чертёж: `id` они не несут и контурами не станут.
+        # The outer wall and the caption are the drawing itself: they carry no `id` and will
+        # not become contours.
         f'<path d="{wall}" fill="none" stroke="#4b5563" stroke-width="6" />',
         (
             f'<text x="{MARGIN}" y="24" font-family="sans-serif" font-size="14" fill="#9ca3af">'
@@ -158,10 +164,11 @@ def render(floor, drawn, width, height):
 
 
 def _label(space, path_d):
-    """Название помещения посередине его контура — вдоль той стороны, вдоль которой влезет.
+    """The space's name in the middle of its contour — along whichever side it fits.
 
-    В узкое помещение подпись ставится боком, а в то, где она не помещается и боком,
-    не ставится вовсе: вылезшая за стену подпись читается как чужая.
+    In a narrow space the caption is set sideways, and in one where it does not fit even
+    sideways it is not set at all: a caption sticking out past a wall reads as belonging to
+    someone else.
     """
     x, y, right, bottom = _corners(path_d)
     name = _escape(space["name"])
@@ -187,7 +194,8 @@ def _escape(text):
 
 
 def run(*args):
-    """Точка входа `runscript`, как у соседних скриптов; каталог — первым аргументом."""
+    """The `runscript` entry point, as in the neighbouring scripts; the directory comes as
+    the first argument."""
     out = Path(args[0]) if args else OUT
     out.mkdir(parents=True, exist_ok=True)
     table = []
@@ -227,6 +235,6 @@ def _all_under(floor, children):
 
 
 if __name__ == "__main__":
-    # Django скрипту не нужен — файлы строятся из посевного CSV, — поэтому он
-    # запускается и напрямую, без `runscript`.
+    # The script does not need Django — the files are built from the seed CSV — so it can
+    # also be run directly, without `runscript`.
     run(*sys.argv[1:])

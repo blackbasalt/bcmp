@@ -1,7 +1,7 @@
 {% comment %}
-  Панель ИИ-управляющего. Она лежит поверх экрана и по умолчанию закрыта: паспорт
-  сохраняет всю ширину, а вопрос не стоит читателю той страницы, которую он читает.
-  Открытие и закрытие — Alpine, отправка сообщения — HTMX; перезагрузки страницы нет.
+  The AI manager panel. It lies over the screen and is closed by default: the passport
+  keeps its full width, and a question does not cost the reader the page they are reading.
+  Opening and closing are Alpine, sending a message is HTMX; there is no page reload.
 {% endcomment %}
 <div x-data="{ open: false }" x-on:keydown.escape.window="open = false">
 
@@ -9,8 +9,8 @@
           x-on:click="open = true" aria-label="Открыть ИИ-управляющего">ИИ</button>
 
   {% comment %}
-    Подложка ловит щелчок мимо панели. `x-cloak` снимается только после старта
-    Alpine — иначе закрытая панель успевает мигнуть на медленной загрузке.
+    The backdrop catches a click outside the panel. `x-cloak` is removed only once Alpine
+    has started — otherwise the closed panel manages to blink on a slow load.
   {% endcomment %}
   <div x-show="open" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/30"
        x-on:click="open = false"></div>
@@ -27,8 +27,8 @@
     </div>
 
     {% comment %}
-      Сюда HTMX кладёт переписку целиком после каждой отправки — тем же шаблоном,
-      которым она печатается при загрузке экрана.
+      This is where HTMX puts the whole conversation after every send — through the same
+      template that prints it when the screen loads.
     {% endcomment %}
     <div id="assistant-conversation" class="flex-1 space-y-2 overflow-y-auto p-4"
          hx-on::after-swap="this.scrollTop = this.scrollHeight">
@@ -39,7 +39,7 @@
           hx-post="{% url 'assistant:message' %}"
           hx-target="#assistant-conversation"
           hx-swap="innerHTML"
-          {# Поле очищается только после удачной отправки: иначе неотправленный вопрос придётся набирать заново. #}
+          {# The field is cleared only after a successful send: otherwise an unsent question would have to be typed again. #}
           hx-on::after-request="if (event.detail.successful) this.reset()">
       {% csrf_token %}
       <input type="text" name="text" class="input input-bordered flex-1" required

@@ -1,13 +1,15 @@
 {% comment %}
-  Чем помещение выбирают — договор экрана в одном месте, а не четырьмя копиями в
-  трёх шаблонах. Подставляется атрибутами внутрь тега: узла дерева, контура на плане
-  и соседа по дереву в самой карточке. Экран этажа тем и держится, что выбор всюду
-  один и тот же — иначе щелчок по контуру и щелчок по узлу разошлись бы поведением.
+  What a space is selected by — the screen's contract in one place, not four copies across
+  three templates. It is substituted as attributes inside a tag: a tree node, a contour on
+  the plan, and a tree neighbour within the card itself. The floor screen holds together
+  precisely because the selection is the same everywhere — otherwise a click on a contour
+  and a click on a node would diverge in behaviour.
 
-  `data-select` — код помещения: по нему тесты находят, чем его выбирают.
-  `data-selected` — выбрано ли оно сейчас; по нему подсвечиваются и узел, и контур.
-  `hx-get` привозит карточку в правую панель, `selected` — переменная Alpine,
-  заведённая на экране этажа (`floor.html`): всё это работает только внутри неё.
+  `data-select` is the space's code: it is how the tests find what selects it.
+  `data-selected` says whether it is selected right now; both the node and the contour are
+  highlighted by it. `hx-get` brings the card into the right-hand panel, and `selected` is
+  an Alpine variable declared on the floor screen (`floor.html`): all of this works only
+  inside it.
 {% endcomment %}
 data-select="{{ space.code }}"
 :data-selected="selected === '{{ space.pk }}' ? 'yes' : 'no'"

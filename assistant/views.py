@@ -8,11 +8,12 @@ from .conversation import ask
 
 @require_POST
 def message(request):
-    """Отправка сообщения в панель ИИ-управляющего.
+    """Sending a message to the AI manager panel.
 
-    Обычное представление Django, а не эндпойнт DRF: что именно ИИ-управляющий будет
-    спрашивать у системы, ещё не известно, и API пришлось бы проектировать дважды.
-    Ответ — кусок разметки с перепиской, который HTMX подставляет на место прежней.
+    An ordinary Django view rather than a DRF endpoint: what exactly the AI manager will
+    ask of the system is not yet known, and the API would have to be designed twice. The
+    response is a chunk of markup with the conversation, which HTMX puts in place of the
+    previous one.
     """
     if not request.user.is_authenticated:
         return _sign_in_again(request)
@@ -22,14 +23,15 @@ def message(request):
 
 
 def _sign_in_again(request):
-    """Ответ на сообщение, отправленное без сессии.
+    """The reply to a message sent without a session.
 
-    `login_required` здесь не годится: HTMX идёт за 302 прозрачно и вклеил бы форму
-    входа внутрь панели вместо переписки. Поэтому ему отвечаем заголовком, по которому
-    он уводит на вход целой страницей; обычному POST-у остаётся привычный редирект.
+    `login_required` does not fit here: HTMX follows a 302 transparently and would paste
+    the sign-in form inside the panel instead of the conversation. So it is answered with
+    a header that sends it to sign-in as a whole page; an ordinary POST keeps the usual
+    redirect.
 
-    Возврата на этот адрес нет: он принимает только POST, и после входа сотрудник
-    попадает туда же, куда после обычного входа.
+    There is no return to this address: it accepts POST only, and after signing in the
+    employee lands where they land after an ordinary sign-in.
     """
     if request.headers.get("HX-Request"):
         response = HttpResponse(status=401)

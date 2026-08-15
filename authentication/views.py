@@ -27,9 +27,10 @@ class LoginView(View):
         user = authenticate(request, username=username, password=password)
 
         if not user and not context['has_error']:
-            # На попытке, исчерпавшей лимит, axes подменит весь ответ экраном
-            # блокировки. Сообщение осталось бы в сессии и всплыло бы поверх него
-            # лишней подсказкой — а то и на следующем экране, уже после разблокировки.
+            # On the attempt that exhausts the limit, axes replaces the whole response
+            # with the lock-out screen. The message would stay in the session and surface
+            # on top of it as a needless hint — or even on the next screen, after the
+            # lock-out has already been lifted.
             if not getattr(request, 'axes_locked_out', False):
                 messages.add_message(request, messages.ERROR, 'Неверный логин или пароль')
             context['has_error'] = True
@@ -41,7 +42,7 @@ class LoginView(View):
 
 
 class LogoutView(View):
-    """Выход только POST-ом: ссылку на /logout/ может открыть чужая страница."""
+    """Sign-out by POST only: a link to /logout/ can be opened by someone else's page."""
 
     def post(self, request):
         logout(request)

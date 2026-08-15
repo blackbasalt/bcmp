@@ -3,8 +3,9 @@
 {% block title %}Вход заблокирован — BCMP{% endblock %}
 
 {% block content %}
-  {# Экран вместо формы входа: подбор пароля исчерпал лимит попыток. Логин не
-     повторяется и не подтверждается — иначе блокировка сама скажет, что он есть. #}
+  {# A screen instead of the sign-in form: password guessing has exhausted the limit of
+     attempts. The login is neither echoed back nor confirmed — otherwise the lock-out
+     would itself say that such a login exists. #}
   <div class="card bg-base-100 shadow-sm">
     <div class="card-body">
       <h1 class="card-title">Слишком много попыток входа</h1>

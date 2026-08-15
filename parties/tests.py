@@ -9,7 +9,8 @@ pytestmark = pytest.mark.django_db
 
 
 def test_a_user_works_for_two_organisations_under_one_login(downtown, central):
-    """A сотрудник УК serving two clients holds both memberships, not two accounts."""
+    """An employee of the management company serving two clients holds both memberships,
+    not two accounts."""
     user = User.objects.create_user("engineer")
 
     OrgMembership.objects.create(user=user, org=downtown)
@@ -29,7 +30,7 @@ def test_the_same_access_cannot_be_granted_twice(downtown):
 
 
 def test_revoking_a_membership_leaves_the_organisation_and_the_user_in_place(downtown):
-    """Отзыв доступа — удаление членства, а не пользователя и не организации."""
+    """Revoking access is deleting the membership, not the user and not the organisation."""
     user = User.objects.create_user("engineer")
     OrgMembership.objects.create(user=user, org=downtown).delete()
 
@@ -39,7 +40,7 @@ def test_revoking_a_membership_leaves_the_organisation_and_the_user_in_place(dow
 
 
 def test_an_administrator_grants_and_revokes_access_from_django_admin(client, downtown):
-    """Онбординг сотрудника не требует разработчика."""
+    """Onboarding an employee does not require a developer."""
     client.force_login(User.objects.create_superuser("administrator"))
     user = User.objects.create_user("engineer")
 
@@ -61,7 +62,7 @@ def test_an_administrator_grants_and_revokes_access_from_django_admin(client, do
 
 
 def test_the_user_page_in_admin_carries_the_memberships_of_that_user(client):
-    """Доступы видны там же, где заводится пользователь."""
+    """Access is visible in the same place where the user is created."""
     client.force_login(User.objects.create_superuser("administrator"))
     user = User.objects.create_user("engineer")
 

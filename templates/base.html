@@ -1,8 +1,8 @@
 {% load static %}<!DOCTYPE html>
 {% comment %}
-  Скелет документа и ничего больше. Экран без оболочки — вход — наследуется отсюда
-  напрямую и получает содержимое по центру пустой страницы; экраны приложения
-  наследуются от `shell.html`, который добавляет меню и шапку.
+  The skeleton of the document and nothing more. A screen without the shell — the sign-in
+  one — inherits from here directly and gets its content in the centre of an empty page;
+  the application's screens inherit from `shell.html`, which adds the menu and the header.
 {% endcomment %}
 <html lang="ru" data-theme="bcmp">
 <head>
@@ -10,7 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}BCMP{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
-  {# Оба скрипта вендорные и лежат в static/ — их кладёт та же стадия сборки, что и CSS (ADR 0002). #}
+  {# Both scripts are vendored and live in static/ — they are put there by the same build stage as the CSS (ADR 0002). #}
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
   <script src="{% static 'js/alpine.min.js' %}" defer></script>
 </head>

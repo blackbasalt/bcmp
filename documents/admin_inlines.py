@@ -9,13 +9,13 @@ from .models import Document, DocumentLink
 
 
 class DocumentLinkFormSet(BaseModelFormSet):
-    """Формсет, привязанный к произвольному объекту без FK на него."""
+    """A formset bound to an arbitrary object without an FK to it."""
 
     entity_type = None
 
     def __init__(self, *args, instance=None, queryset=None, save_as_new=False, **kwargs):
-        # save_as_new админка передаёт всем инлайнам; для копии объекта связи
-        # создаются заново, поэтому достаточно сбросить id существующих форм
+        # the admin passes save_as_new to every inline; for a copy of an object the links
+        # are created afresh, so resetting the ids of the existing forms is enough
         self.save_as_new = save_as_new
         self.instance = instance
         qs = queryset if queryset is not None else DocumentLink.objects.all()
@@ -44,14 +44,14 @@ class DocumentLinkFormSet(BaseModelFormSet):
 
 
 class PolymorphicInlineChecks(InlineModelAdminChecks):
-    """Отключает admin.E202: FK на родителя тут нет и не будет."""
+    """Disables admin.E202: there is no FK to the parent here, and there will not be one."""
 
     def _check_relation(self, obj, parent_model):
         return []
 
 
 class DocumentLinkInline(admin.TabularInline):
-    """Инлайн «Документы» для любой сущности паспорта.
+    """The "Документы" inline for any passport entity.
 
         class SpaceDocumentsInline(DocumentLinkInline):
             entity_type = "space"
@@ -60,7 +60,7 @@ class DocumentLinkInline(admin.TabularInline):
         class SpaceAdmin(admin.ModelAdmin):
             inlines = [SpaceDocumentsInline]
 
-    Требует search_fields в DocumentAdmin — иначе autocomplete не заработает.
+    Requires search_fields on DocumentAdmin — otherwise autocomplete will not work.
     """
 
     model = DocumentLink
@@ -72,7 +72,7 @@ class DocumentLinkInline(admin.TabularInline):
     verbose_name = "документ"
     verbose_name_plural = "Документы"
 
-    #: код в DocumentLink.entity_type; по умолчанию — имя таблицы родителя
+    #: the code in DocumentLink.entity_type; defaults to the parent's table name
     entity_type = None
 
     def get_entity_type(self, parent_model):
@@ -91,7 +91,7 @@ class DocumentLinkInline(admin.TabularInline):
             "min_num": self.get_min_num(request, obj),
             "max_num": self.get_max_num(request, obj),
             "can_delete": self.has_delete_permission(request, obj),
-            # без этого autocomplete_fields и виджеты админки не применяются
+            # without this, autocomplete_fields and the admin's widgets are not applied
             "formfield_callback": partial(self.formfield_for_dbfield, request=request),
             **kwargs,
         }
@@ -100,17 +100,17 @@ class DocumentLinkInline(admin.TabularInline):
         return formset
 
     def get_queryset(self, request):
-        # фильтрация по конкретному объекту делается в формсете,
-        # здесь достаточно отсечь чужие типы сущностей
+        # filtering by the specific object is done in the formset,
+        # here it is enough to cut off other entity types
         qs = super().get_queryset(request)
         return qs.filter(entity_type=self.get_entity_type(self.parent_model))
 
 
-# ── Со стороны документа: к чему он прикреплён ───────────────────────────────────────
+# ── From the document's side: what it is attached to ────────────────────────────────
 
 class ReverseDocumentLinkInline(admin.TabularInline):
-    """Инлайн на странице документа: показывает привязки, добавлять ими неудобно —
-    entity_id пришлось бы вводить UUID руками. Поэтому только чтение."""
+    """An inline on the document page: it shows the links; adding through them is awkward —
+    entity_id would have to be typed in as a UUID by hand. Hence read-only."""
 
     model = DocumentLink
     fields = ("entity_type", "entity_id", "role")

@@ -1,10 +1,11 @@
 {% comment %}
-  Переписка целиком. Этот же кусок приходит в ответ на отправку сообщения, поэтому
-  разметка одна и та же и при первом показе страницы, и после ответа.
+  The whole conversation. This same chunk comes back in reply to a sent message, so the
+  markup is one and the same both on the page's first render and after an answer.
 {% endcomment %}
 {% comment %}
-  Классы выписаны целиком по обеим веткам: Tailwind ищет имена классов в тексте
-  шаблона, и собранного из тега класса в стилях не окажется.
+  The classes are written out in full along both branches: Tailwind looks for class names
+  in the text of the template, and a class assembled inside a tag would not end up in the
+  styles.
 {% endcomment %}
 {% for message in conversation %}
   {% if message.role == 'question' %}

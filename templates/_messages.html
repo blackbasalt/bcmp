@@ -1,13 +1,13 @@
 {% comment %}
-  Сообщения показываются одинаково на экране входа и внутри оболочки, поэтому
-  разметка одна и включается в оба места.
+  Messages are shown the same way on the sign-in screen and inside the shell, so the
+  markup is one and is included in both places.
 {% endcomment %}
 {% if messages %}
   <div class="mb-4 space-y-2">
     {% for message in messages %}
       {% comment %}
-        Класс выписан целиком: Tailwind ищет имена классов в тексте шаблона, и
-        собранного из тега класса в стилях не окажется.
+        The class is written out in full: Tailwind looks for class names in the text of
+        the template, and a class assembled inside a tag would not end up in the styles.
       {% endcomment %}
       <div class="alert {% if message.level_tag == 'error' %}alert-error{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'success' %}alert-success{% else %}alert-info{% endif %}">
         <span>{{ message }}</span>
