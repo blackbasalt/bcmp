@@ -15,9 +15,15 @@ listed by name with a reason, because with a hundred files "all or nothing" mean
 re-uploading ninety-nine good ones because of one bad one. Only the submission limit is
 checked before anything at all is stored — an oversized batch is split by whoever sends
 it, not applied by halves.
+
+A converted folder arrives whole: the близнецы come in the same submission as the документы
+they were made from and are matched to them by file name (ADR 0012). The alternative is a
+second pass over the same pile of hundreds of files, which is why the slot exists now
+rather than later.
 """
 
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -26,10 +32,12 @@ from django.db import transaction
 from building_passport.models import Space
 from parties.models import Org
 
+from .batch_twins import sort_out
 from .models import Document, DocumentLink
+from .twin_attach import attach_twin
 from .uploaded_files import (
-    ACCEPTED_IN_A_DIALOG,
     ACCEPTED_NAMES,
+    BATCH_IN_A_DIALOG,
     BATCH_LIMIT,
     FILE_LIMIT,
     MEGABYTE,
@@ -37,6 +45,7 @@ from .uploaded_files import (
     digest_of,
     head_of,
     refusal_for,
+    stem_of,
     title_from,
 )
 
@@ -64,11 +73,16 @@ class BatchReport:
     """
 
     stored: list = field(default_factory=list)
+    #: The близнецы attached by this batch. Counted apart from the files, because they are
+    #: not on the shelf: they are what makes the документы already on it readable, and «12
+    #: файлов» would say nothing about whether the близнецы landed with them.
+    twins: list = field(default_factory=list)
     #: The files whose content is already on the shelf, each with the document it is stored
     #: as. Not a refusal — a message: overlapping folders are the norm in an archive
     #: transfer, and the sender's next action is to look at that document, not to resend.
     already_stored: list = field(default_factory=list)
-    #: The files that were not taken, each with the reason.
+    #: The files that were not taken, each with the reason. Близнецы among them: one that
+    #: found no документ of its own is reported by name and stored nowhere.
     refused: list = field(default_factory=list)
 
 
@@ -124,9 +138,11 @@ class DocumentBatchForm(forms.Form):
         # refusal a rejected file gets must not be three different accounts of one rule.
         help_text=(
             f"{ACCEPTED_NAMES}, до {FILE_LIMIT // MEGABYTE} МБ каждый и до {BATCH_LIMIT} "
-            f"файлов за раз. Название документа берётся из имени файла."
+            f"файлов за раз. Название документа берётся из имени файла. Маркдаун-близнецы "
+            f"кладутся в ту же пачку: «akt-2024-03.md» приложится к «akt-2024-03.pdf», а "
+            f"картинки — к тому близнецу, который на них ссылается."
         ),
-        widget=MultipleFileInput(attrs={"accept": ACCEPTED_IN_A_DIALOG}),
+        widget=MultipleFileInput(attrs={"accept": BATCH_IN_A_DIALOG}),
     )
     # The list opens on nothing chosen. A вид filled in for the sender would be accepted
     # without a glance — and unlike a wrong date, a folder of «актов» filed as «проектная
@@ -189,17 +205,37 @@ class DocumentBatchForm(forms.Form):
         )
 
 
+class Landed(NamedTuple):
+    """What became of the документ a близнец of the same name is looking for.
+
+    Either the документ this batch stored, or the reason there is none to attach to — and
+    the reason is kept rather than the mere absence, because «его документ не сохранён» and
+    «такого документа в пачке нет» send the sender to two different places.
+    """
+
+    document: Document | None
+    refusal: str | None
+
+
 def store_batch(files, submission):
     """Store the files of one submission, one at a time, and report on each of them.
 
     One at a time and not in one transaction: the point of the batch is that a bad file
     among a hundred good ones costs the sender that one file and not the afternoon.
+
+    The документы go first and the близнецы after them, because a близнец is attached to a
+    документ: until the folder has been stored there is nothing to attach it to, and which
+    of the файлы actually landed is not known in advance.
     """
     report = BatchReport()
-    for uploaded in files:
+    documents, batched = sort_out(files)
+    landed = {}
+    for uploaded in documents:
+        stem = stem_of(uploaded.name)
         refusal = refusal_for(uploaded.name, uploaded.size, head_of(uploaded))
         if refusal is not None:
             report.refused.append((uploaded.name, refusal))
+            _note_landing(landed, stem, Landed(None, f"документ «{stem}» в пачке не сохранён"))
             continue
         digest = digest_of(uploaded)
         # The shelf a duplicate is looked for on is the one the file would land on: the
@@ -208,9 +244,70 @@ def store_batch(files, submission):
         already = Document.objects.filter(org=submission.org, file_hash=digest).first()
         if already is not None:
             report.already_stored.append((uploaded.name, already))
+            _note_landing(
+                landed,
+                stem,
+                # A duplicate stores nothing, so this batch has no документ to attach to.
+                # The one already on the shelf may well have a близнец of its own, and
+                # replacing it silently in the middle of a batch of two hundred is a
+                # replacement nobody asked for: it is done on that документ's own page,
+                # where the screen says which близнец is being superseded.
+                Landed(
+                    None,
+                    f"документ «{already.title}» уже был загружен раньше — близнеца "
+                    f"прикладывают на его странице",
+                ),
+            )
             continue
-        report.stored.append(_store(uploaded, submission, digest))
+        document = _store(uploaded, submission, digest)
+        report.stored.append(document)
+        _note_landing(landed, stem, Landed(document, None))
+    for twin in batched:
+        refusal = _cannot_attach(twin, landed)
+        if refusal is not None:
+            # A близнец that found no документ of its own is reported in the same list as a
+            # refused file and for the same reason: the person who uploaded two hundred
+            # files needs to know exactly what did not land.
+            report.refused.append((twin.name, refusal))
+            continue
+        report.twins.append(
+            attach_twin(landed[twin.stem].document, twin.uploaded, twin.text, twin.pictures)
+        )
     return report
+
+
+def _note_landing(landed, stem, entry):
+    """Remember what became of a file under its name — the name a близнец will look for.
+
+    One name in a batch names one документ. Where it names two, it names neither: a близнец
+    would otherwise land on whichever of them happened to be stored second. The same rule
+    as for the картинки of a близнец, which is why it is stated in words there too.
+    """
+    landed[stem] = (
+        entry
+        if stem not in landed
+        else Landed(None, f"в пачке несколько документов с именем «{stem}»")
+    )
+
+
+def _cannot_attach(twin, landed):
+    """Why this близнец is not attached to anything — or `None` if it is.
+
+    Its own reasons come first: a близнец that cannot be attached at all is not attached to
+    a документ that happens to be missing either, and the sender is told the thing they can
+    act on.
+
+    Whatever the reason, the картинки that came with it are named in it: a картинка no
+    близнец refers to is stored as a документ in its own right, so a sender told only about
+    the markdown would look for the схемы on the shelf. They are not there — they are
+    halves of a близнец, and the близнец did not land (ADR 0012).
+    """
+    absent = Landed(None, f"в пачке нет документа с именем «{twin.stem}»")
+    refusal = twin.refusal or landed.get(twin.stem, absent).refusal
+    if refusal is None or not twin.pictures:
+        return refusal
+    names = ", ".join(name for name, _ in twin.pictures)
+    return f"{refusal}. Вместе с ним не сохранены картинки: {names}"
 
 
 def _store(uploaded, submission, digest):

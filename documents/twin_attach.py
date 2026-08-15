@@ -18,7 +18,6 @@ references are parsed to prevent.
 """
 
 import re
-from pathlib import PurePosixPath
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -34,6 +33,7 @@ from .uploaded_files import (
     MultipleFileInput,
     head_of,
     refusal_for,
+    stored_name,
     text_of,
     text_refusal_for,
 )
@@ -53,16 +53,6 @@ def images_referenced(markdown):
     return list(dict.fromkeys(reference[1] for reference in IMAGE_REFERENCE.finditer(markdown)))
 
 
-def stored_name(filename):
-    """The name a picture is kept and referred to under — the name, without a place in it.
-
-    A browser sends the name of the file and not the folder it lay in, and what is stored
-    is what the markdown will name: `p3-img1.png`. The folder is dropped rather than
-    trusted, because a name with a path inside it could never be written as a reference.
-    """
-    return PurePosixPath(filename).name
-
-
 def unresolved(markdown, names):
     """The references no attached picture answers — written the way the markdown wrote them.
 
@@ -80,6 +70,66 @@ def unresolved(markdown, names):
     """
     attached = set(names)
     return [reference for reference in images_referenced(markdown) if reference not in attached]
+
+
+def pictures_refusal(refused):
+    """Why a близнец is not attached, naming every картинка at fault.
+
+    One sentence and one place for it: a близнец arrives one at a time from the документ's
+    page and a hundred at a time in a batch, and both refuse it for the same reasons. Two
+    accounts of the sentence would sooner or later name two different sets of formats.
+
+    Every name, because a refusal without one does not say which of twenty схемы is not on
+    the list of what is accepted (ADR 0011).
+    """
+    return (
+        "; ".join(f"{name} — {refusal}" for name, refusal in refused)
+        + f". Картинками принимаются {IMAGE_NAMES}"
+    )
+
+
+def attach_twin(document, markdown, text, pictures):
+    """Put a близнец on a документ, discarding whatever stood in its place.
+
+    The one account of what attaching means, asked by both the form on the документ's page
+    and the batch that carries a converted folder in one go: whichever way a близнец
+    arrives, it arrives whole and it supersedes the previous one whole.
+
+    The previous one goes first and goes whole — rows and files — because there is at most
+    one близнец per документ and the replacement takes its place literally. Should the new
+    one then fail to be written, the документ is left without a близнец: it says so on its
+    own page, and it can be attached again. What must not happen is the other order, where
+    the store keeps pictures from a близнец nobody can reach any more.
+
+    The rows of the new one are written in one transaction, and the files it wrote are taken
+    back out by hand if that transaction does not hold. A transaction rolls back rows and
+    knows nothing about the store, so a failure on the third picture would otherwise leave
+    the first two lying there with no row pointing at them — the very orphan a близнец is a
+    row of its own for (ADR 0007).
+    """
+    superseded = document.attached_twin()
+    if superseded is not None:
+        superseded.discard()
+    written = []
+    try:
+        with transaction.atomic():
+            twin = DocumentTwin.objects.create(
+                document=document,
+                markdown=markdown,
+                unmatched_images=unresolved(text, [name for name, _ in pictures]),
+            )
+            written.append(twin.markdown)
+            for name, uploaded in pictures:
+                # The name is the contract the markdown refers to the picture by, and it is
+                # stored apart from the file: the file's own path is where Django put it,
+                # which is neither what the markdown says nor anything it could say.
+                image = TwinImage.objects.create(twin=twin, name=name, file=uploaded)
+                written.append(image.file)
+    except Exception:
+        for file in written:
+            file.delete(save=False)
+        raise
+    return twin
 
 
 class TwinPictures(forms.FileField):
@@ -105,11 +155,7 @@ class TwinPictures(forms.FileField):
             if (refusal := refusal_for(uploaded.name, uploaded.size, head_of(uploaded), IMAGES))
         ]
         if refused:
-            raise ValidationError(
-                "Близнец не приложен: "
-                + "; ".join(f"{name} — {refusal}" for name, refusal in refused)
-                + f". Картинками принимаются {IMAGE_NAMES}."
-            )
+            raise ValidationError(f"Близнец не приложен: {pictures_refusal(refused)}.")
         self._check_names(files)
         return files
 
@@ -174,42 +220,15 @@ class DocumentTwinForm(forms.Form):
         return uploaded
 
     def save(self):
-        """Store the близнец, discarding whatever stood in its place.
+        """Store the близнец — by the one account of what attaching means.
 
-        The previous one goes first and goes whole — rows and files — because there is at
-        most one близнец per документ and the replacement takes its place literally. Should
-        the new one then fail to be written, the документ is left without a близнец: it says
-        so on its own page, and it can be attached again. What must not happen is the other
-        order, where the store keeps pictures from a близнец nobody can reach any more.
-
-        The rows of the new one are written in one transaction, and the files it wrote are
-        taken back out by hand if that transaction does not hold. A transaction rolls back
-        rows and knows nothing about the store, so a failure on the third picture would
-        otherwise leave the first two lying there with no row pointing at them — the very
-        orphan a близнец is a row of its own for (ADR 0007).
+        The pictures are handed over already named: the name is what the markdown refers to
+        them by, and this form is where a browser's file name becomes that name.
         """
-        superseded = self.document.attached_twin()
-        if superseded is not None:
-            superseded.discard()
         images = self.cleaned_data.get("images") or []
-        names = [stored_name(uploaded.name) for uploaded in images]
-        written = []
-        try:
-            with transaction.atomic():
-                twin = DocumentTwin.objects.create(
-                    document=self.document,
-                    markdown=self.cleaned_data["markdown"],
-                    unmatched_images=unresolved(self.text, names),
-                )
-                written.append(twin.markdown)
-                for uploaded, name in zip(images, names, strict=True):
-                    # The name is the contract the markdown refers to the picture by, and it
-                    # is stored apart from the file: the file's own path is where Django put
-                    # it, which is neither what the markdown says nor anything it could say.
-                    image = TwinImage.objects.create(twin=twin, name=name, file=uploaded)
-                    written.append(image.file)
-        except Exception:
-            for file in written:
-                file.delete(save=False)
-            raise
-        return twin
+        return attach_twin(
+            self.document,
+            self.cleaned_data["markdown"],
+            self.text,
+            [(stored_name(uploaded.name), uploaded) for uploaded in images],
+        )

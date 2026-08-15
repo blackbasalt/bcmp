@@ -20,7 +20,7 @@ merely "too big" learns nothing about how to split the batch.
 """
 
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
 from django import forms
@@ -83,10 +83,19 @@ ACCEPTED_IN_A_DIALOG = in_a_dialog(ACCEPTED)
 IMAGE_NAMES = named(IMAGES)
 IMAGES_IN_A_DIALOG = in_a_dialog(IMAGES)
 
-#: What a markdown file is offered as in a dialog. It has no signature to be recognised by
-#: — text does not begin with anything in particular — so the dialog is the only place its
-#: extension is spoken of at all; what is asked of the file itself is that it decodes.
-MARKDOWN_IN_A_DIALOG = ".md,.markdown,text/markdown"
+#: What a близнец is called in a folder. Its extension is not a second opinion about its
+#: content but the only opinion there is: text begins with nothing in particular, so a
+#: markdown among a batch of scans is known by its name alone — and what is then asked of
+#: the file itself is that it decodes.
+MARKDOWN_SUFFIXES = (".md", ".markdown")
+
+#: What a markdown file is offered as in a dialog.
+MARKDOWN_IN_A_DIALOG = ",".join([*MARKDOWN_SUFFIXES, "text/markdown"])
+
+#: What the batch dialog opens on: документы and близнецы together. A converted folder holds
+#: both, it is chosen in one go, and a dialog that hid the markdowns would make that
+#: impossible — the same rule stated once for the field, the hint and the refusal.
+BATCH_IN_A_DIALOG = f"{ACCEPTED_IN_A_DIALOG},{MARKDOWN_IN_A_DIALOG}"
 
 #: How a близнец is served back. Stated here rather than at the view, beside the rule that
 #: accepted it: the type a file goes out as and the reading that let it in are one decision.
@@ -218,6 +227,36 @@ def _wrong_format(name, accepted):
     return f"формат не распознан — принимаются только {names}"
 
 
+def stored_name(filename):
+    """The name a file is kept and referred to under — the name, without a place in it.
+
+    A browser sends the name of the file and not the folder it lay in, and what is stored is
+    what a близнец's markdown will name: `p3-img1.png`. The folder is dropped rather than
+    trusted, because a name with a path inside it could never be written as a reference.
+    """
+    return PurePosixPath(filename).name
+
+
+def stem_of(filename):
+    """The name without its extension — what a документ and its близнец have in common.
+
+    `akt-2024-03.pdf` and `akt-2024-03.md` are one paper in two forms, and the extension is
+    the only thing that differs: it says what the file is, and the stem says which документ
+    it is about. The same reading as `title_from`, which names the документ by it.
+    """
+    return PurePosixPath(stored_name(filename)).stem
+
+
+def is_markdown(filename):
+    """Whether this file of a batch is a близнец rather than a документ.
+
+    Asked of the name because there is nothing else to ask: text has no signature, and the
+    alternative — decoding every file of a two-hundred-file batch to see whether it happens
+    to be UTF-8 — would take a scan whose bytes decode by chance for a близнец.
+    """
+    return PurePosixPath(filename).suffix.lower() in MARKDOWN_SUFFIXES
+
+
 def title_from(name):
     """The title of a document from the name of its file: hundreds are not typed by hand.
 
@@ -226,8 +265,7 @@ def title_from(name):
     where a title should be. A name that is nothing but an extension keeps it — a document
     with an empty title is not found by anything at all.
     """
-    stem = Path(name).stem
-    return stem.strip() or name
+    return stem_of(name).strip() or name
 
 
 def digest_of(file):

@@ -34,6 +34,11 @@
       <legend class="fieldset-legend">{{ upload.files.label }}</legend>
       {% comment %}
         A whole folder is chosen in one go: hundreds of scans are not uploaded one by one.
+        A converted folder holds the маркдаун-близнецы and their картинки beside the
+        документы, and they are chosen with them — everything is matched up by file name
+        (ADR 0012), so a dialog that hid the markdowns would force a second pass over the
+        same pile.
+
         What the dialog opens on and what the hint below says both come from the place that
         decides which files are accepted — three accounts of one rule would drift apart, and
         the one that drifted would be the one shown to the person choosing the files.

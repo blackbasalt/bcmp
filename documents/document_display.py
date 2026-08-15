@@ -69,7 +69,11 @@ def batch_report(report):
     the upload is the confirmation, but a folder of hundreds arrives on it looking much the
     same as before, and «загружено 96» is the only place the ninety-six are counted.
     """
-    said = [(_level_of(report), files_stored(len(report.stored)))]
+    said = [(_level_of(report), _counts_of(report))]
+    if incomplete := _incomplete(report.twins):
+        said.append(
+            (messages.WARNING, _listed("Не разрешились ссылки на картинки", incomplete))
+        )
     if report.already_stored:
         said.append((messages.INFO, _listed("Уже загружены", _as_stored(report.already_stored))))
     if report.refused:
@@ -90,6 +94,19 @@ def _level_of(report):
     return messages.WARNING if report.refused else messages.INFO
 
 
+def _counts_of(report):
+    """What a batch put where: the files on the shelf, and the близнецы on those files.
+
+    Two counts and not one, because they answer two questions — «прошла ли папка» and «стали
+    ли документы читаемыми». The близнецы are named only when there were any: most batches
+    are scans and nothing else, and «приложено 0 близнецов» over every one of them is noise
+    on the screen.
+    """
+    if not report.twins:
+        return files_stored(len(report.stored))
+    return f"{files_stored(len(report.stored))} {twins_attached(len(report.twins))}"
+
+
 def files_stored(count):
     """How many files a batch stored — as a phrase agreeing with the number."""
     if count == 0:
@@ -97,6 +114,13 @@ def files_stored(count):
     files = agreeing_with(count, "файл", "файла", "файлов")
     loaded = "Загружен" if files == "файл" else "Загружено"
     return f"{loaded} {count}{NBSP}{files}."
+
+
+def twins_attached(count):
+    """How many близнецы a batch attached — as a phrase agreeing with the number."""
+    twins = agreeing_with(count, "близнец", "близнеца", "близнецов")
+    attached = "Приложен" if twins == "близнец" else "Приложено"
+    return f"{attached} {count}{NBSP}{twins}."
 
 
 #: The word for a picture in each of its three forms — a picture is counted in more than one
@@ -131,6 +155,21 @@ def twin_removed():
     a близнец is a row of its own.
     """
     return "Близнец снят. Документ и его оригинал остались на месте."
+
+
+def _incomplete(twins):
+    """The близнецы of a batch whose references found no картинка, named by their документ.
+
+    The same finding a близнец attached one at a time reports, said once for the whole
+    batch: after two hundred files nobody opens two hundred pages, and a finding nothing
+    reports is a finding nobody sees. Named by the документ and not by the file, because the
+    page to go and look at is the документ's.
+    """
+    return [
+        (twin.document.title, ", ".join(twin.unmatched_images))
+        for twin in twins
+        if twin.unmatched_images
+    ]
 
 
 def _as_stored(already_stored):
