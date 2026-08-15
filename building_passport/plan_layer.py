@@ -1,19 +1,19 @@
-"""Слой: правило, по которому окрашиваются контуры поэтажного плана.
+"""A layer: the rule by which the contours of a floor plan are coloured.
 
-Слой даёт каждому контуру три вещи разом — цвет заливки, запись в легенде и строку
-подсказки, — и считается он на сервере. Иначе правило разъезжается: браузер знал бы,
-каким цветом красить, а легенда рядом с планом объясняла бы цвета по своему списку,
-и разойтись им ничто бы не мешало.
+A layer gives every contour three things at once — a fill colour, a legend entry and a
+tooltip line — and it is computed on the server. Otherwise the rule drifts apart: the
+browser would know which colour to paint with, while the legend next to the plan would
+explain the colours from a list of its own, and nothing would stop the two diverging.
 
-Здесь заведён один слой — тип помещения. Долги арендаторов, сроки договоров и
-неисправности инженерных систем приходят позже новыми слоями на тот же план, а не
-новыми экранами: экран рисует то, что слой ему дал (`Painting`), и о самом правиле
-не знает. План показывает один слой за раз.
+One layer is defined here — the type of the space. Tenant arrears, lease terms and
+faults in the engineering systems arrive later as new layers on the same plan, not as
+new screens: the screen draws what the layer handed it (`Painting`) and knows nothing
+about the rule itself. A plan shows one layer at a time.
 
-Цвет называется переменной, а не значением: палитра проекта лежит одним списком в
-теме (`assets/css/app.css`), и слой выбирает из неё, а не заводит свои цвета рядом.
-Заливка при этом остаётся полупрозрачной — за ней чертёж, который должен читаться
-сквозь окраску.
+A colour is named as a variable, not as a value: the project's palette lives as a
+single list in the theme (`assets/css/app.css`), and the layer picks from it instead of
+defining colours of its own alongside. The fill stays semi-transparent — behind it is
+the drawing, which must remain readable through the colouring.
 """
 
 from collections.abc import Iterable
@@ -28,14 +28,15 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Paint:
-    """Чем слой заливает контур: цвет, запись в легенде и строка подсказки.
+    """What the layer fills a contour with: a colour, a legend entry and a tooltip line.
 
-    Подпись в легенде и строка подсказки разные: легенда называет разом все
-    помещения одного цвета («Арендопригодные»), а подсказка — то одно, над которым
-    стоит указатель.
+    The legend caption and the tooltip line differ: the legend names all the spaces of
+    one colour at once ("Арендопригодные"), while the tooltip names the single one the
+    pointer is over.
     """
 
-    #: Договор экрана: этим ключом помечены и контур на плане, и запись легенды.
+    #: The screen's contract: this key marks both the contour on the plan and the
+    #: legend entry.
     key: str
     label: str
     note: str
@@ -61,29 +62,29 @@ TECHNICAL = Paint(
     colour="var(--plan-technical)",
 )
 
-#: Что типом помещения не является: лестничные клетки, лифтовые шахты и проёмы
-#: второго света. Нарисовать их надо — иначе на чертеже остаются необъяснённые
-#: провалы, — а залить нечем: любой из трёх цветов назвал бы их тем, чем они не
-#: являются. Слой не даёт им ничего: ни заливки, ни записи в легенде, ни подсказки.
+#: What is not a type of space: stairwells, lift shafts and double-height voids. They
+#: have to be drawn — otherwise the drawing is left with unexplained gaps — but there
+#: is nothing to fill them with: any of the three colours would call them something
+#: they are not. The layer gives them nothing: no fill, no legend entry, no tooltip.
 OUTSIDE_THE_TYPES = frozenset({DictSpaceType.VOID, DictSpaceType.SHAFT, DictSpaceType.STAIRWELL})
 
 
 @dataclass(frozen=True)
 class PaintedContour:
-    """Контур, окрашенный слоем, — то, что рисуется поверх чертежа."""
+    """A contour coloured by the layer — what gets drawn on top of the drawing."""
 
     space: "Space"
     path_d: str
-    #: Чем залит; `None` — контур вне слоя, одна линия без заливки.
+    #: What it is filled with; `None` — a contour outside the layer, an outline with no fill.
     paint: Paint | None
 
 
 @dataclass(frozen=True)
 class Painting:
-    """Слой, наложенный на контуры плана: окрашенные контуры и легенда к ним.
+    """The layer applied to a plan's contours: the coloured contours and their legend.
 
-    Всё, что экрану нужно знать о слое. Следующий слой отдаст ту же запись, и
-    разметке для него ничего не потребуется.
+    Everything the screen needs to know about the layer. The next layer will hand back
+    the same record, and the markup will need nothing new for it.
     """
 
     title: str
@@ -92,26 +93,27 @@ class Painting:
 
 
 class SpaceTypeLayer:
-    """Слой «тип помещения»: помещение сдаётся, является общим или обслуживает здание.
+    """The "space type" layer: a space is leasable, common, or serves the building.
 
-    Единственный слой, который считается по данным, заведённым на всех помещениях, —
-    и с ним сотрудник УК судит о сдаваемой площади этажа, а инженер находит ИТП,
-    венткамеру и электрощитовую, не читая подписей.
+    The only layer computed from data recorded on every space — with it an employee of
+    the management company judges the leasable area of a floor, and an engineer finds
+    the heating substation, the air handling room and the switchboard room without
+    reading a single caption.
 
-    Тип помещения выводится из двух признаков, а не хранится третьим полем: техническое
-    помещение — это ровно то, которое не сдаётся и не является общим. Непроставленный
-    признак означает «нет»: «неизвестно» четвёртым цветом рассказывало бы о полноте
-    данных, а не о здании. Помещение, помеченное разом сдаваемым и общим, рисуется
-    сдаваемым: сданное арендатору общим не бывает.
+    The type of a space is derived from two flags rather than stored in a third field: a
+    technical space is exactly the one that is neither leasable nor common. An unset
+    flag means "no": an "unknown" as a fourth colour would talk about the completeness
+    of the data rather than about the building. A space marked both leasable and common
+    is drawn as leasable: what is let to a tenant is never common.
     """
 
     title = "Тип помещения"
-    #: Порядок легенды. Он же и есть порядок разновидностей — легенда не должна
-    #: переставляться от того, что на чертеже нарисовали первым.
+    #: The order of the legend. It is also the order of the kinds — the legend must not
+    #: be rearranged by whatever happened to be drawn first in the file.
     palette = (LEASABLE, COMMON, TECHNICAL)
 
     def paint_of(self, space: "Space") -> Paint | None:
-        """Чем залито помещение или `None`, если оно вне слоя."""
+        """What a space is filled with, or `None` if it falls outside the layer."""
         if space.type in OUTSIDE_THE_TYPES:
             return None
         if space.is_leasable:
@@ -121,10 +123,10 @@ class SpaceTypeLayer:
         return TECHNICAL
 
     def apply(self, contours: Iterable["Contour"]) -> Painting:
-        """Наложить слой на контуры плана.
+        """Apply the layer to the contours of a plan.
 
-        Легенда собирается из того, что на этом этаже действительно нарисовано:
-        запись о цвете, которого на чертеже нет, была бы подписью к пустому месту.
+        The legend is assembled from what is actually drawn on this floor: an entry for
+        a colour absent from the drawing would be a caption to an empty space.
         """
         painted = tuple(
             PaintedContour(

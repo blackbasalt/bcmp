@@ -31,26 +31,26 @@ site      → building, territory
 building  → wing, floor, roof, facade, shaft, stairwell
 wing      → floor, shaft, stairwell
 floor     → room, mezzanine, void, parking_spot
-room      → room            (санузел или серверная внутри офиса арендатора)
-roof      → room            (надстройки: венткамеры, машинные отделения)
+room      → room            (a toilet or a server room inside a tenant's office)
+roof      → room            (rooftop structures: air handling rooms, lift machine rooms)
 territory → room, parking_spot
 
-Для floor: типовой, технический, подземный, чердак, паркинг-уровень.
+For floor: typical, technical, underground, attic, parking level.
 
-Для shaft: лифтовая, вентиляционная, дымоудаления, кабельная, сантехническая (стояки), мусоропровод.
+For shaft: lift, ventilation, smoke extraction, cable, plumbing (risers), refuse chute.
 
-Для room — арендопригодные: офис, стрит-ритейл, общепит (кафе/фудкорт), банк, медицина, фитнес, шоурум, склад арендатора, коворкинг.
+For room — leasable: office, street retail, food service (café/food court), bank, medical, fitness, showroom, tenant storage, co-working.
 
-Для room — МОП: лобби/вестибюль, ресепшн, коридор, лифтовой холл, санузел, терраса/балкон, курительная, входная группа/тамбур.
+For room — common areas: lobby/entrance hall, reception, corridor, lift hall, toilet, terrace/balcony, smoking room, entrance group/vestibule.
 
-Для room — технические (самая длинная группа, и именно она кормит твой MEP-классификатор): ИТП, котельная, насосная, пожарная насосная, венткамера, электрощитовая/ГРЩ, трансформаторная (ТП/КТП), ДГУ, серверная, кроссовая/узел связи, водомерный узел, узел управления спринклерами, диспетчерская/пост охраны, мастерская, склад ЗИП (пригодится как локация остатков на этапе 2), КУИ (уборочный инвентарь), мусорокамера, бытовка персонала, архив, дебаркадер/зона разгрузки.
+For room — technical (the longest group, and the one that feeds the MEP classifier): individual heating substation (ИТП), boiler room, pump room, fire pump room, air handling room, switchboard room (ГРЩ), transformer substation (ТП/КТП), diesel generator (ДГУ), server room, telecom cross-connect room, water metering unit, sprinkler control unit, control room/security post, workshop, spare parts store (ЗИП — useful as a stock location in stage 2), cleaning equipment room (КУИ), refuse chamber, staff room, archive, loading dock.
 
-Для territory: открытая парковка, КПП, площадка ТБО, благоустройство/газоны.
+For territory: open parking, checkpoint, waste collection area, landscaping/lawns.
 """
 
 class SpaceQuerySet(models.QuerySet):
     def visible_to(self, user):
-        """Пространства, доступные пользователю, — единственное место фильтрации."""
+        """The spaces available to the user — the single place where filtering happens."""
         if not user.is_authenticated:
             return self.none()
         if user.is_superuser:
@@ -58,16 +58,16 @@ class SpaceQuerySet(models.QuerySet):
         return self.filter(org_id__in=user.memberships.values("org_id"))
 
     def administered_by(self, user):
-        """Пространства, которые пользователь вправе вести, — чокпоинт записи (ADR 0005).
+        """The spaces the user may maintain — the write checkpoint (ADR 0005).
 
-        Отдельный от `visible_to` вопрос: читать данные организации и заводить их —
-        разные права, и второе даётся флагом на членстве, а не глобальным `is_staff`.
-        Место при этом одно, как и у чтения: путь записи спрашивает его, а не
-        собирает фильтр сам.
+        A separate question from `visible_to`: reading an organisation's data and
+        creating it are different rights, and the second is granted by a flag on the
+        membership rather than by a global `is_staff`. There is still only one place,
+        as with reading: the write path asks it instead of assembling a filter itself.
 
-        Суперпользователь администрирует всё по той же причине, по которой всё
-        видит: он и так пишет через админку Django, и запрет здесь ничего бы не
-        закрыл, а только развёл два ответа на один вопрос.
+        A superuser administers everything for the same reason they see everything:
+        they already write through the Django admin, so a ban here would close nothing
+        and would only split one question into two answers.
         """
         if not user.is_authenticated:
             return self.none()
@@ -78,15 +78,15 @@ class SpaceQuerySet(models.QuerySet):
         )
 
     def buildings_visible_to(self, user):
-        """Доступные пользователю бизнес-центры: БЦ — это пространство типа building."""
+        """The business centres available to the user: a BC is a space of type building."""
         return self.visible_to(user).filter(type=DictSpaceType.BUILDING)
 
     def floors_of(self, building):
-        """Этажи здания снизу вверх — и раздел «Этажи» карточки, и переключатель.
+        """The floors of a building bottom to top — the card's "Этажи" section and the switcher.
 
-        Фильтрацию по организации не делает: её делает `visible_to`, через который
-        этот метод и вызывается, — иначе появилось бы второе место, где решается,
-        чьи данные показывать.
+        It does no filtering by organisation: that is done by `visible_to`, through
+        which this method is called — otherwise there would be a second place deciding
+        whose data to show.
         """
         return self.filter(type=DictSpaceType.FLOOR, building=building).order_by(
             "floor_number", "code"
@@ -121,10 +121,11 @@ class Space(CommonModel):
 
     @property
     def project(self):
-        """Проект над пространством — он показывается подписью, а не уровнем навигации.
+        """The project above a space — shown as a label rather than as a navigation level.
 
-        Выше БЦ ровно два уровня, площадка и проект, поэтому цепочка родителей
-        разматывается на два шага: заодно зациклённый `parent` не подвесит запрос.
+        There are exactly two levels above a BC, the site and the project, so the chain
+        of parents is unwound in two steps: that also keeps a looping `parent` from
+        hanging the request.
         """
         ancestor = self.parent
         for _ in range(2):
@@ -137,57 +138,59 @@ class Space(CommonModel):
 
 
 def plan_file_path(instance, filename):
-    """Чертежи лежат по этажам: в каталоге видно, к чему относится файл."""
+    """Drawings are stored by floor: the directory shows what a file belongs to."""
     return f"floor_plans/{instance.floor_id}/{filename}"
 
 
 class FloorPlanQuerySet(models.QuerySet):
     def visible_to(self, user):
-        """План виден там же, где виден его этаж, — чокпоинт остаётся один (ADR 0001).
+        """A plan is visible wherever its floor is — the checkpoint stays single (ADR 0001).
 
-        Своей фильтрации по организации здесь нет намеренно: у плана нет `org`, и
-        второе место, решающее чьи данные показывать, — это способ их однажды разойтись.
+        There is deliberately no filtering by organisation of its own here: a plan has
+        no `org`, and a second place deciding whose data to show is a way for the two
+        to drift apart one day.
         """
         return self.filter(floor__in=Space.objects.visible_to(user))
 
     def overlapping(self, begin, end):
-        """Планы, чьи периоды задевают отрезок от `begin` до `end` включительно.
+        """Plans whose periods touch the range from `begin` to `end` inclusive.
 
-        Оба конца входят в период, поэтому план, начинающийся в день закрытия
-        отрезка, с ним пересекается. Открытый конец — что у плана, что у отрезка —
-        означает «по сей день» и не кончается никогда, так что любое начало после
-        такого плана в него попадает.
+        Both ends belong to the period, so a plan starting on the day the range closes
+        overlaps it. An open end — of the plan or of the range — means "to this day"
+        and never finishes, so any start after such a plan falls inside it.
 
-        Одна форма запроса на два вопроса: какой план действует в этот день — это
-        пересечение с отрезком из одного дня, а непересечение периодов — то же
-        самое на отрезке нового плана.
+        One query shape for two questions: which plan is in force on a given day is an
+        overlap with a range of one day, and non-overlapping periods are the same thing
+        over the range of the new plan.
         """
         began_by_the_end = Q() if end is None else Q(valid_from__lte=end)
         not_ended_before_the_begin = Q(valid_to__isnull=True) | Q(valid_to__gte=begin)
         return self.filter(began_by_the_end).filter(not_ended_before_the_begin)
 
     def in_force_on(self, day):
-        """Планы, действующие в этот день: период начался и ещё не закончился.
+        """Plans in force on this day: the period has begun and has not ended yet.
 
-        Периоды планов одного этажа не пересекаются, поэтому у этажа таких планов
-        не больше одного.
+        The periods of one floor's plans do not overlap, so a floor has at most one
+        such plan.
 
-        Не «самый поздний по дате начала»: план будущей перепланировки уже заведён,
-        а этаж сегодня выглядит ещё не так, и работы планируют по сегодняшнему.
+        Not "the latest by start date": the plan of a future rebuild is already on
+        record while the floor still looks different today, and work is planned against
+        today's one.
         """
         return self.overlapping(day, day)
 
 
 class FloorPlan(CommonModel):
-    """Поэтажный план: чертёж этажа и система координат, в которой лежат контуры.
+    """A floor plan: the drawing of a floor and the coordinate system its contours live in.
 
-    Не документ: документ удостоверяет и несёт номер, дату и выдавшую сторону, а план
-    показывает — и является системой координат для помещений. И не поле помещения:
-    план принадлежит этажу и относится к периоду, после перепланировки прежний
-    сохраняется (ADR 0003).
+    Not a document: a document certifies and carries a number, a date and an issuing
+    party, whereas a plan shows — and is the coordinate system for the spaces. Nor is
+    it a field of a space: a plan belongs to a floor and relates to a period, and after
+    a rebuild the previous one is kept (ADR 0003).
 
-    Файл лежит в защищённом каталоге и раздаётся представлением через тот же чокпоинт,
-    что и всё остальное: `MEDIA_URL` не задан, так что прямую ссылку на него не собрать.
+    The file sits in a protected directory and is served by a view through the same
+    checkpoint as everything else: `MEDIA_URL` is not set, so no direct link to it can
+    be assembled.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -195,12 +198,13 @@ class FloorPlan(CommonModel):
         Space, on_delete=models.CASCADE, related_name="floor_plans", verbose_name="этаж"
     )
     file = models.FileField(upload_to=plan_file_path, verbose_name="файл SVG")
-    #: `viewBox` чертежа: с ним же рисуются контуры поверх, иначе они с ним разъедутся.
+    #: The `viewBox` of the drawing: the contours on top are drawn with it too,
+    #: otherwise they drift away from it.
     view_box = models.CharField(max_length=128, editable=False, verbose_name="viewBox")
-    #: `id` путей чертежа, которым не нашлось помещения этажа. Замечаются они при
-    #: разборе, а показываются на экране этажа — между этими моментами их надо где-то
-    #: держать, и держит их сам план: разобран чертёж один раз (ADR 0003), и заново
-    #: по сегодняшнему дереву помещений он не сводится.
+    #: The `id`s of paths in the drawing that found no space on the floor. They are
+    #: noticed while parsing but shown on the floor screen — between those two moments
+    #: they have to be kept somewhere, and the plan keeps them itself: the drawing is
+    #: parsed once (ADR 0003) and is never re-matched against today's tree of spaces.
     unmatched_ids = models.JSONField(
         default=list, editable=False, verbose_name="непривязанные пути"
     )
@@ -219,12 +223,12 @@ class FloorPlan(CommonModel):
 
     @property
     def aspect_ratio(self):
-        """Соотношение сторон `viewBox` для CSS: чертёж и контуры держат одну рамку."""
+        """The `viewBox` aspect ratio for CSS: the drawing and the contours keep one frame."""
         _, _, width, height = self.view_box.split()
         return f"{width} / {height}"
 
     def clean(self):
-        """Причина отказа называется на форме, а не падает пятисоткой при сохранении."""
+        """The reason for a rejection is named on the form, not thrown as a 500 on save."""
         super().clean()
         if self.floor_id is not None and self.floor.type != DictSpaceType.FLOOR:
             raise ValidationError({"floor": "План принадлежит этажу, а не помещению в нём."})
@@ -237,13 +241,13 @@ class FloorPlan(CommonModel):
             raise ValidationError({"file": str(error)}) from error
 
     def save(self, *args, **kwargs):
-        """План и его контуры появляются одной операцией: порознь они не появляются.
+        """A plan and its contours appear in one operation: separately they do not appear at all.
 
-        Разбор идёт до записи: непрочитанный файл не оставляет за собой ни строки в
-        базе, ни файла в хранилище. Повторное сохранение контуры не пересобирает —
-        чертёж разобран один раз и остаётся с теми помещениями, с которыми был
-        нарисован (ADR 0003), поэтому правка периода не переносит план на сегодняшнее
-        дерево помещений. Новая планировка — это новый план, а не новый файл у старого.
+        Parsing happens before writing: an unreadable file leaves behind neither a row
+        in the database nor a file in storage. Saving again does not rebuild the
+        contours — the drawing is parsed once and stays with the spaces it was drawn
+        with (ADR 0003), so editing the period does not move the plan onto today's tree
+        of spaces. A new layout is a new plan, not a new file on the old one.
         """
         self._validate_period()
         if not self._state.adding:
@@ -257,16 +261,17 @@ class FloorPlan(CommonModel):
             Contour.objects.bulk_create(contours)
 
     def _validate_period(self):
-        """Период должен быть периодом и не должен задевать соседний период этажа.
+        """A period must be a period and must not touch a neighbouring period of the floor.
 
-        Правило стоит на самом плане, а не на форме: админка, будущая форма загрузки
-        и код пишут одним и тем же путём и получают один и тот же отказ. Иначе
-        «действующий план» перестал бы быть определённым — сегодняшних планов
-        оказалось бы два, и какой из них показывать, решал бы порядок сортировки.
+        The rule stands on the plan itself rather than on a form: the admin, the future
+        upload form and code all write through the same path and get the same
+        rejection. Otherwise "the plan in force" would stop being definite — there
+        would be two plans for today, and which of them to show would be decided by the
+        sort order.
 
-        Прежний план при этом не закрывается сам: назначить перепланировку днём
-        загрузки — выдумать факт, тот же по природе, что и `year_built = 1900`,
-        от которого этап 1 уходил. Дату называет загружающий, а система отказывает.
+        The previous plan is not closed by itself either: dating a rebuild by the day of
+        the upload invents a fact, the same in nature as the `year_built = 1900` stage 1
+        was moving away from. The date is named by the uploader, and the system rejects.
         """
         if self.valid_from is None or self.floor_id is None:
             return
@@ -282,10 +287,10 @@ class FloorPlan(CommonModel):
             )
 
     def _conflicting_plans(self):
-        """Планы того же этажа, чьи периоды задевают этот, — их не должно быть ни одного.
+        """Plans of the same floor whose periods touch this one — there must be none.
 
-        Смежный план конфликтом не считается: пересекается тот, что начинается в день
-        закрытия предыдущего, а не на следующий день после него.
+        An adjacent plan is not a conflict: the one that overlaps starts on the day the
+        previous one closes, not on the day after it.
         """
         return (
             FloorPlan.objects.filter(floor_id=self.floor_id)
@@ -294,10 +299,11 @@ class FloorPlan(CommonModel):
         )
 
     def _read_contours(self):
-        """Разобранный чертёж и его контуры, уже сведённые с помещениями этажа.
+        """The parsed drawing and its contours, already matched with the spaces of the floor.
 
-        Само чтение отдаётся целиком: с плана остаётся не только геометрия, но и
-        пути, которым помещения не нашлось, — они и есть находка разбора.
+        The reading is handed back whole: what remains from the plan is not only the
+        geometry but also the paths that found no space — those are the finding of the
+        parse.
         """
         spaces = self._spaces_by_code()
         reading = read_plan(b"".join(self.file.chunks()), spaces.keys())
@@ -307,21 +313,22 @@ class FloorPlan(CommonModel):
         ]
 
     def _spaces_by_code(self):
-        """Помещения этажа по кодам — то, с чем сводятся пути чертежа.
+        """The spaces of the floor by code — what the paths of the drawing are matched against.
 
-        Нутро здания приезжает одним запросом и разбирается тем же спуском, что и
-        дерево на экране: план и дерево должны считать помещениями этажа одно и то же.
+        The interior of the building arrives in one query and is walked by the same
+        descent as the tree on the screen: the plan and the tree must count the same
+        thing as the spaces of a floor.
         """
         inside = Space.objects.filter(building_id=self.floor.building_id)
         return {space.code: space for space in spaces_under(self.floor, inside) if space.code}
 
 
 class Contour(CommonModel):
-    """Граница помещения на конкретном плане — пара «план + помещение» (ADR 0003).
+    """The boundary of a space on a particular plan — the pair "plan + space" (ADR 0003).
 
-    Путь лежит текстом, а не отдельным файлом: контур — это несколько сотен байт, и
-    файлами они стоили бы этажу 82 запроса, а совпадение их `viewBox` с планом ничем
-    бы не проверялось.
+    The path is stored as text rather than as a separate file: a contour is a few
+    hundred bytes, and as files they would cost a floor 82 requests, while nothing
+    would check that their `viewBox` matches the plan's.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -476,7 +483,7 @@ class SpaceArea(CommonModel):
 
 
 class SpaceCodeHistory(CommonModel):
-    """Старые акты и планы должны продолжать находиться по прежнему коду."""
+    """Old certificates and plans must keep being found by the former code."""
 
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="code_history")
     code = models.CharField(max_length=64)
@@ -490,7 +497,7 @@ class SpaceCodeHistory(CommonModel):
 
 
 class SpaceLink(CommonModel):
-    """Шахта проходит через этаж, лестница соединяет уровни и т.п."""
+    """A shaft passes through a floor, a staircase connects levels, and so on."""
 
     pk = models.CompositePrimaryKey("space_id", "related_id", "relation_id")
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="links")

@@ -1,13 +1,14 @@
-"""Карточка помещения в правой панели экрана этажа — то, что видно по HTTP.
+"""The space card in the right-hand rail of the floor screen — what is visible over HTTP.
 
-Шов тот же, что у остальных экранов: граница HTTP. Панель приезжает своим адресом
-и читается как ответ — какие факты о помещении на ней, куда ведут связи вверх и вниз
-по дереву, что приходит на чужое помещение.
+The seam is the same as for the other screens: the HTTP boundary. The rail arrives at an
+address of its own and is read as a response — which facts about the space it carries,
+where the links up and down the tree lead, and what comes back for another client's
+space.
 
-Двусторонняя подсветка дерева и плана живёт на стороне браузера, и по HTTP её не
-наблюдать. Проверяется то, чем она кормится и что без неё бесполезно: у каждого узла
-дерева и у каждого контура есть адрес карточки, а помещение без контура помечено, —
-это договор экрана, а не оформление.
+The two-way highlighting of the tree and the plan lives on the browser side and cannot
+be observed over HTTP. What is checked is what feeds it and what is useless without it:
+every tree node and every contour has a card address, and a space with no contour is
+marked — that is the screen's contract, not its styling.
 """
 
 from decimal import Decimal
@@ -32,7 +33,7 @@ def open_card(client, space):
 
 @pytest.fixture
 def entrance(first_floor):
-    """«каб101вход» со всем, что показывает карточка: подтип и площадь."""
+    """"каб101вход" with everything the card shows: subtype and area."""
     space = Space.objects.get(code="man-f1-a")
     space.subtype = DictSpaceSubtype.objects.create(
         type="room", name="Офис", short_name="Офис"
@@ -49,22 +50,22 @@ def card(client, member, entrance):
     return page
 
 
-# Факты о помещении
+# Facts about the space
 
 
 def test_the_card_shows_what_bcmp_holds_about_the_space(card):
-    """Карточка отвечает на вопрос «что это за помещение», не открывая админку."""
-    assert "man-f1-a" in card  # код
-    assert "каб101вход" in card  # наименование
-    assert "Офис" in card  # подтип
-    assert "Помещение" in card  # тип помещения
-    assert "6,55\u00a0м²" in card  # площадь, неразрывными пробелами
+    """The card answers "what kind of space is this" without opening the admin."""
+    assert "man-f1-a" in card  # the code
+    assert "каб101вход" in card  # the name
+    assert "Офис" in card  # the subtype
+    assert "Помещение" in card  # the type of the space
+    assert "6,55\u00a0м²" in card  # the area, with non-breaking spaces
 
 
 def test_a_space_without_an_area_says_so_rather_than_leaving_a_blank(
     client, member, first_floor
 ):
-    """Пустое место читается как ноль, а прочерк — нет: та же запись, что и в паспорте."""
+    """Blank space reads as a zero and a dash does not: the same notation as in the passport."""
     client.force_login(member)
 
     _, page = open_card(client, Space.objects.get(code="man-f1-b"))
@@ -72,11 +73,11 @@ def test_a_space_without_an_area_says_so_rather_than_leaving_a_blank(
     assert "— нет данных" in page
 
 
-# Место в дереве
+# Its place in the tree
 
 
 def test_the_card_leads_to_the_space_this_one_is_part_of(client, member, first_floor):
-    """По иерархии ходят, не выходя с этажа: связь вверх переставляет ту же панель."""
+    """The hierarchy is walked without leaving the floor: the link up re-fills the rail."""
     client.force_login(member)
 
     _, page = open_card(client, Space.objects.get(code="man-f1-a1"))
@@ -86,20 +87,20 @@ def test_the_card_leads_to_the_space_this_one_is_part_of(client, member, first_f
 
 
 def test_the_card_leads_to_the_spaces_inside_this_one(client, member, first_floor):
-    """Связь вниз — тоже панель: спуск по дереву не уводит с плана."""
+    """The link downwards is the rail too: descending the tree does not lead away from the plan."""
     client.force_login(member)
 
     _, page = open_card(client, Space.objects.get(code="man-f1-a"))
 
-    # Сверяется адрес, а не название: «каб101» содержится в «каб101вход», и проверка
-    # по тексту прошла бы на заголовке самой карточки.
+    # The address is compared, not the name: "каб101" is contained in "каб101вход", and
+    # a check by text would pass on the card's own heading.
     assert card_url(Space.objects.get(code="man-f1-a1")) in page
 
 
 def test_a_space_directly_under_the_floor_names_the_floor_it_lies_on(
     client, member, first_floor
 ):
-    """Этаж называется, но карточкой не открывается: он не узел дерева, а сам экран."""
+    """The floor is named but opens no card: it is not a tree node but the screen itself."""
     client.force_login(member)
 
     _, page = open_card(client, Space.objects.get(code="man-f1-a"))
@@ -111,10 +112,10 @@ def test_a_space_directly_under_the_floor_names_the_floor_it_lies_on(
 def test_the_card_names_no_space_of_another_organisation_below(
     client, member, central, first_floor
 ):
-    """Связи вниз отбираются тем же чокпоинтом, что дерево и контуры.
+    """The links downwards are selected through the same checkpoint as the tree and the contours.
 
-    Такой строки в исправных данных нет; проверяется, что панель собирается через
-    чокпоинт, а не запросом по `parent`.
+    There is no such row in healthy data; what is checked is that the rail is assembled
+    through the checkpoint rather than by a query on `parent`.
     """
     Space.objects.create(
         org=central, type="room", parent=Space.objects.get(code="man-f1-a"),
@@ -130,10 +131,10 @@ def test_the_card_names_no_space_of_another_organisation_below(
 def test_the_card_names_no_space_of_another_organisation_above(
     client, member, downtown, central, first_floor
 ):
-    """Вверх по дереву — тот же чокпоинт: чужое имя не проедет и строкой «Выше».
+    """Up the tree it is the same checkpoint: a foreign name does not slip through "Выше".
 
-    Пройти по `parent` напрямую было бы вторым местом, где решается, чьи данные
-    показывать, — а второе место ADR 0001 и заводился отменить.
+    Walking `parent` directly would be a second place deciding whose data to show — and
+    abolishing that second place is what ADR 0001 was written for.
     """
     theirs = Space.objects.create(
         org=central, type="room", parent=first_floor,
@@ -150,29 +151,29 @@ def test_the_card_names_no_space_of_another_organisation_above(
     assert "Чужое помещение" not in page
 
 
-# Чего в панели нет
+# What the rail does not carry
 
 
 def test_the_card_promises_no_documents_and_no_systems(card):
-    """Раздел, обещающий данные, которых нет ни строки, хуже своего отсутствия."""
+    """A section promising data of which there is not a single row is worse than no section."""
     assert "Документы" not in card
     assert "Системы" not in card
 
 
 def test_the_card_carries_no_way_to_change_anything(card):
-    """Панель read-only, как и дерево: запись остаётся в админке Django."""
+    """The rail is read-only, like the tree: writing stays in the Django admin."""
     assert "Редактировать" not in card
     assert "Удалить" not in card
     assert "Добавить" not in card
 
 
-# Доступ
+# Access
 
 
 def test_a_space_of_another_organisation_is_missing_rather_than_forbidden(
     client, member, central, make_floor, make_space
 ):
-    """Панель — такой же путь чтения, как экран: 403 подтвердил бы, что помещение есть."""
+    """The rail is as much a read path as a screen: a 403 would confirm the space exists."""
     theirs = Space.objects.create(org=central, type="building", code="ctr", name="Central Tower")
     room = make_space(make_floor(theirs, 1), "ctr-f1-a", "Чужое помещение")
     client.force_login(member)
@@ -183,7 +184,7 @@ def test_a_space_of_another_organisation_is_missing_rather_than_forbidden(
 
 
 def test_an_anonymous_visitor_is_sent_to_login(client, first_floor):
-    """До входа о помещениях клиентов не видно ничего, включая карточку."""
+    """Before signing in, nothing about clients' spaces is visible, the card included."""
     response, _ = open_card(client, Space.objects.get(code="man-f1-a"))
 
     assert response.status_code == 302
@@ -193,7 +194,7 @@ def test_an_anonymous_visitor_is_sent_to_login(client, first_floor):
 def test_a_superuser_reaches_the_card_of_any_organisation(
     client, django_user_model, central, make_floor, make_space
 ):
-    """Разработчик воспроизводит проблему клиента, не выписывая себе членство."""
+    """A developer reproduces a client's problem without granting themselves a membership."""
     theirs = Space.objects.create(org=central, type="building", code="ctr", name="Central Tower")
     room = make_space(make_floor(theirs, 1), "ctr-f1-a", "Кабинет")
     client.force_login(django_user_model.objects.create_superuser("developer"))

@@ -1,9 +1,9 @@
-"""Карточка БЦ — паспорт здания так, как его читает сотрудник УК.
+"""The BC card — the building passport as an employee of the management company reads it.
 
-Шов тот же, что и у списка: граница HTTP. Тест открывает БЦ тестовым клиентом от
-имени пользователя с известным членством и проверяет наблюдаемое — что на экране
-и какой код ответа. Разметка и классы не проверяются: перестройка вёрстки ниже
-уровня URL не должна переписывать набор тестов.
+The seam is the same as for the list: the HTTP boundary. A test opens a BC with the test
+client on behalf of a user with a known membership and checks what is observable — what
+is on the screen and which status code comes back. Markup and classes are not checked: a
+rebuild of the layout below the level of the URL must not rewrite the test set.
 """
 
 from decimal import Decimal
@@ -33,7 +33,7 @@ def manhattan(downtown):
 
 @pytest.fixture
 def filled_page(client, member, manhattan):
-    """Экран паспорта, в котором заполнено всё: на нём видны все четыре раздела."""
+    """A passport screen with everything filled in: all four sections are visible on it."""
     fill_passport(manhattan)
     client.force_login(member)
     _, page = open_bc(client, manhattan)
@@ -57,7 +57,7 @@ def make_floor(building, number):
 
 
 def fill_passport(building, **overrides):
-    """Заполненный паспорт: в нём есть значение в каждом из четырёх разделов."""
+    """A filled-in passport: it holds a value in each of the four sections."""
     fields = {
         "address": "пр. Ракымжан Кошкарбаев, зд 1/2",
         "cadastral_no": "21:319:031:1234",
@@ -92,7 +92,7 @@ def open_bc(client, building):
 
 
 def test_a_member_opens_a_building_of_their_own_organisation(client, member, manhattan):
-    """Экран открывается и отрисовывается: ошибка шаблона обнаруживается здесь."""
+    """The screen opens and renders: a template error is caught here."""
     fill_passport(manhattan)
     client.force_login(member)
 
@@ -104,7 +104,7 @@ def test_a_member_opens_a_building_of_their_own_organisation(client, member, man
 def test_a_building_of_another_organisation_is_missing_rather_than_forbidden(
     client, member, central
 ):
-    """403 подтвердил бы, что такой БЦ есть у другого клиента."""
+    """A 403 would confirm that another client has such a BC."""
     theirs = Space.objects.create(org=central, type="building", code="ctr", name="Central Tower")
     client.force_login(member)
 
@@ -114,12 +114,12 @@ def test_a_building_of_another_organisation_is_missing_rather_than_forbidden(
 
 
 def test_a_filled_passport_is_read_in_four_sections(filled_page):
-    """Поле находится по разделу, а не вычитывается со всего экрана."""
+    """A field is found by its section rather than read out of the whole screen."""
     assert [section for section in SECTIONS if section not in filled_page] == []
 
 
 def test_identification_matches_the_building_against_an_external_registry(filled_page):
-    """Адрес, кадастровый и инвентарный номера, назначение — рядом, а не по разделам."""
+    """Address, cadastral and inventory numbers and purpose — side by side, not scattered."""
     assert "пр. Ракымжан Кошкарбаев, зд 1/2" in filled_page
     assert "21:319:031:1234" in filled_page
     assert "0123456" in filled_page
@@ -127,16 +127,16 @@ def test_identification_matches_the_building_against_an_external_registry(filled
 
 
 def test_characteristics_answer_what_a_tenant_or_valuer_asks_most_often(filled_page):
-    """Площади, объём, год постройки и класс — то, что спрашивают чаще всего."""
-    assert "25\u00a0480,75\u00a0м²" in filled_page  # общая площадь, неразрывными пробелами
-    assert "2\u00a0484,10\u00a0м²" in filled_page  # площадь застройки
-    assert "98\u00a0765,40\u00a0м³" in filled_page  # строительный объём
+    """Areas, volume, year built and class — what gets asked about most often."""
+    assert "25\u00a0480,75\u00a0м²" in filled_page  # total area, with non-breaking spaces
+    assert "2\u00a0484,10\u00a0м²" in filled_page  # building footprint
+    assert "98\u00a0765,40\u00a0м³" in filled_page  # building volume
     assert "2017" in filled_page
     assert "B+" in filled_page
 
 
 def test_construction_and_safety_hold_what_a_norm_is_checked_against(filled_page):
-    """Инженер УК сверяет здание с нормой, не поднимая бумажный паспорт."""
+    """An engineer checks the building against the norms without digging out the paper passport."""
     assert "Монолитный железобетон" in filled_page
     assert "монолит" in filled_page
     assert "Ф4.3" in filled_page
@@ -147,7 +147,7 @@ def test_construction_and_safety_hold_what_a_norm_is_checked_against(filled_page
 
 
 def test_the_parties_are_named_so_the_user_knows_whom_to_call(filled_page):
-    """Идентификатор стороны звонить некому — на экране имя."""
+    """There is nobody to call at a party's identifier — the screen carries the name."""
     assert "DownTown Invest ТОО" in filled_page
     assert "DownTown Management ТОО" in filled_page
     assert "Проектная мастерская Астана ТОО" in filled_page
@@ -155,7 +155,7 @@ def test_the_parties_are_named_so_the_user_knows_whom_to_call(filled_page):
 
 
 def test_the_number_of_floors_is_shown_exactly_as_it_was_recorded(client, member, manhattan):
-    """«4+тех.этаж» — то, что записано в Ф-2; разбирать эту запись в число нечем."""
+    """"4+тех.этаж" is what the Ф-2 form records; nothing can parse it into a number."""
     fill_passport(manhattan, number_of_floors="4+тех.этаж")
     client.force_login(member)
 
@@ -165,18 +165,18 @@ def test_the_number_of_floors_is_shown_exactly_as_it_was_recorded(client, member
 
 
 def test_an_empty_field_of_a_shown_section_reads_as_no_data(client, member, manhattan):
-    """Экран заодно показывает, что ещё осталось собрать, — но только прочерком."""
+    """The screen also shows what is still to be collected — but only with a dash."""
     fill_passport(manhattan, inventory_number=None, intended_purpose="")
     client.force_login(member)
 
     _, page = open_bc(client, manhattan)
 
     assert "Идентификация" in page
-    assert page.count("— нет данных") == 2  # инвентарный номер и назначение
+    assert page.count("— нет данных") == 2  # the inventory number and the purpose
 
 
 def test_a_section_without_a_single_value_does_not_appear(client, member, manhattan):
-    """Иначе редкий паспорт превращается в стену прочерков."""
+    """Otherwise a sparse passport turns into a wall of dashes."""
     BuildingPassport.objects.create(
         space=manhattan, address="пр. Ракымжан Кошкарбаев, зд 1/2", year_built=2017
     )
@@ -191,7 +191,7 @@ def test_a_section_without_a_single_value_does_not_appear(client, member, manhat
 
 
 def test_a_building_without_a_passport_opens_instead_of_failing(client, member, manhattan):
-    """Паспорт ещё не завели — это состояние данных, а не ошибка экрана."""
+    """The passport has not been created yet — a state of the data, not a screen error."""
     client.force_login(member)
 
     response, page = open_bc(client, manhattan)
@@ -204,7 +204,7 @@ def test_a_building_without_a_passport_opens_instead_of_failing(client, member, 
 def test_an_entirely_empty_passport_is_not_reported_as_a_missing_one(
     client, member, manhattan
 ):
-    """Строка паспорта есть, значений нет: экран не должен утверждать, что паспорта нет."""
+    """The passport row exists but holds no values: the screen must not deny the passport."""
     BuildingPassport.objects.create(space=manhattan)
     client.force_login(member)
 
@@ -218,7 +218,7 @@ def test_an_entirely_empty_passport_is_not_reported_as_a_missing_one(
 def test_a_commercial_passport_is_not_padded_with_residential_lines(
     client, member, manhattan
 ):
-    """Столбцы жилья в базе есть, на экране коммерческого БЦ им делать нечего."""
+    """The residential columns exist in the database; a commercial BC's screen omits them."""
     fill_passport(
         manhattan, living_area=Decimal("1234.00"), apartments_number=12, total_rooms=48
     )
@@ -232,7 +232,7 @@ def test_a_commercial_passport_is_not_padded_with_residential_lines(
 
 
 def test_the_card_lists_the_floors_of_the_building(client, member, manhattan):
-    """Внутрь здания входят с его паспорта, а не через отдельное меню."""
+    """The way into a building goes through its passport, not through a separate menu."""
     make_floor(manhattan, 1)
     make_floor(manhattan, 2)
     client.force_login(member)
@@ -245,7 +245,7 @@ def test_the_card_lists_the_floors_of_the_building(client, member, manhattan):
 
 
 def test_a_floor_opens_from_the_card_in_one_click(client, member, manhattan):
-    """До этажа — один переход: на карточке стоит адрес самого этажа."""
+    """One click to a floor: the card carries the address of the floor itself."""
     floor = make_floor(manhattan, 1)
     client.force_login(member)
 
@@ -255,7 +255,7 @@ def test_a_floor_opens_from_the_card_in_one_click(client, member, manhattan):
 
 
 def test_a_building_without_floors_keeps_its_existing_treatment(client, member, manhattan):
-    """У четырёх БЦ без нутра этажей нет — и раздела «Этажи» на карточке тоже."""
+    """Four BCs have no interior, so no floors — and no "Этажи" section on the card."""
     client.force_login(member)
 
     response, page = open_bc(client, manhattan)
@@ -267,7 +267,7 @@ def test_a_building_without_floors_keeps_its_existing_treatment(client, member, 
 def test_the_card_does_not_list_the_floors_of_another_building(
     client, member, downtown, manhattan
 ):
-    """Этажи соседнего здания на этой карточке — чужая навигация, а не выбор."""
+    """A neighbouring building's floors on this card are someone else's navigation."""
     boston = Space.objects.create(org=downtown, type="building", code="bos", name="Boston")
     make_floor(boston, 7)
     make_floor(manhattan, 1)
@@ -279,17 +279,17 @@ def test_the_card_does_not_list_the_floors_of_another_building(
 
 
 def test_every_passport_leads_back_to_the_list_of_buildings(filled_page):
-    """Между зданиями ходят через список, а не через кнопку «назад» в браузере."""
+    """One moves between buildings through the list, not through the browser's back button."""
     assert reverse("building_passport:bc_list") in filled_page
 
 
 def test_the_screen_carries_no_way_to_change_anything(filled_page):
-    """Первый этап — только чтение; запись остаётся в админке Django."""
+    """Stage one is read-only; writing stays in the Django admin."""
     assert "Редактировать" not in filled_page
     assert "Удалить" not in filled_page
     assert "Добавить" not in filled_page
 
 
 def test_the_page_carries_no_leftover_template_comments(filled_page):
-    """Многострочный `{# … #}` Django комментарием не считает и печатает на экране."""
+    """Django does not treat a multi-line `{# … #}` as a comment and prints it on the screen."""
     assert "{#" not in filled_page

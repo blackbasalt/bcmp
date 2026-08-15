@@ -1,8 +1,8 @@
-"""Единый чокпоинт фильтрации по организации (ADR 0001).
+"""The single checkpoint for filtering by organisation (ADR 0001).
 
-`Space.objects.visible_to(user)` — единственное место, где данные ограничиваются
-организациями пользователя. Пути чтения спрашивают его, а не собирают фильтр сами;
-на момент этого тикета экранов ещё нет, и чокпоинт проверяется напрямую.
+`Space.objects.visible_to(user)` is the only place where data is narrowed down to the
+user's organisations. Read paths ask it instead of assembling a filter themselves; at
+the time of this ticket there are no screens yet, so the checkpoint is tested directly.
 """
 
 import pytest
@@ -28,7 +28,7 @@ def test_a_member_sees_the_spaces_of_their_organisation_only(downtown, central):
 
 
 def test_a_superuser_sees_every_organisation(downtown, central):
-    """Разработчик воспроизводит проблему клиента, не выписывая себе членство."""
+    """A developer reproduces a client's problem without granting themselves a membership."""
     developer = User.objects.create_superuser("developer")
     ours = make_building(downtown, "БЦ-1")
     theirs = make_building(central, "БЦ-2")
@@ -37,7 +37,7 @@ def test_a_superuser_sees_every_organisation(downtown, central):
 
 
 def test_a_user_without_membership_sees_nothing_rather_than_everything(downtown):
-    """«Нет членства → видно всё» — ровно та утечка, ради которой фильтрация и вводится."""
+    """"No membership → everything is visible" is exactly the leak the filtering exists for."""
     newcomer = User.objects.create_user("newcomer")
     make_building(downtown, "БЦ-1")
 
@@ -61,7 +61,7 @@ def test_a_member_of_two_organisations_sees_both_portfolios(downtown, central):
 
 
 def test_a_space_belonging_to_no_organisation_is_visible_to_no_member(downtown):
-    """Непривязанное пространство ничьё, а не общее."""
+    """A space attached to no organisation belongs to nobody, not to everybody."""
     user = User.objects.create_user("engineer")
     OrgMembership.objects.create(user=user, org=downtown)
     make_building(None, "БЦ-ничей")

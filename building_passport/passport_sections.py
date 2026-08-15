@@ -1,11 +1,13 @@
-"""Паспорт здания, разложенный по разделам экрана.
+"""The building passport laid out in the sections of the screen.
 
-Разделы собираются здесь, а не в шаблоне: «пустое поле показать, пустой раздел
-скрыть» — правило про данные, а не про вёрстку, и проверять его в разметке дороже,
-чем в одном месте. Шаблон получает готовый список и только печатает его.
+The sections are assembled here rather than in the template: "show an empty field, hide
+an empty section" is a rule about the data, not about the layout, and checking it in
+markup costs more than checking it in one place. The template receives a ready list and
+only prints it.
 
-Порядок полей внутри раздела — порядок, в котором их спрашивают: раздел отвечает
-на один вопрос о здании целиком, поэтому поля не пересортировываются по алфавиту.
+The order of the fields inside a section is the order in which they are asked: a
+section answers one question about the building as a whole, so the fields are not
+re-sorted alphabetically.
 """
 
 from dataclasses import dataclass
@@ -16,7 +18,7 @@ from .passport_display import area, is_missing, volume
 
 @dataclass(frozen=True)
 class Field:
-    """Строка раздела. Пустое значение остаётся None — прочерк ставит `or_missing`."""
+    """A row of a section. An empty value stays None — the dash is put in by `or_missing`."""
 
     label: str
     value: Any
@@ -29,26 +31,27 @@ class Section:
 
     @property
     def is_empty(self) -> bool:
-        """Признак пустоты тот же, по которому поле получает прочерк."""
+        """Emptiness is judged by the same test that gives a field its dash."""
         return all(is_missing(field.value) for field in self.fields)
 
 
 def _name(party) -> str | None:
-    """Сторона на экране — имя: идентификатору стороны позвонить нельзя."""
+    """A party on the screen is a name: you cannot call a party's identifier."""
     return party.name if party is not None else None
 
 
 def sections(passport) -> list[Section]:
-    """Разделы паспорта, готовые к печати: непустые, в порядке чтения экрана.
+    """The sections of a passport, ready to print: non-empty, in the reading order of the screen.
 
-    Жилые поля (количество квартир, жилая площадь, число комнат) в разделы не
-    попадают: столбцы в базе остаются, но коммерческий паспорт ими не разбавляется.
+    Residential fields (number of apartments, living area, number of rooms) do not make
+    it into the sections: the columns stay in the database, but a commercial passport is
+    not padded out with them.
     """
     if passport is None:
         return []
 
     all_sections = [
-        # Вместе — чтобы здание можно было сличить с внешним реестром.
+        # Together, so the building can be matched against an external registry.
         Section(
             "Идентификация",
             (
@@ -58,21 +61,22 @@ def sections(passport) -> list[Section]:
                 Field("Назначение", passport.intended_purpose),
             ),
         ),
-        # Вместе — чтобы ответить арендатору и оценщику, не открывая ничего ещё.
+        # Together, so a tenant or a valuer can be answered without opening anything else.
         Section(
             "Характеристики",
             (
                 Field("Общая площадь", area(passport.total_area)),
                 Field("Площадь застройки", area(passport.building_footprint)),
                 Field("Нежилая площадь", area(passport.non_residential_area)),
-                # Этажность печатается как записана: «4+тех.этаж» числом не бывает.
+                # The floor count is printed as recorded: "4+тех.этаж" is never a number.
                 Field("Этажность", passport.number_of_floors),
                 Field("Строительный объём", volume(passport.building_volume)),
                 Field("Год постройки", passport.year_built),
                 Field("Класс здания", passport.get_building_class_display()),
             ),
         ),
-        # Вместе — чтобы инженер УК сверил здание с нормой, не поднимая бумажный паспорт.
+        # Together, so an engineer can check the building against the norms without
+        # digging out the paper passport.
         Section(
             "Конструктив и безопасность",
             (
@@ -85,7 +89,7 @@ def sections(passport) -> list[Section]:
                 Field("Энергокласс", passport.energy_class),
             ),
         ),
-        # Вместе — чтобы было понятно, кому звонить об этом здании.
+        # Together, so it is clear whom to call about this building.
         Section(
             "Стороны",
             (

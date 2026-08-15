@@ -1,13 +1,14 @@
-"""Заглушки в паспортах становятся NULL.
+"""Placeholders in the passports become NULL.
 
-Пять паспортов несут `-1` в общей площади, площади застройки, объёме и числе квартир,
-пустую строку в этажности и `1900` в годе постройки — значения, записанные как измерения,
-но означающие «данных нет». Чистка идёт в базе, а не в шаблонах: спрятать заглушку при
-отрисовке — значит оставить её всем, кто читает данные дальше, включая ИИ-управляющего.
+Five passports carry `-1` in the total area, the building footprint, the volume and the
+number of apartments, an empty string in the floor count and `1900` in the year built —
+values written as measurements but meaning "there is no data". The cleanup happens in
+the database, not in the templates: hiding a placeholder while rendering means leaving
+it to everyone who reads the data further on, the AI manager included.
 
-Список полей — ровно тот, что перечислен в тикете. `living_area`, `balcony_loggia_area`,
-`non_residential_area` и `total_rooms` тоже несут `-1`, но в перечень не входят и здесь
-не трогаются.
+The list of fields is exactly the one enumerated in the ticket. `living_area`,
+`balcony_loggia_area`, `non_residential_area` and `total_rooms` carry `-1` too, but they
+are not on that list and are not touched here.
 """
 
 from decimal import Decimal
@@ -18,7 +19,7 @@ PLACEHOLDER_MEASUREMENT = Decimal(-1)
 PLACEHOLDER_COUNT = -1
 PLACEHOLDER_YEAR = 1900
 
-# Поле → значение, которым в нём записано отсутствие данных.
+# Field → the value in which the absence of data is recorded in it.
 PLACEHOLDERS = {
     "total_area": PLACEHOLDER_MEASUREMENT,
     "building_footprint": PLACEHOLDER_MEASUREMENT,
@@ -31,9 +32,9 @@ PLACEHOLDERS = {
 def clear_placeholders(apps, schema_editor):
     BuildingPassport = apps.get_model("building_passport", "BuildingPassport")
 
-    # Год снимается только там, где общая площадь тоже заглушка, и обязательно до того,
-    # как та станет NULL. Безусловное правило стёрло бы 1900 у действительно старого
-    # здания на любом следующем прогоне.
+    # The year is cleared only where the total area is a placeholder too, and strictly
+    # before that one becomes NULL. An unconditional rule would erase 1900 from a
+    # genuinely old building on any subsequent run.
     BuildingPassport.objects.filter(
         total_area=PLACEHOLDER_MEASUREMENT, year_built=PLACEHOLDER_YEAR
     ).update(year_built=None)
@@ -43,11 +44,11 @@ def clear_placeholders(apps, schema_editor):
 
 
 def keep_placeholders_cleared(apps, schema_editor):
-    """Откат оставляет NULL на месте.
+    """The rollback leaves the NULLs in place.
 
-    Вернуть `-1` можно было бы только всем пустым полям сразу — отличить снятую заглушку
-    от поля, которое никто не заполнял, нечем. Заглушка не была данными, и восстанавливать
-    её означало бы придумать измерение заново.
+    Restoring `-1` would only be possible for every empty field at once — there is
+    nothing to tell a cleared placeholder from a field nobody ever filled in. The
+    placeholder was not data, and restoring it would mean inventing a measurement anew.
     """
 
 

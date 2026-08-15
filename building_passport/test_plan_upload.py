@@ -1,18 +1,19 @@
-"""Загрузка плана администратором организации — первый путь записи вне админки.
+"""An organisation administrator uploading a plan — the first write path outside the admin.
 
-Шов тот же, что и у остальных экранов, — граница HTTP: тесты открывают этаж и
-отправляют форму тестовым клиентом от имени пользователя с известным членством.
-Проверяется наблюдаемое: показана ли форма, каким кодом отвечает запрос, что
-осталось в базе после отказа и что видно на экране после успеха.
+The seam is the same as for the other screens — the HTTP boundary: the tests open a
+floor and submit the form with the test client on behalf of a user with a known
+membership. What is checked is observable: whether the form is shown, which status code
+the request answers with, what is left in the database after a rejection and what is
+visible on the screen after a success.
 
-Опора в разметке — атрибут `data-upload` на самой форме. Это договор экрана: по
-нему видно, предложена ли загрузка, а сотруднику без права администратора она не
-предлагается вовсе.
+The foothold in the markup is the `data-upload` attribute on the form itself. That is a
+contract of the screen: it shows whether the upload is offered, and to an employee
+without the administrator right it is not offered at all.
 
-Чертёж, разбор его разметки и адрес этажа берутся у `test_floor_plan` — плановая
-оснастка там и заведена, и второе определение того же чертежа разошлось бы с первым.
-Здесь заводится только то, чего там нет: администратор организации и сама отправка
-формы.
+The drawing, the parsing of its markup and the floor address are taken from
+`test_floor_plan` — the plan fixtures live there, and a second definition of the same
+drawing would drift from the first. Only what is missing there is defined here: the
+organisation administrator and the form submission itself.
 """
 
 from datetime import date
@@ -39,17 +40,17 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(autouse=True)
 def media(settings, tmp_path):
-    """Загруженные файлы уезжают во временный каталог, а не в рабочую копию.
+    """Uploaded files go into a temporary directory rather than into the working copy.
 
-    Стоит здесь своей копией, а не берётся импортом: автоприменение фикстуры
-    действует в том модуле, где она объявлена.
+    It stands here as its own copy instead of being imported: a fixture is auto-applied
+    only in the module where it is declared.
     """
     settings.MEDIA_ROOT = tmp_path
 
 
 @pytest.fixture
 def administrator(django_user_model, downtown):
-    """Администратор организации: тот же сотрудник УК, но с правом вести данные."""
+    """An organisation administrator: the same employee, with the right to maintain data."""
     user = django_user_model.objects.create_user("director")
     OrgMembership.objects.create(user=user, org=downtown, is_admin=True)
     return user
@@ -61,7 +62,7 @@ def open_floor(client, user, floor):
 
 
 def upload(client, floor, source=None, valid_from=None, file_name="plan.svg"):
-    """Отправить форму загрузки — тем же адресом, каким этаж и открывают."""
+    """Submit the upload form — to the same address the floor is opened at."""
     source = plan_svg(("man-f1-a", ENTRANCE_PATH)) if source is None else source
     return client.post(
         floor_url(floor),
@@ -73,34 +74,34 @@ def upload(client, floor, source=None, valid_from=None, file_name="plan.svg"):
 
 
 def upload_form(page):
-    """Форма загрузки на экране — или ничего, если она не предложена."""
+    """The upload form on the screen — or nothing, if it is not offered."""
     forms = marked(page, "data-upload")
     return forms[0] if forms else None
 
 
-# Кто может загружать
+# Who may upload
 
 
 def test_an_administrator_of_the_organisation_is_offered_the_upload(
     client, administrator, first_floor
 ):
-    """Ведение своих зданий перестаёт требовать админки Django."""
+    """Maintaining one's own buildings no longer requires the Django admin."""
     assert upload_form(open_floor(client, administrator, first_floor)) is not None
 
 
 def test_a_member_without_the_flag_is_offered_no_upload_control_at_all(
     client, member, first_floor
 ):
-    """Действие, которого сотруднику не совершить, ему и не предлагается."""
+    """An action an employee cannot perform is not offered to them either."""
     assert upload_form(open_floor(client, member, first_floor)) is None
 
 
 def test_a_platform_wide_staff_flag_grants_nothing(client, django_user_model, downtown, first_floor):
-    """Право на запись даёт флаг на членстве, а не `is_staff` (ADR 0005).
+    """The write right is granted by a flag on the membership, not by `is_staff` (ADR 0005).
 
-    Все десять нынешних пользователей помечены `is_staff` — это случайность
-    наполнения базы, а не решение. Если бы право выводилось из неё, сотрудник,
-    ведущий одного клиента, писал бы в данные любого.
+    All ten current users are marked `is_staff` — an accident of how the database was
+    filled, not a decision. Were the right derived from it, an employee maintaining one
+    client would write into the data of any of them.
     """
     staffer = django_user_model.objects.create_user("clerk", is_staff=True)
     OrgMembership.objects.create(user=staffer, org=downtown, is_admin=False)
@@ -113,10 +114,10 @@ def test_a_platform_wide_staff_flag_grants_nothing(client, django_user_model, do
 def test_administering_one_organisation_does_not_administer_another(
     client, django_user_model, downtown, central, make_floor
 ):
-    """Администраторство принадлежит паре «сотрудник + организация» (ADR 0005).
+    """Administratorship belongs to the pair "employee + organisation" (ADR 0005).
 
-    Один и тот же сотрудник ведёт данные одного клиента и остаётся обычным
-    читателем у другого — глобальный флаг такого сказать не может.
+    One and the same employee maintains the data of one client and stays an ordinary
+    reader at another — a global flag cannot say that.
     """
     user = django_user_model.objects.create_user("consultant")
     OrgMembership.objects.create(user=user, org=downtown, is_admin=True)
@@ -131,7 +132,7 @@ def test_administering_one_organisation_does_not_administer_another(
 def test_a_member_without_the_flag_cannot_upload_even_by_posting_directly(
     client, member, first_floor
 ):
-    """Отказано не только показу кнопки: право проверяется на самом запросе."""
+    """It is not only the button that is withheld: the right is checked on the request itself."""
     client.force_login(member)
 
     response = upload(client, first_floor)
@@ -141,7 +142,7 @@ def test_a_member_without_the_flag_cannot_upload_even_by_posting_directly(
 
 
 def test_an_anonymous_request_to_the_upload_path_is_sent_to_login(client, first_floor):
-    """До входа не пишут ничего — как и не читают."""
+    """Before signing in nothing is written — just as nothing is read."""
     response = upload(client, first_floor)
 
     assert response.status_code == 302
@@ -152,10 +153,10 @@ def test_an_anonymous_request_to_the_upload_path_is_sent_to_login(client, first_
 def test_uploading_to_a_floor_of_another_organisation_is_missing_rather_than_forbidden(
     client, administrator, central, make_floor
 ):
-    """Чужой этаж отвечает одинаково на чтение и на запись: его не существует.
+    """Another client's floor answers reads and writes the same way: it does not exist.
 
-    403 подтверждал бы, что этаж есть, — ровно та утечка, ради которой заведён
-    чокпоинт (ADR 0001).
+    A 403 would confirm that the floor is there — exactly the leak the checkpoint exists
+    for (ADR 0001).
     """
     theirs = make_floor(Space.objects.create(org=central, type="building", code="ctr"), 1)
     client.force_login(administrator)
@@ -167,31 +168,31 @@ def test_uploading_to_a_floor_of_another_organisation_is_missing_rather_than_for
 def test_a_superuser_uploads_without_granting_themselves_a_membership(
     client, django_user_model, first_floor
 ):
-    """Администратор платформы и так пишет через админку: запрещать ему то же в приложении незачем."""
+    """A platform administrator writes through the admin anyway; no point forbidding it here."""
     client.force_login(django_user_model.objects.create_superuser("developer"))
 
     assert upload(client, first_floor).status_code == 302
     assert FloorPlan.objects.count() == 1
 
 
-# Что происходит при загрузке
+# What happens on upload
 
 
 @pytest.fixture
 def uploaded(client, administrator, first_floor):
-    """Успешная загрузка: чертёж с одним обведённым помещением, действующий сегодня."""
+    """A successful upload: a drawing with one space outlined, in force today."""
     client.force_login(administrator)
     return upload(client, first_floor)
 
 
 def test_a_successful_upload_returns_to_the_floor_screen(uploaded, first_floor):
-    """Загрузивший возвращается туда, где нажимал, — и видит результат, а не форму."""
+    """The uploader comes back to where they clicked — and sees the result, not the form."""
     assert uploaded.status_code == 302
     assert uploaded.url == floor_url(first_floor)
 
 
 def test_the_contours_of_the_new_plan_come_from_the_uploaded_file(uploaded):
-    """Геометрия руками не заводится: контуры сняты с путей чертежа."""
+    """Geometry is not entered by hand: the contours are taken from the paths of the drawing."""
     contour = Contour.objects.get()
 
     assert contour.space.code == "man-f1-a"
@@ -199,7 +200,7 @@ def test_the_contours_of_the_new_plan_come_from_the_uploaded_file(uploaded):
 
 
 def test_the_upload_records_the_date_the_layout_took_effect(client, administrator, first_floor):
-    """План записывает, когда изменилось здание, а не когда до загрузки дошли руки."""
+    """A plan records when the building changed, not when someone got round to the upload."""
     client.force_login(administrator)
 
     upload(client, first_floor, valid_from=date(2019, 3, 14))
@@ -210,10 +211,10 @@ def test_the_upload_records_the_date_the_layout_took_effect(client, administrato
 def test_the_new_plan_replaces_the_old_one_on_screen_without_further_action(
     client, administrator, first_floor
 ):
-    """После перепланировки экран показывает сегодняшний чертёж, а не вчерашний.
+    """After a rebuild the screen shows today's drawing, not yesterday's.
 
-    Прежний план закрывается датой перепланировки — сегодня это делают в админке
-    (ADR 0004), и форма загрузки такого действия не предлагает.
+    The previous plan is closed with the date of the rebuild — today that is done in the
+    admin (ADR 0004), and the upload form offers no such action.
     """
     client.force_login(administrator)
     upload(client, first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30))
@@ -228,7 +229,7 @@ def test_the_new_plan_replaces_the_old_one_on_screen_without_further_action(
 
 
 def test_the_screen_confirms_that_the_plan_was_loaded(client, administrator, first_floor):
-    """Перезагруженный экран и есть подтверждение — но сказать о нём надо словами."""
+    """The reloaded screen is the confirmation — but it still has to be said in words."""
     client.force_login(administrator)
 
     upload(client, first_floor)
@@ -239,10 +240,10 @@ def test_the_screen_confirms_that_the_plan_was_loaded(client, administrator, fir
 def test_a_plan_dated_ahead_is_said_not_to_be_on_the_screen_yet(
     client, administrator, first_floor
 ):
-    """Иначе неизменившийся экран читается как потерянный файл.
+    """Otherwise an unchanged screen reads as a lost file.
 
-    Про прежний план сказано при этом не будет: этаж мог не иметь ни одного, и
-    обещание чертежа, которого нет, — та же выдумка, что и подставленная дата.
+    Nothing will be said about the previous plan: the floor may have had none at all, and
+    promising a drawing that does not exist is the same invention as a pre-filled date.
     """
     client.force_login(administrator)
 
@@ -256,7 +257,7 @@ def test_a_plan_dated_ahead_is_said_not_to_be_on_the_screen_yet(
 def test_the_upload_is_offered_on_a_floor_with_no_plan_at_all(
     client, administrator, first_floor
 ):
-    """Пустое состояние — то место, где отсутствие замечают и где его исправляют."""
+    """The empty state is where an absence is noticed and where it gets fixed."""
     page = open_floor(client, administrator, first_floor)
 
     assert "нет действующего поэтажного плана" in page
@@ -266,7 +267,7 @@ def test_the_upload_is_offered_on_a_floor_with_no_plan_at_all(
 def test_the_upload_stays_offered_on_a_floor_that_already_has_a_plan(
     client, administrator, first_floor
 ):
-    """Перепланировка — обычное событие: следующий план заводят там же, где смотрят нынешний."""
+    """A rebuild is ordinary: the next plan is created where the current one is looked at."""
     client.force_login(administrator)
     upload(client, first_floor, valid_from=day(-30))
 
@@ -275,13 +276,13 @@ def test_the_upload_stays_offered_on_a_floor_that_already_has_a_plan(
     assert upload_form(page) is not None
 
 
-# Что отклоняется, и с каким объяснением
+# What is rejected, and with what explanation
 
 
 def test_an_upload_overlapping_an_existing_plan_is_rejected_with_an_explanation(
     client, administrator, first_floor
 ):
-    """У этажа не бывает двух действующих планов (ADR 0004), и причина названа на форме."""
+    """A floor never has two plans in force (ADR 0004), and the reason is named on the form."""
     client.force_login(administrator)
     upload(client, first_floor, valid_from=day(-30))
 
@@ -294,7 +295,7 @@ def test_an_upload_overlapping_an_existing_plan_is_rejected_with_an_explanation(
 def test_a_rejected_overlap_leaves_the_existing_plan_in_force(
     client, administrator, first_floor
 ):
-    """Отказ ничего не меняет: действующим остаётся тот план, что действовал."""
+    """A rejection changes nothing: the plan that was in force stays in force."""
     client.force_login(administrator)
     upload(client, first_floor, valid_from=day(-30))
     existing = FloorPlan.objects.get()
@@ -311,7 +312,7 @@ def test_a_rejected_overlap_leaves_the_existing_plan_in_force(
 def test_a_file_that_is_not_a_usable_svg_is_rejected_with_a_reason(
     client, administrator, first_floor
 ):
-    """Причина названа, чтобы экспорт правили, а не гадали, почему план пуст."""
+    """The reason is named so the export gets fixed instead of guesses about an empty plan."""
     client.force_login(administrator)
 
     response = upload(client, first_floor, "<svg viewBox='0 0 10 10'>")
@@ -324,7 +325,7 @@ def test_a_file_that_is_not_a_usable_svg_is_rejected_with_a_reason(
 def test_a_file_without_a_view_box_is_rejected_with_a_reason(
     client, administrator, first_floor
 ):
-    """Без системы координат контуры не с чем совместить — это не план."""
+    """Without a coordinate system there is nothing to align the contours with."""
     client.force_login(administrator)
 
     response = upload(
@@ -341,7 +342,7 @@ def test_a_file_without_a_view_box_is_rejected_with_a_reason(
 def test_a_rejected_upload_shows_the_form_again_on_the_floor_screen(
     client, administrator, first_floor
 ):
-    """Отказ приходит на тот же экран: этаж, дерево и форма остаются на месте."""
+    """The rejection arrives on the same screen: the floor, the tree and the form stay in place."""
     client.force_login(administrator)
 
     page = upload(client, first_floor, "<svg viewBox='0 0 10 10'>").content.decode()
@@ -350,13 +351,13 @@ def test_a_rejected_upload_shows_the_form_again_on_the_floor_screen(
     assert "каб101вход" in page
 
 
-# Что не отклоняется
+# What is not rejected
 
 
 def test_an_upload_with_unmatched_paths_succeeds_with_the_problems_reported(
     client, administrator, first_floor
 ):
-    """План — инструмент поиска незаведённого, и грузиться он обязан против неполного дерева."""
+    """A plan finds what has not been recorded, so it must load against an incomplete tree."""
     client.force_login(administrator)
 
     response = upload(
@@ -374,7 +375,7 @@ def test_an_upload_with_unmatched_paths_succeeds_with_the_problems_reported(
 def test_an_upload_leaving_spaces_without_a_contour_succeeds(
     client, administrator, first_floor
 ):
-    """Помещение без пути на чертеже — находка, а не причина отказать в загрузке."""
+    """A space with no path in the drawing is a finding, not a reason to refuse the upload."""
     client.force_login(administrator)
 
     response = upload(client, first_floor)

@@ -1,8 +1,8 @@
-"""Фильтры шаблонов над правилами показа паспорта.
+"""Template filters over the passport display rules.
 
-Здесь только регистрация: сами правила лежат в `passport_display`, потому что ими
-пользуется не одна разметка. Регистрируется то, что вызывается из шаблона, — величины,
-которые собираются в Python, приходят на экран уже оформленными.
+Only the registration lives here: the rules themselves are in `passport_display`,
+because more than the markup uses them. What gets registered is what is called from a
+template — quantities assembled in Python reach the screen already formatted.
 """
 
 from django import template

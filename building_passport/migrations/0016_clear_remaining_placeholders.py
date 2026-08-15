@@ -1,22 +1,23 @@
-"""Заглушки в нежилой площади и числе комнат становятся NULL.
+"""Placeholders in the non-residential area and the number of rooms become NULL.
 
-Перечень полей в тикете #4 закрытый, и `0015` его не превышала. Но `-1` остался ещё в
-четырёх столбцах, и два из них — `non_residential_area` и `total_rooms` — не жилые:
-оговорка «прячем при отрисовке», которая покрывает жилую площадь и балконы, на них не
-распространяется, и сотрудник УК увидел бы `-1 м²` и `-1` на экране. Ровно то, ради чего
-`0015` и писалась.
+The list of fields in ticket #4 is closed, and `0015` did not go beyond it. But `-1`
+remained in four more columns, and two of them — `non_residential_area` and
+`total_rooms` — are not residential: the "we hide it while rendering" proviso that
+covers living area and balconies does not extend to them, and an employee of the
+management company would see `-1 м²` and `-1` on screen. Exactly what `0015` was written
+for.
 
-Отдельная миграция, а не правка `0015`: та уже применена.
+A separate migration rather than an edit to `0015`: that one has already been applied.
 
-`living_area` и `balcony_loggia_area` намеренно не трогаются — жилая недвижимость вне
-контекста (CONTEXT.md, §Язык), эти поля прячет Карточка БЦ.
+`living_area` and `balcony_loggia_area` are deliberately left alone — residential
+property is out of context (CONTEXT.md, §Язык), and the BC card hides those fields.
 """
 
 from decimal import Decimal
 
 from django.db import migrations
 
-# Поле → значение, которым в нём записано отсутствие данных.
+# Field → the value in which the absence of data is recorded in it.
 PLACEHOLDERS = {
     "non_residential_area": Decimal(-1),
     "total_rooms": -1,
@@ -31,10 +32,11 @@ def clear_remaining_placeholders(apps, schema_editor):
 
 
 def keep_placeholders_cleared(apps, schema_editor):
-    """Откат оставляет NULL на месте — как и в `0015`.
+    """The rollback leaves the NULLs in place — as in `0015`.
 
-    Отличить снятую заглушку от поля, которое никто не заполнял, нечем; заглушка не была
-    данными, и восстанавливать её означало бы придумать измерение заново.
+    There is nothing to tell a cleared placeholder from a field nobody ever filled in;
+    the placeholder was not data, and restoring it would mean inventing a measurement
+    anew.
     """
 
 

@@ -1,14 +1,14 @@
-"""Что лежит под этажом: дерево помещений и тот же набор плоским списком.
+"""What lies under a floor: the tree of spaces and the same set as a flat list.
 
-Собирается здесь, а не в шаблоне и не запросом на узел: помещения вложены на
-произвольную глубину, а рекурсивный обход по `subspace` стоил бы по запросу на
-каждое из 82 помещений. Вызывающий отдаёт сюда уже отфильтрованный чокпоинтом
-набор — одним запросом на здание, — и получает готовые узлы.
+It is assembled here rather than in a template or by a query per node: spaces nest to an
+arbitrary depth, and walking `subspace` recursively would cost a query for each of the
+82 spaces. The caller hands in a set already filtered by the checkpoint — in one query
+per building — and gets back ready nodes.
 
-Порядок детей — порядок пришедшего набора: сортировка задаётся в запросе, чтобы
-дерево не переупорядочивало то, что вызывающий уже выстроил.
+The order of the children is the order of the incoming set: sorting is specified in the
+query so that the tree does not rearrange what the caller has already ordered.
 
-Моделей этот модуль не импортирует: наоборот, они импортируют его.
+This module imports no models: on the contrary, they import it.
 """
 
 import uuid
@@ -22,18 +22,18 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Node:
-    """Помещение и то, что под ним. Лист — узел с пустым `children`."""
+    """A space and what lies under it. A leaf is a node with an empty `children`."""
 
     space: "Space"
     children: tuple["Node", ...]
 
 
 def tree_under(floor: "Space", spaces: Iterable["Space"]) -> tuple[Node, ...]:
-    """Помещения под этажом, вложенные так же, как связаны через `parent`.
+    """The spaces under a floor, nested the way they are linked through `parent`.
 
-    В набор попадает только то, что действительно лежит под этим этажом: чужой
-    этаж, само здание и не доехавшая до набора ветка остаются снаружи. Пройденные
-    узлы запоминаются — зациклённый `parent` не должен подвешивать экран.
+    Only what really lies under this floor gets into the set: another floor, the
+    building itself and a branch that never reached the set stay outside. Visited nodes
+    are remembered — a looping `parent` must not hang the screen.
     """
     children = _children_by_parent(spaces)
     visited: set[uuid.UUID] = set()
@@ -50,10 +50,11 @@ def tree_under(floor: "Space", spaces: Iterable["Space"]) -> tuple[Node, ...]:
 
 
 def spaces_under(floor: "Space", spaces: Iterable["Space"]) -> tuple["Space", ...]:
-    """То же поддерево плоским списком: разбору плана нужны помещения, а не вложенность.
+    """The same subtree as a flat list: parsing a plan needs the spaces, not the nesting.
 
-    Помещение любого типа и любой глубины — кабина внутри уборной не хуже кабинета —
-    может нести контур, поэтому спуск идёт до листьев, а не до прямых детей этажа.
+    A space of any type and at any depth — a cubicle inside a toilet no less than an
+    office — may carry a contour, so the descent goes down to the leaves rather than to
+    the direct children of the floor.
     """
     children = _children_by_parent(spaces)
     visited = {floor.pk}

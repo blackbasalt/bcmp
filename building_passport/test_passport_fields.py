@@ -1,8 +1,8 @@
-"""Поля паспорта здания должны вмещать реальный бизнес-центр.
+"""The fields of a building passport must fit a real business centre.
 
-Очистка заглушек (`-1`, `1900`, пустая этажность) — разовая миграция по пяти паспортам,
-она проверяется осмотром данных. Здесь проверяется то, что переживёт миграцию: ширина
-полей площадей и текстовая этажность.
+Clearing the placeholders (`-1`, `1900`, an empty floor count) is a one-off migration
+over five passports and is verified by inspecting the data. What is tested here is what
+outlives that migration: the width of the area fields and the textual floor count.
 """
 
 from decimal import Decimal
@@ -20,7 +20,7 @@ def building():
 
 
 def test_a_business_centre_larger_than_10000_m2_saves(building):
-    """`max_digits=6` обрезал площадь на 9 999,99 м² — реальный БЦ в неё не помещается."""
+    """`max_digits=6` cut the area off at 9,999.99 m² — a real BC does not fit into that."""
     passport = BuildingPassport.objects.create(
         space=building,
         total_area=Decimal("25480.75"),
@@ -36,7 +36,7 @@ def test_a_business_centre_larger_than_10000_m2_saves(building):
 
 
 def test_number_of_floors_keeps_the_form_written_in_the_building_passport(building):
-    """«4+тех.этаж» — то, что записано в Ф-2; целое число такую этажность не хранит."""
+    """"4+тех.этаж" is what the Ф-2 form records; an integer cannot hold such a floor count."""
     passport = BuildingPassport.objects.create(space=building, number_of_floors="4+тех.этаж")
 
     passport.refresh_from_db()

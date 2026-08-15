@@ -1,7 +1,7 @@
-"""Перенос существующих данных в организацию DownTown Management ТОО (ADR 0001).
+"""Moving the existing data into the organisation DownTown Management ТОО (ADR 0001).
 
-Пять паспортов уже несут эту сторону как `operator_party`, поэтому организация строится
-над существующей стороной — второй Party не заводится.
+Five passports already carry this party as their `operator_party`, so the organisation
+is built over the existing party — no second Party is created.
 """
 
 from django.conf import settings
@@ -18,7 +18,7 @@ def _downtown_party(apps):
 def grant_downtown_access(apps, schema_editor):
     party = _downtown_party(apps)
     if party is None:
-        return  # чистая база: переносить нечего
+        return  # a clean database: there is nothing to move
 
     Org = apps.get_model("parties", "Org")
     OrgMembership = apps.get_model("parties", "OrgMembership")
@@ -34,10 +34,11 @@ def grant_downtown_access(apps, schema_editor):
 
 
 def revoke_downtown_access(apps, schema_editor):
-    """Полный откат переноса.
+    """A full rollback of the move.
 
-    Снимает все доступы к организации, а не только выданные этой миграцией: отличить
-    их от выданных позже в админке нечем. Откат на рабочей базе стирает онбординг.
+    It revokes every access to the organisation, not only the ones granted by this
+    migration: there is nothing to tell them apart from those granted later in the
+    admin. A rollback on the production database wipes the onboarding.
     """
     party = _downtown_party(apps)
     if party is None:

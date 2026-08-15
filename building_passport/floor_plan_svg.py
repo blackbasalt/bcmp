@@ -1,22 +1,24 @@
-"""Разбор SVG поэтажного плана: чертёж превращается в контуры помещений.
+"""Parsing the SVG of a floor plan: a drawing becomes the contours of its spaces.
 
-Чертёж авторится во внешнем редакторе, и `id` пути равен `Space.code` помещения,
-которое он обводит. Всё остальное в файле — сам чертёж: стены, штриховки, подписи.
-Разбор отделяет одно от другого и сводит пути с кодами помещений этажа.
+The drawing is authored in an external editor, and the `id` of a path equals the
+`Space.code` of the space it outlines. Everything else in the file is the drawing
+itself: walls, hatching, captions. The parse separates one from the other and matches
+the paths against the codes of the floor's spaces.
 
-Разбор терпим к неполноте и строг к системе координат. Путь с `id`, которому не
-нашлось помещения, и помещение, которого нет на чертеже, — это состояние данных:
-план и заводится ради того, чтобы такое стало видно, значит он обязан грузиться
-против неполного дерева помещений. А файл без `viewBox` — не план: контуры не с чем
-совместить, и молчаливое умолчание здесь означало бы разъехавшуюся отрисовку.
+The parse is tolerant of incompleteness and strict about the coordinate system. A path
+with an `id` that found no space, and a space missing from the drawing, are states of
+the data: the plan exists precisely so that such things become visible, which means it
+must load against an incomplete tree of spaces. A file without a `viewBox`, on the
+other hand, is not a plan: there is nothing to align the contours with, and a silent
+default here would mean rendering that has drifted apart.
 
-Числа `viewBox` нормализуются при разборе: в файле разделителем бывает и запятая,
-и перевод строки, а на экран должна ехать одна запись — та же, под которой
-рисуются контуры поверх чертежа.
+The numbers of the `viewBox` are normalised while parsing: in a file the separator may
+be a comma or a newline, whereas one single form must reach the screen — the same one
+the contours on top of the drawing are drawn under.
 
-Разбор идёт `xml.etree`: внешние сущности он не подгружает, а внутренние не
-разворачивает — на неопределённой он останавливается с ошибкой, которая здесь
-становится отказом с причиной.
+Parsing goes through `xml.etree`: it loads no external entities and does not expand
+internal ones — on an undefined entity it stops with an error, which becomes a
+rejection with a reason here.
 """
 
 import re
@@ -26,12 +28,12 @@ from xml.etree import ElementTree
 
 
 class PlanUnreadable(ValueError):
-    """Файл не является поэтажным планом. Сообщение — причина для загрузившего."""
+    """The file is not a floor plan. The message is the reason, for whoever uploaded it."""
 
 
 @dataclass(frozen=True)
 class ReadContour:
-    """Граница помещения, снятая с чертежа: код помещения и путь, которым он обведён."""
+    """A space boundary taken from the drawing: the space's code and the path outlining it."""
 
     code: str
     path_d: str
@@ -39,26 +41,27 @@ class ReadContour:
 
 @dataclass(frozen=True)
 class PlanReading:
-    """Разобранный план: его система координат, контуры и непривязанные пути."""
+    """A parsed plan: its coordinate system, its contours and its unmatched paths."""
 
     view_box: str
     contours: tuple[ReadContour, ...]
-    #: `id` путей, которым не нашлось помещения на этаже, — опечатки видны, а не потеряны.
+    #: The `id`s of paths that found no space on the floor — typos stay visible instead
+    #: of being lost.
     unmatched: tuple[str, ...]
 
 
-#: Разделители чисел `viewBox` — пробелы и запятые в любом сочетании.
+#: The separators between the numbers of a `viewBox` — spaces and commas in any mix.
 SEPARATORS = re.compile(r"[,\s]+")
 
 
 def read_plan(source: bytes | str, codes: Iterable[str]) -> PlanReading:
-    """Прочитать чертёж этажа, сведя пути с кодами его помещений.
+    """Read the drawing of a floor, matching its paths against the codes of its spaces.
 
-    Отвергается файл, который не разбирается как XML, чей корень не `<svg>`, у
-    которого нет пригодного `viewBox` или в котором два пути обводят одно и то же
-    помещение: контур у него на плане один, и две формы — это вопрос, какая верна.
-    Повторяющийся `id`, за которым помещения нет, файл не рубит: это опечатка, а
-    опечатки план переживает и показывает.
+    A file is rejected if it does not parse as XML, if its root is not `<svg>`, if it
+    has no usable `viewBox`, or if two paths outline the same space: a space has one
+    contour on a plan, and two shapes raise the question of which one is right. A
+    repeated `id` with no space behind it does not kill the file: that is a typo, and
+    typos are something a plan survives and shows.
     """
     root = _root(source)
     view_box = _view_box(root)
@@ -76,8 +79,8 @@ def read_plan(source: bytes | str, codes: Iterable[str]) -> PlanReading:
 
 
 def _root(source: bytes | str) -> ElementTree.Element:
-    # Текст кодируется обратно в байты: иначе объявление кодировки в самом файле
-    # разбор не пропустит, а оно в экспортах встречается.
+    # Text is encoded back into bytes: otherwise the parser rejects an encoding
+    # declaration inside the file itself, and exports do carry one.
     document = source.encode() if isinstance(source, str) else source
     try:
         root = ElementTree.fromstring(document)
@@ -103,13 +106,14 @@ def _view_box(root: ElementTree.Element) -> str:
 
 
 def _drawn_paths(root: ElementTree.Element) -> tuple[tuple[str, str], ...]:
-    """Пути с `id` и формой, в порядке файла. Редакторы вкладывают их в группы `<g>`."""
+    """Paths with an `id` and a shape, in file order. Editors nest them in `<g>` groups."""
     drawn: list[tuple[str, str]] = []
     for element in root.iter():
         if _name(element) != "path":
             continue
         code, path_d = element.get("id"), element.get("d")
-        # Путь без `id` — сам чертёж, а путь без формы границей помещения не станет.
+        # A path with no `id` is the drawing itself, and a path with no shape will
+        # never become the boundary of a space.
         if code and path_d:
             drawn.append((code, path_d))
     return tuple(drawn)
@@ -124,5 +128,5 @@ def _reject_repeats(contours: tuple[ReadContour, ...]) -> None:
 
 
 def _name(element: ElementTree.Element) -> str:
-    """Имя тега без пространства имён: `xmlns` в экспортах то есть, то нет."""
+    """The tag name without its namespace: exports carry `xmlns` sometimes and sometimes not."""
     return str(element.tag).rsplit("}", 1)[-1]

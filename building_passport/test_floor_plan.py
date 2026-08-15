@@ -1,16 +1,18 @@
-"""Поэтажный план как данные: файл, его контуры и то, что видно на экране этажа.
+"""The floor plan as data: the file, its contours and what is visible on the floor screen.
 
-Шов тот же, что у остальных экранов, — граница HTTP: тесты открывают этаж и файл
-плана тестовым клиентом от имени пользователя с известным членством. Ниже HTTP
-проверяется только то, чего по HTTP не наблюдать: что создание плана и разбор его
-контуров — одна операция. Сам разбор SVG живёт в своём шве, `test_floor_plan_svg`.
+The seam is the same as for the other screens — the HTTP boundary: the tests open the
+floor and the plan file with the test client on behalf of a user with a known
+membership. Below HTTP only what cannot be observed over HTTP is checked: that creating a
+plan and parsing its contours are one operation. The SVG parse itself lives in its own
+seam, `test_floor_plan_svg`.
 
-Опора в разметке — атрибуты `data-contour` на контуре, `data-plan` на этаже в
-переключателе, `data-select` с `data-drawn` на том, чем выбирают помещение,
-`data-paint` с `data-legend` на окраске по слою и `data-unmatched` на пути, которому
-не нашлось помещения. Это договор экрана, а не оформление: по ним план и дерево
-находят друг друга, видно, есть ли на этаже чертёж, какие помещения на него не
-нанесены, чем окрашен каждый контур и какие `id` в чертеже повисли.
+The footholds in the markup are `data-contour` on a contour, `data-plan` on a floor in
+the switcher, `data-select` together with `data-drawn` on whatever selects a space,
+`data-paint` together with `data-legend` on the layer's colouring, and `data-unmatched`
+on a path that found no space. That is the screen's contract, not its styling: through
+them the plan and the tree find each other, and they show whether the floor has a
+drawing, which spaces are not drawn on it, what each contour is coloured with and which
+`id`s in the drawing are left dangling.
 """
 
 import re
@@ -35,12 +37,12 @@ ITP_PATH = "M400 0 L500 0 L500 100 Z"
 
 @pytest.fixture(autouse=True)
 def media(settings, tmp_path):
-    """Загруженные файлы уезжают во временный каталог, а не в рабочую копию."""
+    """Uploaded files go into a temporary directory rather than into the working copy."""
     settings.MEDIA_ROOT = tmp_path
 
 
 def plan_svg(*contours, view_box=VIEW_BOX):
-    """Чертёж этажа: обводки помещений по кодам плюс стена, которая контуром не станет."""
+    """The drawing of a floor: space outlines by code plus a wall that stays a wall."""
     paths = "".join(f'<path id="{code}" d="{d}" />' for code, d in contours)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view_box}">'
@@ -58,13 +60,13 @@ def make_plan(floor, source, valid_from=date(2020, 1, 1), valid_to=None):
 
 
 def day(offset):
-    """Дата в днях от сегодняшней: «действующий» — свойство именно сегодняшнего дня."""
+    """A date in days from today: "in force" is a property of today in particular."""
     return timezone.localdate() + timedelta(days=offset)
 
 
 @pytest.fixture
 def plan(first_floor):
-    """План первого этажа: обведены «каб101вход» и ИТП, «каб101» не нанесён."""
+    """The first floor's plan: "каб101вход" and "ИТП" are outlined, "каб101" is not."""
     return make_plan(
         first_floor,
         plan_svg(("man-f1-a", ENTRANCE_PATH), ("man-f1-b", "M200 0 L300 0 L300 100 Z")),
@@ -91,7 +93,7 @@ def floor_page(client, member, plan):
 
 @pytest.fixture
 def their_plan(central, make_floor, make_space):
-    """План другого клиента — то, чего не должно быть видно ни экраном, ни файлом."""
+    """Another client's plan — what must be visible neither through a screen nor as a file."""
     theirs = Space.objects.create(org=central, type="building", code="ctr", name="Central Tower")
     floor = make_floor(theirs, 1)
     make_space(floor, "ctr-f1-a", "Кабинет")
@@ -99,12 +101,12 @@ def their_plan(central, make_floor, make_space):
 
 
 class Marked(HTMLParser):
-    """Теги, несущие атрибут-договор экрана: их атрибуты и их подпись.
+    """Tags carrying an attribute from the screen's contract: their attributes and their caption.
 
-    Подпись контура — вложенный в него `<title>`: имя помещения всплывает при
-    наведении само, без единой строки на стороне браузера. Читается она разбором,
-    а не поиском по тексту страницы: то же имя стоит в дереве слева, и поиск нашёл
-    бы его там, даже если до плана оно не доехало.
+    The caption of a contour is the `<title>` nested inside it: the name of the space
+    pops up on hover by itself, without a single line on the browser side. It is read by
+    parsing rather than by searching the text of the page: the same name stands in the
+    tree on the left, and a search would find it there even if it never reached the plan.
     """
 
     def __init__(self, attribute):
@@ -138,14 +140,14 @@ def contours_on(page):
 
 
 def legend_on(page):
-    """Записи легенды по ключу разновидности — тому же, каким помечен контур."""
+    """Legend entries by the key of the kind — the same one the contour is marked with."""
     return {tag["data-legend"]: tag for tag in marked(page, "data-legend")}
 
 
 def painted_on(page):
-    """Чем окрашен каждый контур: код помещения → ключ разновидности слоя.
+    """What each contour is coloured with: the space's code → the key of the layer's kind.
 
-    Контур без заливки в набор не попадает: он не окрашен, а обведён.
+    A contour with no fill does not get into the set: it is not coloured but outlined.
     """
     return {
         code: tag["data-paint"]
@@ -155,24 +157,24 @@ def painted_on(page):
 
 
 def overlay(page):
-    """Слой контуров поверх чертежа — то, что рисует приложение, а не сам файл.
+    """The layer of contours over the drawing — what the application draws, not the file itself.
 
-    Нужен там, где проверяется отсутствие лишнего пути: в самом чертеже путей
-    сколько угодно, и считать их вперемешку с контурами нечего.
+    Needed where the absence of a superfluous path is checked: the drawing itself holds
+    any number of paths, and there is no point counting them mixed in with the contours.
     """
     return re.search(r'<svg[^>]*aria-label="Контуры помещений".*?</svg>', page, re.DOTALL).group()
 
 
 def stated(page):
-    """Страница одной строкой: фраза не должна ломаться о перенос в разметке."""
+    """The page as one line: a phrase must not break on a line wrap in the markup."""
     return " ".join(page.split())
 
 
-# Файл плана
+# The plan file
 
 
 def test_a_member_gets_the_file_of_their_own_plan(client, member, plan):
-    """Чертёж отдаёт приложение, поэтому он и доезжает до сотрудника целиком."""
+    """The drawing is served by the application, which is why it reaches the employee whole."""
     client.force_login(member)
 
     response = client.get(file_url(plan))
@@ -185,10 +187,11 @@ def test_a_member_gets_the_file_of_their_own_plan(client, member, plan):
 def test_the_file_of_another_organisations_plan_is_missing_rather_than_forbidden(
     client, member, their_plan
 ):
-    """Ровно та утечка, ради которой чокпоинт и заведён (ADR 0001): чужой план недоступен.
+    """Exactly the leak the checkpoint exists for (ADR 0001): a foreign plan is unreachable.
 
-    403 отвечал бы, что такой план есть, — а адрес файла угадывается или утекает
-    из чужой вкладки, и тогда ответ выдал бы чертёж другого клиента.
+    A 403 would answer that such a plan exists — and the address of a file can be guessed
+    or leak from someone else's tab, in which case the answer would give away another
+    client's drawing.
     """
     client.force_login(member)
 
@@ -196,7 +199,7 @@ def test_the_file_of_another_organisations_plan_is_missing_rather_than_forbidden
 
 
 def test_an_anonymous_request_for_the_file_is_sent_to_login(client, plan):
-    """До входа не видно и чертежей: файл — такой же путь чтения, как экран."""
+    """Before signing in, drawings are invisible too: a file is as much a read path as a screen."""
     response = client.get(file_url(plan))
 
     assert response.status_code == 302
@@ -206,7 +209,7 @@ def test_an_anonymous_request_for_the_file_is_sent_to_login(client, plan):
 def test_a_superuser_reaches_any_organisations_plan_and_its_file(
     client, django_user_model, their_plan
 ):
-    """Разработчик воспроизводит проблему клиента, не выписывая себе членство."""
+    """A developer reproduces a client's problem without granting themselves a membership."""
     client.force_login(django_user_model.objects.create_superuser("developer"))
 
     assert client.get(floor_url(their_plan.floor)).status_code == 200
@@ -214,10 +217,10 @@ def test_a_superuser_reaches_any_organisations_plan_and_its_file(
 
 
 def test_the_file_is_served_sandboxed(client, member, plan):
-    """SVG — исполняемый формат: открытый по адресу напрямую, он бы выполнялся у нас.
+    """SVG is an executable format: opened directly by its address it would run on our side.
 
-    Файл приходит от загрузившего, а раздаётся с домена приложения, поэтому ответ
-    отправляется в песочницу и без угадывания типа.
+    The file comes from whoever uploaded it and is served from the application's domain,
+    so the response goes into a sandbox and without type sniffing.
     """
     client.force_login(member)
 
@@ -227,11 +230,11 @@ def test_the_file_is_served_sandboxed(client, member, plan):
     assert response["X-Content-Type-Options"] == "nosniff"
 
 
-# План на экране этажа
+# The plan on the floor screen
 
 
 def test_a_floor_with_a_plan_opens(client, member, plan):
-    """Экран с планом отрисовывается: ошибка шаблона обнаруживается здесь."""
+    """A screen with a plan renders: a template error is caught here."""
     client.force_login(member)
 
     response = client.get(floor_url(plan.floor))
@@ -241,32 +244,32 @@ def test_a_floor_with_a_plan_opens(client, member, plan):
 
 
 def test_each_drawn_space_is_outlined_on_the_plan(floor_page):
-    """План — это помещения, нарисованные: обведено ровно то, что нанесено."""
+    """A plan is the spaces, drawn: exactly what is drawn is outlined."""
     assert set(contours_on(floor_page)) == {"man-f1-a", "man-f1-b"}
 
 
 def test_a_contour_is_drawn_along_the_geometry_it_was_authored_with(floor_page):
-    """Помещение узнают по его форме, а не по прямоугольнику вместо неё."""
+    """A space is recognised by its shape, not by a rectangle standing in for it."""
     assert contours_on(floor_page)["man-f1-a"]["d"] == ENTRANCE_PATH
 
 
 def test_a_space_with_no_path_in_the_file_is_not_drawn(floor_page):
-    """Помещению без контура форму не выдумывают — оно остаётся только в дереве."""
+    """No shape is invented for a space without a contour — it stays in the tree only."""
     assert "man-f1-a1" not in contours_on(floor_page)
     assert "man-f1-a1" in floor_page
 
 
 def test_hovering_a_contour_shows_the_name_of_its_space(floor_page):
-    """Этаж просматривают, не проваливаясь в каждое помещение по очереди.
+    """A floor is scanned without diving into every space in turn.
 
-    Имя стоит первым, а не единственным: слой дописывает к нему свою строку — что
-    означает цвет, которым помещение залито.
+    The name comes first but is not alone: the layer appends its own line to it — what
+    the colour the space is filled with means.
     """
     assert contours_on(floor_page)["man-f1-a"]["title-text"].startswith("каб101вход")
 
 
 def test_the_drawing_is_asked_for_through_the_application(floor_page, plan):
-    """Чертёж едет через тот же чокпоинт, что и всё остальное, — а не из /media/."""
+    """The drawing travels through the same checkpoint as everything else — not out of /media/."""
     assert file_url(plan) in floor_page
     assert "/media/" not in floor_page
 
@@ -274,10 +277,11 @@ def test_the_drawing_is_asked_for_through_the_application(floor_page, plan):
 def test_a_contour_over_a_space_of_another_organisation_is_not_drawn(
     client, member, central, first_floor
 ):
-    """Чужая строка под этим этажом не должна проехать на экран именем и формой.
+    """Another client's row under this floor must not reach the screen by name or by shape.
 
-    Такой строки в исправных данных нет; проверяется, что контуры отбираются через
-    чокпоинт, как и дерево, а не показываются просто потому, что лежат в плане.
+    There is no such row in healthy data; what is checked is that the contours are
+    selected through the checkpoint, as the tree is, rather than shown just because they
+    happen to lie in the plan.
     """
     Space.objects.create(
         org=central, type="room", parent=first_floor, building=first_floor.building,
@@ -295,7 +299,7 @@ def test_a_contour_over_a_space_of_another_organisation_is_not_drawn(
 def test_the_plan_of_another_floor_is_not_drawn_on_this_one(
     client, member, first_floor, make_floor, make_space
 ):
-    """План принадлежит этажу: соседний чертёж на этот экран не подмешивается."""
+    """A plan belongs to a floor: a neighbouring drawing is not mixed into this screen."""
     second = make_floor(first_floor.building, 2)
     make_space(second, "man-f2-a", "каб201")
     make_plan(second, plan_svg(("man-f2-a", ENTRANCE_PATH)))
@@ -306,21 +310,21 @@ def test_the_plan_of_another_floor_is_not_drawn_on_this_one(
     assert contours_on(page) == {}
 
 
-# План и дерево — два вида одного выбора
+# The plan and the tree — two views of one selection
 
 
 def test_a_contour_opens_the_card_of_the_space_it_outlines(floor_page):
-    """План расспрашивают, показывая пальцем: щелчок по контуру выбирает помещение."""
+    """A plan is questioned by pointing: a click on a contour selects the space."""
     entrance = Space.objects.get(code="man-f1-a")
 
     assert contours_on(floor_page)["man-f1-a"]["hx-get"] == card_url(entrance)
 
 
 def test_the_tree_marks_which_spaces_are_missing_from_the_plan(floor_page):
-    """План — самый острый инструмент проекта для поиска незаведённого.
+    """The plan is the project's sharpest tool for finding what has not been recorded.
 
-    «каб101» на чертеже не обведён, и в дереве это видно, не сличая список с
-    картинкой.
+    "каб101" is not outlined on the drawing, and the tree shows that without comparing
+    the list against the picture.
     """
     marks = {tag["data-select"]: tag["data-drawn"] for tag in marked(floor_page, "data-drawn")}
 
@@ -329,7 +333,7 @@ def test_the_tree_marks_which_spaces_are_missing_from_the_plan(floor_page):
 
 
 def test_a_space_missing_from_the_plan_is_still_selectable_from_the_tree(floor_page):
-    """Именно эти помещения важнее прочих, а щёлкнуть по ним на чертеже негде."""
+    """These spaces matter more than the rest, and there is nowhere to click them."""
     undrawn = Space.objects.get(code="man-f1-a1")
     node = {tag["data-select"]: tag for tag in marked(floor_page, "data-drawn")}["man-f1-a1"]
 
@@ -339,10 +343,10 @@ def test_a_space_missing_from_the_plan_is_still_selectable_from_the_tree(floor_p
 def test_nothing_is_marked_in_the_tree_when_no_plan_is_in_force(
     client, member, first_floor
 ):
-    """Без действующего плана не нанесено ничего, и метка на каждом узле — шум.
+    """With no plan in force nothing is drawn, and a mark on every node is noise.
 
-    План будущей перепланировки на этаже уже заведён: сегодня он не действует, и
-    сказать по нему, что нанесено, а что нет, нельзя.
+    The plan of a future rebuild is already on record for the floor: it is not in force
+    today, and it cannot say what is drawn and what is not.
     """
     make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
     client.force_login(member)
@@ -353,14 +357,14 @@ def test_nothing_is_marked_in_the_tree_when_no_plan_is_in_force(
     assert "нет контура" not in page
 
 
-# Полнота: сколько нанесено и что на чертеже повисло
+# Completeness: how much is drawn and what dangles on the drawing
 
 
 def test_the_floor_screen_states_how_many_spaces_are_drawn_out_of_how_many_exist(floor_page):
-    """Экран считает то, чего на плане нет, — и это самое ценное, что он умеет сказать.
+    """The screen counts what is missing from the plan — the most valuable thing it can say.
 
-    На этаже три помещения, обведены два: «каб101» не нанесён. Сличать дерево с
-    чертежом глазами для этого не нужно.
+    The floor holds three spaces and two are outlined: "каб101" is not drawn. There is no
+    need to compare the tree against the drawing by eye for that.
     """
     assert "Нанесено 2 из 3 помещений" in stated(floor_page)
 
@@ -368,10 +372,10 @@ def test_the_floor_screen_states_how_many_spaces_are_drawn_out_of_how_many_exist
 def test_a_space_with_no_contour_counts_into_the_figure_of_what_is_not_drawn(
     client, member, plan, make_space
 ):
-    """Заведённое после плана помещение на чертеже не появляется — и счёт это говорит.
+    """A space created after the plan does not appear on the drawing — and the count says so.
 
-    Контуры плана не пересобираются (ADR 0003), поэтому новое помещение растит
-    знаменатель, а не числитель.
+    The contours of a plan are never rebuilt (ADR 0003), so a new space grows the
+    denominator, not the numerator.
     """
     make_space(plan.floor, "man-f1-c", "каб102")
     client.force_login(member)
@@ -382,9 +386,9 @@ def test_a_space_with_no_contour_counts_into_the_figure_of_what_is_not_drawn(
 
 
 def test_completeness_is_counted_in_spaces_rather_than_in_square_metres(client, member, plan):
-    """Метрам нужен масштаб, которого план не объявляет, и площадь есть не у всех.
+    """Metres need a scale, which a plan does not declare, and not every space has an area.
 
-    Выдуманный масштаб дал бы цифру, которая выглядит точной и не является таковой.
+    An invented scale would give a figure that looks precise without being so.
     """
     Space.objects.filter(code="man-f1-a").update(area_m2=100)
     client.force_login(member)
@@ -396,17 +400,17 @@ def test_completeness_is_counted_in_spaces_rather_than_in_square_metres(client, 
 
 
 def test_no_contour_is_drawn_for_the_uncovered_remainder_of_the_floor(floor_page):
-    """Разрыв между площадью этажа и суммой помещений — это находка, а не дыра в картинке.
+    """The gap between the floor's area and the sum of its spaces is a finding, not a hole.
 
-    Синтетический контур «прочее» закрыл бы её выдуманной формой — той же ошибкой,
-    что и `-1 м²`, только в другой среде. Поверх чертежа лежит ровно столько путей,
-    сколько помещений обведено.
+    A synthetic "other" contour would close it with an invented shape — the same mistake
+    as `-1 м²`, only in another medium. Over the drawing lie exactly as many paths as
+    there are spaces outlined.
     """
     assert overlay(floor_page).count("<path") == len(contours_on(floor_page)) == 2
 
 
 def test_nothing_is_counted_when_no_plan_is_in_force(client, member, first_floor):
-    """Без действующего плана не нанесено ничего: «0 из 3» сказало бы то же, что пустой центр."""
+    """With no plan in force nothing is drawn: "0 of 3" says what the empty middle says."""
     make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
     client.force_login(member)
 
@@ -416,10 +420,10 @@ def test_nothing_is_counted_when_no_plan_is_in_force(client, member, first_floor
 
 
 def test_a_path_matching_no_space_is_reported_on_the_floor_screen(client, member, first_floor):
-    """Опечатка в `id` должна быть видна: план загрузился, а путь помещением не стал.
+    """A typo in an `id` must be visible: the plan uploaded, but the path never became a space.
 
-    Экран этажа — то место, где это обнаруживается: контуров на нём меньше, чем
-    ожидал рисовавший, и причина названа рядом.
+    The floor screen is where this is discovered: it carries fewer contours than whoever
+    drew them expected, and the reason is named alongside.
     """
     make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH), ("man-f1-zz", ITP_PATH)))
     client.force_login(member)
@@ -431,10 +435,10 @@ def test_a_path_matching_no_space_is_reported_on_the_floor_screen(client, member
 
 
 def test_one_id_on_two_paths_is_named_once(client, member, first_floor):
-    """Названа опечатка, а не каждый путь с нею: дважды она читается сбоем экрана.
+    """The typo is named, not every path carrying it: twice it reads as a screen glitch.
 
-    Дубликат `id` за известным помещением файл бы отклонил, а за неизвестным —
-    переживает: план грузится и против неполного дерева.
+    A duplicate `id` behind a known space would get the file rejected; behind an unknown
+    one it survives: a plan loads even against an incomplete tree.
     """
     make_plan(
         first_floor,
@@ -448,15 +452,15 @@ def test_one_id_on_two_paths_is_named_once(client, member, first_floor):
 
 
 def test_a_plan_whose_every_path_matched_reports_nothing_unmatched(floor_page):
-    """Исправный чертёж не должен нести на экране предупреждения ни о чём."""
+    """A sound drawing must not carry a warning about anything on the screen."""
     assert marked(floor_page, "data-unmatched") == []
 
 
 def test_the_unmatched_paths_are_kept_with_the_plan_that_was_read(first_floor):
-    """Непривязанные пути замечаются при разборе, а показываются на экране этажа.
+    """Unmatched paths are noticed while parsing but shown on the floor screen.
 
-    Между этими двумя моментами их надо где-то держать, и держит их сам план:
-    заново чертёж не разбирается.
+    Between those two moments they have to be kept somewhere, and the plan keeps them
+    itself: the drawing is never parsed again.
     """
     plan = make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH), ("man-f1-zz", ITP_PATH)))
 
@@ -464,10 +468,10 @@ def test_the_unmatched_paths_are_kept_with_the_plan_that_was_read(first_floor):
 
 
 def test_the_unmatched_paths_are_not_recomputed_when_the_period_is_edited(plan):
-    """Разбор был один раз (ADR 0003): правка периода не пересчитывает и непривязанное.
+    """The parse happened once (ADR 0003): editing the period recomputes nothing either.
 
-    Помещению меняют код — при повторном разборе его путь стал бы непривязанным.
-    План остаётся с тем, с чем был прочитан.
+    A space gets its code changed — on a second parse its path would become unmatched.
+    The plan stays with what it was read with.
     """
     Space.objects.filter(code="man-f1-b").update(code="man-f1-renamed")
 
@@ -477,13 +481,13 @@ def test_the_unmatched_paths_are_not_recomputed_when_the_period_is_edited(plan):
     assert plan.unmatched_ids == []
 
 
-# Переключатель этажей
+# The floor switcher
 
 
 def test_the_switcher_shows_which_floors_have_a_plan(
     client, member, plan, make_floor, make_space
 ):
-    """Иначе по этажам щёлкают в надежде найти чертёж."""
+    """Otherwise people click through floors hoping to find a drawing."""
     second = make_floor(plan.floor.building, 2)
     make_space(second, "man-f2-a", "каб201")
     client.force_login(member)
@@ -494,11 +498,11 @@ def test_the_switcher_shows_which_floors_have_a_plan(
     assert marks == {"man-f1": "yes", "man-f2": "no"}
 
 
-# План и его контуры появляются одной операцией
+# A plan and its contours appear in one operation
 
 
 def test_a_space_of_any_type_under_the_floor_may_carry_a_contour(first_floor, make_space):
-    """Лестничная клетка, шахта и проём второго света занимают площадь этажа не меньше кабинета."""
+    """A stairwell, a shaft and a void take up floor area no less than an office does."""
     for code, type in (("man-f1-s", "stairwell"), ("man-f1-v", "void"), ("man-f1-sh", "shaft")):
         make_space(first_floor, code, code, type=type)
 
@@ -515,7 +519,7 @@ def test_a_space_of_any_type_under_the_floor_may_carry_a_contour(first_floor, ma
 def test_a_space_nested_below_a_direct_child_of_the_floor_may_carry_a_contour(
     first_floor, make_space
 ):
-    """Кабина внутри уборной — тоже помещение этажа, и на чертеже она своя."""
+    """A cubicle inside a toilet is a space of the floor, with its own place on the drawing."""
     plan = make_plan(first_floor, plan_svg(("man-f1-a1", ENTRANCE_PATH)))
 
     assert [c.space.code for c in plan.contours.all()] == ["man-f1-a1"]
@@ -524,7 +528,7 @@ def test_a_space_nested_below_a_direct_child_of_the_floor_may_carry_a_contour(
 def test_a_path_naming_a_space_of_another_floor_is_not_a_contour_here(
     first_floor, make_floor, make_space
 ):
-    """Контур принадлежит паре «план + помещение», и помещение — с этого этажа."""
+    """A contour belongs to the pair "plan + space", and the space comes from this floor."""
     second = make_floor(first_floor.building, 2)
     make_space(second, "man-f2-a", "каб201")
 
@@ -534,7 +538,7 @@ def test_a_path_naming_a_space_of_another_floor_is_not_a_contour_here(
 
 
 def test_a_file_that_is_not_a_plan_leaves_no_plan_and_no_contours(first_floor):
-    """Разбор атомарен с планом: иначе на этаже оказался бы план без контуров."""
+    """The parse is atomic with the plan: otherwise the floor gets a plan and no contours."""
     with pytest.raises(PlanUnreadable):
         make_plan(first_floor, "<svg xmlns='http://www.w3.org/2000/svg'></svg>")
 
@@ -543,7 +547,7 @@ def test_a_file_that_is_not_a_plan_leaves_no_plan_and_no_contours(first_floor):
 
 
 def test_a_plan_cannot_be_attached_to_a_space_that_is_not_a_floor(first_floor):
-    """План принадлежит этажу — у кабинета своего чертежа не бывает."""
+    """A plan belongs to a floor — an office never has a drawing of its own."""
     room = Space.objects.get(code="man-f1-a")
     plan = FloorPlan(
         floor=room,
@@ -556,10 +560,11 @@ def test_a_plan_cannot_be_attached_to_a_space_that_is_not_a_floor(first_floor):
 
 
 def test_the_contours_of_a_plan_are_not_rebuilt_when_its_period_is_edited(plan):
-    """Чертёж уже разобран; правка периода не должна пересобрать его по сегодняшнему дереву.
+    """The drawing is already parsed; editing the period must not rebuild it against today's tree.
 
-    Помещению меняют код: при повторном разборе его путь стал бы непривязанным и
-    контур бы исчез. Контур держится за помещение связью, а не за его сегодняшний код.
+    A space gets its code changed: on a second parse its path would become unmatched and
+    the contour would disappear. A contour holds on to the space by a link, not by its
+    code of today.
     """
     Space.objects.filter(code="man-f1-b").update(code="man-f1-renamed")
 
@@ -569,7 +574,7 @@ def test_the_contours_of_a_plan_are_not_rebuilt_when_its_period_is_edited(plan):
     assert plan.contours.count() == 2
 
 
-# Загрузка через админку Django
+# Uploading through the Django admin
 
 
 @pytest.fixture
@@ -591,7 +596,7 @@ def admin_upload(client, floor, source, valid_from=date(2020, 1, 1), valid_to=No
 
 
 def test_a_plan_is_created_in_django_admin(admin_client, first_floor):
-    """Пока формы загрузки нет, планы заводит администратор платформы."""
+    """Until the upload form exists, plans are created by a platform administrator."""
     response = admin_upload(
         admin_client, first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH))
     )
@@ -601,7 +606,7 @@ def test_a_plan_is_created_in_django_admin(admin_client, first_floor):
 
 
 def test_a_file_that_is_not_a_plan_is_rejected_in_admin_with_a_reason(admin_client, first_floor):
-    """Отказ называет причину: иначе экспорт правят наугад, глядя на пустой план."""
+    """The rejection names the reason: otherwise the export gets fixed by guesswork."""
     response = admin_upload(admin_client, first_floor, "<svg viewBox='0 0 10 10'>")
 
     assert response.status_code == 200
@@ -609,12 +614,12 @@ def test_a_file_that_is_not_a_plan_is_rejected_in_admin_with_a_reason(admin_clie
     assert FloorPlan.objects.count() == 0
 
 
-# История планировок: действующий план и непересекающиеся периоды
+# The history of layouts: the plan in force and non-overlapping periods
 
 
 @pytest.fixture
 def superseded(first_floor):
-    """Прежний план: его период закончился вчера, но сам он остаётся в истории."""
+    """The previous plan: its period ended yesterday, but it stays in the history."""
     return make_plan(
         first_floor,
         plan_svg(("man-f1-a", ENTRANCE_PATH)),
@@ -625,7 +630,7 @@ def superseded(first_floor):
 
 @pytest.fixture
 def in_force(first_floor):
-    """Действующий план: период начался месяц назад и не закрыт."""
+    """The plan in force: its period began a month ago and is not closed."""
     return make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30))
 
 
@@ -637,7 +642,7 @@ def floor_screen(client, member, floor):
 def test_the_floor_screen_renders_the_plan_in_force_today(
     client, member, first_floor, superseded
 ):
-    """Работы планируют по сегодняшнему чертежу, а не по тому, что был до перепланировки."""
+    """Work is planned against today's drawing, not against the one from before the rebuild."""
     current = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
     page = floor_screen(client, member, first_floor)
@@ -648,10 +653,10 @@ def test_the_floor_screen_renders_the_plan_in_force_today(
 
 
 def test_a_plan_whose_period_has_not_begun_is_not_rendered(client, member, first_floor):
-    """Перепланировка назначена на будущее: до её даты этаж выглядит так, как сейчас.
+    """The rebuild is scheduled for the future: until its date the floor looks as it does now.
 
-    Назначить её можно, только назвав день, которым закрывается нынешний план, —
-    иначе периоды пересекаются и новый план не принимается.
+    It can only be scheduled by naming the day the current plan is closed on — otherwise
+    the periods overlap and the new plan is not accepted.
     """
     current = make_plan(
         first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(29)
@@ -666,10 +671,11 @@ def test_a_plan_whose_period_has_not_begun_is_not_rendered(client, member, first
 
 
 def test_a_floor_whose_only_plan_has_not_begun_shows_no_plan(client, member, first_floor):
-    """Пустой центр честнее будущего чертежа: сегодня этаж выглядит не так.
+    """An empty middle is more honest than a future drawing: today the floor looks different.
 
-    И говорит он «нет действующего», а не «не загружен»: план у этажа есть, просто
-    его период ещё не начался, и загружать второй раз то же самое незачем.
+    And it says "there is none in force" rather than "none uploaded": the floor does have
+    a plan, its period simply has not begun, and there is no point uploading the same
+    thing twice.
     """
     make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(30))
 
@@ -682,7 +688,7 @@ def test_a_floor_whose_only_plan_has_not_begun_shows_no_plan(client, member, fir
 def test_the_switcher_marks_a_floor_by_the_plan_in_force_today(
     client, member, first_floor, in_force, make_floor, make_space
 ):
-    """Значок обещает чертёж: этаж с одним лишь будущим планом обещать его не должен."""
+    """The badge promises a drawing: a floor with only a future plan must not promise one."""
     second = make_floor(first_floor.building, 2)
     make_space(second, "man-f2-a", "каб201")
     make_plan(second, plan_svg(("man-f2-a", ENTRANCE_PATH)), valid_from=day(30))
@@ -694,7 +700,7 @@ def test_the_switcher_marks_a_floor_by_the_plan_in_force_today(
 
 
 def test_a_superseded_plan_is_kept_rather_than_deleted(first_floor, superseded):
-    """История планировок и есть то, ради чего у плана период: прежний чертёж остаётся."""
+    """The history of layouts is what a plan has a period for: the previous drawing stays."""
     make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
     assert FloorPlan.objects.filter(pk=superseded.pk).exists()
@@ -703,11 +709,11 @@ def test_a_superseded_plan_is_kept_rather_than_deleted(first_floor, superseded):
 def test_a_superseded_plan_keeps_the_contours_it_was_drawn_with(
     first_floor, superseded, make_space
 ):
-    """Старый план не перерисовывается сегодняшними помещениями (ADR 0003).
+    """An old plan is not redrawn with today's spaces (ADR 0003).
 
-    После перепланировки на этаже появилось помещение, которого на прежнем чертеже
-    не было. Его контур принадлежит новому плану, а старый остаётся с тем, с чем
-    был нарисован: иначе это не устаревшая картинка, а неверная.
+    After the rebuild the floor gained a space that was not on the previous drawing. Its
+    contour belongs to the new plan, and the old one stays with what it was drawn with:
+    otherwise it is not an outdated picture but a wrong one.
     """
     make_space(first_floor, "man-f1-c", "каб102")
 
@@ -722,7 +728,7 @@ def test_a_superseded_plan_keeps_the_contours_it_was_drawn_with(
 
 
 def test_a_plan_overlapping_an_existing_plan_of_the_floor_is_rejected(first_floor, in_force):
-    """У этажа не бывает двух действующих планов: какой из них сегодняшний — неизвестно."""
+    """A floor never has two plans in force: which of them is today's would be unknown."""
     with pytest.raises(ValidationError):
         make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
@@ -730,7 +736,7 @@ def test_a_plan_overlapping_an_existing_plan_of_the_floor_is_rejected(first_floo
 def test_a_rejected_overlap_leaves_the_existing_plan_in_force(
     client, member, first_floor, in_force
 ):
-    """Отказ ничего не меняет: действующим остаётся тот план, что действовал."""
+    """A rejection changes nothing: the plan that was in force stays in force."""
     with pytest.raises(ValidationError):
         make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
@@ -739,10 +745,10 @@ def test_a_rejected_overlap_leaves_the_existing_plan_in_force(
 
 
 def test_creating_a_plan_does_not_close_the_period_of_the_previous_one(first_floor, in_force):
-    """Закрыть прежний период задним числом — записать перепланировку административным днём.
+    """Closing the previous period retroactively records the rebuild on an administrative day.
 
-    Дату называет загружающий; система её не выдумывает, поэтому пересечение — отказ,
-    а не молчаливое закрытие предыдущего плана.
+    The date is named by the uploader; the system does not invent it, so an overlap is a
+    rejection rather than a silent closing of the previous plan.
     """
     with pytest.raises(ValidationError):
         make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
@@ -752,7 +758,7 @@ def test_creating_a_plan_does_not_close_the_period_of_the_previous_one(first_flo
 
 
 def test_a_plan_beginning_the_day_the_previous_one_ends_is_rejected(first_floor):
-    """В этот день действовали бы оба: период включает и свой последний день."""
+    """On that day both would be in force: a period includes its last day too."""
     make_plan(
         first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(-10)
     )
@@ -764,7 +770,7 @@ def test_a_plan_beginning_the_day_the_previous_one_ends_is_rejected(first_floor)
 def test_a_plan_beginning_the_day_after_the_previous_one_ends_is_accepted(
     client, member, first_floor
 ):
-    """Смежные периоды — это и есть история: у каждого дня свой единственный план."""
+    """Adjacent periods are exactly what a history is: every day has its one and only plan."""
     make_plan(
         first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)), valid_from=day(-30), valid_to=day(-10)
     )
@@ -778,7 +784,7 @@ def test_a_plan_beginning_the_day_after_the_previous_one_ends_is_accepted(
 def test_a_plan_of_another_floor_may_hold_the_same_period(
     first_floor, in_force, make_floor, make_space
 ):
-    """Непересечение — правило одного этажа: у каждого этажа свой действующий план."""
+    """Non-overlapping is a rule within one floor: every floor has its own plan in force."""
     second = make_floor(first_floor.building, 2)
     make_space(second, "man-f2-a", "каб201")
 
@@ -788,7 +794,7 @@ def test_a_plan_of_another_floor_may_hold_the_same_period(
 
 
 def test_editing_a_period_into_an_overlap_is_rejected(first_floor, superseded):
-    """Правка периода — тот же путь записи: правило принадлежит плану, а не форме."""
+    """Editing a period is the same write path: the rule belongs to the plan, not to a form."""
     current = make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
     current.valid_from = superseded.valid_to
@@ -800,7 +806,7 @@ def test_editing_a_period_into_an_overlap_is_rejected(first_floor, superseded):
 
 
 def test_a_period_that_ends_before_it_begins_is_rejected(first_floor):
-    """Период, кончающийся раньше начала, — не период: действующим он не станет никогда."""
+    """A period ending before it begins is not a period: it will never be in force."""
     with pytest.raises(ValidationError):
         make_plan(
             first_floor,
@@ -813,7 +819,7 @@ def test_a_period_that_ends_before_it_begins_is_rejected(first_floor):
 def test_an_overlapping_plan_is_rejected_in_admin_with_a_reason(
     admin_client, first_floor, in_force
 ):
-    """Отказ называет причину на форме: иначе дату правят наугад, глядя на пустую страницу."""
+    """The rejection names the reason on the form: otherwise the date is fixed by guesswork."""
     response = admin_upload(
         admin_client, first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0)
     )
@@ -826,21 +832,21 @@ def test_an_overlapping_plan_is_rejected_in_admin_with_a_reason(
 def test_the_history_of_plans_does_not_write_the_validity_of_the_spaces_themselves(
     first_floor, superseded
 ):
-    """`Space.valid_from` означает, когда существовало помещение, а не когда — его чертёж."""
+    """`Space.valid_from` means when the space existed, not when its drawing did."""
     make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)), valid_from=day(0))
 
     assert set(Space.objects.values_list("valid_from", "valid_to")) == {(None, None)}
 
 
-# Слой «тип помещения»: окраска контуров и легенда
+# The "space type" layer: colouring the contours and the legend
 
 
 @pytest.fixture
 def coloured_floor(first_floor, make_space):
-    """Этаж, на котором есть все три типа помещений и то, что ни к одному не относится.
+    """A floor holding all three types of space plus something that belongs to none of them.
 
-    «каб101вход» сдаётся, «Коридор» — МОП, ИТП не сдаётся и общим не является,
-    а лестничная клетка — не тип помещения вовсе.
+    "каб101вход" is leasable, "Коридор" is a common area, the heating substation is
+    neither leasable nor common, and a stairwell is not a type of space at all.
     """
     Space.objects.filter(code="man-f1-a").update(is_leasable=True)
     corridor = make_space(first_floor, "man-f1-c", "Коридор")
@@ -864,7 +870,7 @@ def coloured(client, member, coloured_floor):
 
 
 def test_the_floor_screen_renders_with_the_layer_applied(client, member, coloured_floor):
-    """Экран со слоем отрисовывается: ошибка правила или разметки обнаруживается здесь."""
+    """A screen with the layer renders: an error in the rule or in the markup is caught here."""
     client.force_login(member)
 
     response = client.get(floor_url(coloured_floor))
@@ -873,10 +879,11 @@ def test_the_floor_screen_renders_with_the_layer_applied(client, member, coloure
 
 
 def test_each_of_the_three_types_is_painted_its_own_way(coloured):
-    """Сдаваемое, общее и техническое видно, не читая ни одной подписи.
+    """Leasable, common and technical are visible without reading a single caption.
 
-    Сверяется, чем залит каждый контур, а не какого он цвета: цвет — дело палитры,
-    и назови его тест, он сломался бы на первой же смене темы.
+    What each contour is filled with is compared, not what colour it is: colour is the
+    palette's business, and were a test to name it, it would break on the first change of
+    theme.
     """
     assert painted_on(coloured) == {
         "man-f1-a": "leasable",
@@ -888,11 +895,11 @@ def test_each_of_the_three_types_is_painted_its_own_way(coloured):
 def test_a_space_that_is_neither_leased_nor_common_reads_as_technical(
     client, member, first_floor
 ):
-    """Техническое — это отсутствие обоих признаков, в том числе непроставленных.
+    """Technical is the absence of both flags, unset ones included.
 
-    ИТП, венткамера и электрощитовая находятся именно так. Непроставленный признак
-    означает «нет»: четвёртый цвет для «неизвестно» рассказывал бы о полноте данных,
-    а не о здании.
+    That is exactly how the heating substation, the air handling room and the switchboard
+    room are found. An unset flag means "no": a fourth colour for "unknown" would talk
+    about the completeness of the data rather than about the building.
     """
     Space.objects.filter(code="man-f1-b").update(is_leasable=None, is_common=None)
     make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)))
@@ -905,7 +912,7 @@ def test_a_space_that_is_neither_leased_nor_common_reads_as_technical(
 def test_a_space_marked_both_leasable_and_common_is_drawn_as_leasable(
     client, member, first_floor
 ):
-    """Признаки противоречат друг другу; сдаваемое помещение не является общим."""
+    """The flags contradict each other; a leasable space is not a common one."""
     Space.objects.filter(code="man-f1-a").update(is_leasable=True, is_common=True)
     make_plan(first_floor, plan_svg(("man-f1-a", ENTRANCE_PATH)))
 
@@ -918,12 +925,12 @@ def test_a_space_marked_both_leasable_and_common_is_drawn_as_leasable(
 def test_a_space_outside_the_three_types_is_outlined_without_a_fill(
     client, member, first_floor, make_space, type
 ):
-    """Проём, шахта и лестничная клетка нарисованы, чтобы на чертеже не было провалов.
+    """A void, a shaft and a stairwell are drawn so that the drawing has no gaps in it.
 
-    Залить их одним из трёх цветов значило бы назвать их типом помещения, которым
-    они не являются, поэтому слой не даёт им ничего: контур на плане есть, а заливки
-    у него нет. Отсутствие `data-paint` — это и есть «не залит» на проводе; чем
-    рисуется незалитый контур, знает таблица стилей.
+    Filling them with one of the three colours would call them a type of space they are
+    not, so the layer gives them nothing: there is a contour on the plan but no fill on
+    it. The absence of `data-paint` is exactly what "not filled" looks like on the wire;
+    how an unfilled contour is drawn is known to the stylesheet.
     """
     make_space(first_floor, "man-f1-x", "Не тип помещения", type=type)
     make_plan(first_floor, plan_svg(("man-f1-x", ENTRANCE_PATH)))
@@ -935,7 +942,7 @@ def test_a_space_outside_the_three_types_is_outlined_without_a_fill(
 
 
 def test_the_screen_shows_a_legend_for_the_colouring(coloured):
-    """Цвет без легенды приходится угадывать, а угаданное читается как факт."""
+    """A colour without a legend has to be guessed, and a guess reads as a fact."""
     assert set(legend_on(coloured)) == {"leasable", "common", "technical"}
     assert "Арендопригодные" in coloured
     assert "МОП" in coloured
@@ -943,7 +950,7 @@ def test_the_screen_shows_a_legend_for_the_colouring(coloured):
 
 
 def test_a_space_outside_the_three_types_gets_no_legend_entry(coloured):
-    """Лестничная клетка на чертеже есть, но объяснять в легенде нечего: она не залита."""
+    """The stairwell is on the drawing, but there is nothing to explain: it has no fill."""
     assert "man-f1-s" in contours_on(coloured)
     assert len(legend_on(coloured)) == 3
 
@@ -951,7 +958,7 @@ def test_a_space_outside_the_three_types_gets_no_legend_entry(coloured):
 def test_the_legend_explains_the_colours_of_this_floor_and_no_others(
     client, member, first_floor
 ):
-    """Запись о цвете, которого на чертеже нет, — это подпись к пустому месту."""
+    """An entry for a colour absent from the drawing is a caption to an empty space."""
     make_plan(first_floor, plan_svg(("man-f1-b", ITP_PATH)))
 
     page = floor_screen(client, member, first_floor)
@@ -960,9 +967,10 @@ def test_the_legend_explains_the_colours_of_this_floor_and_no_others(
 
 
 def test_hovering_a_contour_says_what_its_colour_means(coloured):
-    """Слой отвечает и по одному помещению: незачем сверять цвет с легендой глазами.
+    """The layer answers for a single space too: no matching a colour against the legend.
 
-    Контур вне слоя подписан одним именем: заливки у него нет, и объяснять нечего.
+    A contour outside the layer is captioned with its name alone: it has no fill, and
+    there is nothing to explain.
     """
     hovered = {code: tag["title-text"] for code, tag in contours_on(coloured).items()}
 

@@ -1,24 +1,24 @@
-"""Полнота плана: сколько помещений этажа нанесено и что на чертеже осталось лишним.
+"""Plan completeness: how many spaces of a floor are drawn and what is left over on the drawing.
 
-План — самый острый инструмент проекта для поиска незаведённого, и острота эта в
-том, что он считает не нарисованное, а ненарисованное: «нанесено 47 из 82
-помещений» называет разом и то, чего на чертеже нет, и то, чего нет в дереве.
-Пространственный эквивалент «— нет данных» из паспорта здания.
+The plan is the project's sharpest tool for finding what has not been recorded, and its
+sharpness lies in counting not what is drawn but what is not: "нанесено 47 из 82
+помещений" names at once both what is missing from the drawing and what is missing from
+the tree. The spatial equivalent of the building passport's "— нет данных".
 
-Счёт идёт в помещениях, а не в квадратных метрах, и это решение, а не упущение.
-Метрам нужен масштаб, которого план не объявляет, и площадь заведена не у всех
-помещений: цифра в м² выглядела бы точной, не будучи таковой. Поле масштаба ради
-неё не заводится.
+The count is in spaces, not in square metres, and that is a decision rather than an
+omission. Metres need a scale, which a plan does not declare, and not every space has an
+area recorded: a figure in m² would look precise without being so. No scale field is
+added for its sake.
 
-Знаменатель — все помещения под этажом, без исключений: помещение, которое лишь
-объединяет вложенные, контура не имеет и всё равно попадает в ненанесённые. Дырой
-в данных это не является, но и вычесть его отсюда нельзя — правило «у этого контур
-не нужен» пришлось бы откуда-то взять, а взять его неоткуда.
+The denominator is every space under the floor, with no exceptions: a space that merely
+groups the ones nested inside it has no contour and still counts as undrawn. That is not
+a hole in the data, but it cannot be subtracted here either — the rule "this one needs
+no contour" would have to come from somewhere, and there is nowhere to take it from.
 
-Непокрытый остаток этажа контуром не закрывается: 561 м² `man-f1` против 170 м²
-модельных детей — это находка, а не дыра в картинке, и синтетический «прочее»
-закрыл бы её выдуманной формой. Поэтому здесь нет ничего, что рисовалось бы: одни
-числа и список путей, которым не нашлось помещения.
+The uncovered remainder of the floor is not closed off with a contour: 561 m² of
+`man-f1` against 170 m² of its modelled children is a finding, not a hole in the
+picture, and a synthetic "other" would close it with an invented shape. So there is
+nothing here that would be drawn: only numbers and a list of paths that found no space.
 """
 
 import uuid
@@ -32,26 +32,26 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Completeness:
-    """Что на план нанесено, что осталось без контура и что на чертеже повисло.
+    """What is drawn on the plan, what is left without a contour and what dangles on the drawing.
 
-    Нанесённые и ненанесённые лежат ключами помещений, а не их числом: тем же
-    набором дерево слева помечает узлы, и второй раз сводить контуры с деревом,
-    чтобы получить те же множества, не приходится.
+    Drawn and undrawn are held as space keys rather than as counts: the tree on the left
+    marks its nodes from the same sets, and there is no need to match contours against
+    the tree a second time to obtain them again.
     """
 
     drawn: frozenset[uuid.UUID]
     undrawn: frozenset[uuid.UUID]
-    #: `id` путей чертежа, которым не нашлось помещения этажа, — опечатки видны.
+    #: The `id`s of paths in the drawing that found no space on the floor — typos stay visible.
     unmatched: tuple[str, ...]
 
     @property
     def drawn_count(self) -> int:
-        """Сколько помещений этажа нанесено — числитель счёта."""
+        """How many spaces of the floor are drawn — the numerator of the count."""
         return len(self.drawn)
 
     @property
     def space_count(self) -> int:
-        """Сколько помещений на этаже существует — знаменатель счёта."""
+        """How many spaces exist on the floor — the denominator of the count."""
         return len(self.drawn) + len(self.undrawn)
 
 
@@ -60,15 +60,16 @@ def completeness_of(
     contours: Iterable["Contour"],
     unmatched: Iterable[str],
 ) -> Completeness:
-    """Свести помещения этажа с контурами действующего плана.
+    """Match the spaces of a floor against the contours of the plan in force.
 
-    Помещения приходят те же, что и в дерево, а контуры — те же, что и на чертёж:
-    иначе экран считал бы одно, а показывал другое. У этажа без действующего плана
-    и то, и другое пусто — не нанесено ничего, и счёт не ведётся.
+    The spaces are the same ones that go into the tree, and the contours the same ones
+    that go onto the drawing: otherwise the screen would count one thing and show
+    another. For a floor with no plan in force both are empty — nothing is drawn, and
+    nothing is counted.
 
-    Повторы в непривязанных путях схлопываются: разбор отдаёт по записи на путь, а
-    называется на экране опечатка, и названная дважды она читается сбоем экрана, а
-    не вторым путём с тем же `id`.
+    Repeats among the unmatched paths collapse: the parse hands back one record per
+    path, but what is named on screen is the typo, and naming it twice reads as a glitch
+    of the screen rather than as a second path with the same `id`.
     """
     outlined = {contour.space_id for contour in contours}
     on_the_floor = {space.pk for space in spaces}
