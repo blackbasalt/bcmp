@@ -154,7 +154,13 @@ class DocumentLink(models.Model):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="links")
     entity_type = models.CharField(max_length=32, choices=EntityType.choices)
     entity_id = models.UUIDField()
-    role = models.ForeignKey(DictDocumentRole, on_delete=models.PROTECT, related_name="+")
+    #: What the document is to the entity: основной, основание, подтверждение, справочно,
+    #: устаревший. Optional, because the batch upload does not ask for it and does not
+    #: default it either (ADR 0009): empty says "not stated yet", which is the truth about
+    #: a folder of scans just carried across.
+    role = models.ForeignKey(
+        DictDocumentRole, on_delete=models.PROTECT, related_name="+", null=True, blank=True
+    )
 
     class Meta:
         indexes = [

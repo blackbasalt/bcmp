@@ -12,8 +12,9 @@ without the administrator right it is not offered at all.
 
 The drawing, the parsing of its markup and the floor address are taken from
 `test_floor_plan` — the plan fixtures live there, and a second definition of the same
-drawing would drift from the first. Only what is missing there is defined here: the
-organisation administrator and the form submission itself.
+drawing would drift from the first. The organisation administrator is taken from the root
+`conftest`: the write right is asked about on more than one screen. Only the form
+submission itself is defined here.
 """
 
 from datetime import date
@@ -46,14 +47,6 @@ def media(settings, tmp_path):
     only in the module where it is declared.
     """
     settings.MEDIA_ROOT = tmp_path
-
-
-@pytest.fixture
-def administrator(django_user_model, downtown):
-    """An organisation administrator: the same employee, with the right to maintain data."""
-    user = django_user_model.objects.create_user("director")
-    OrgMembership.objects.create(user=user, org=downtown, is_admin=True)
-    return user
 
 
 def open_floor(client, user, floor):
@@ -112,7 +105,7 @@ def test_a_platform_wide_staff_flag_grants_nothing(client, django_user_model, do
 
 
 def test_administering_one_organisation_does_not_administer_another(
-    client, django_user_model, downtown, central, make_floor
+    client, django_user_model, downtown, central, make_floor, make_building
 ):
     """Administratorship belongs to the pair "employee + organisation" (ADR 0005).
 
@@ -122,8 +115,8 @@ def test_administering_one_organisation_does_not_administer_another(
     user = django_user_model.objects.create_user("consultant")
     OrgMembership.objects.create(user=user, org=downtown, is_admin=True)
     OrgMembership.objects.create(user=user, org=central, is_admin=False)
-    ours = make_floor(Space.objects.create(org=downtown, type="building", code="man"), 1)
-    theirs = make_floor(Space.objects.create(org=central, type="building", code="ctr"), 1)
+    ours = make_floor(make_building(downtown, "man"), 1)
+    theirs = make_floor(make_building(central, "ctr"), 1)
 
     assert upload_form(open_floor(client, user, ours)) is not None
     assert upload_form(open_floor(client, user, theirs)) is None
@@ -151,14 +144,14 @@ def test_an_anonymous_request_to_the_upload_path_is_sent_to_login(client, first_
 
 
 def test_uploading_to_a_floor_of_another_organisation_is_missing_rather_than_forbidden(
-    client, administrator, central, make_floor
+    client, administrator, central, make_floor, make_building
 ):
     """Another client's floor answers reads and writes the same way: it does not exist.
 
     A 403 would confirm that the floor is there — exactly the leak the checkpoint exists
     for (ADR 0001).
     """
-    theirs = make_floor(Space.objects.create(org=central, type="building", code="ctr"), 1)
+    theirs = make_floor(make_building(central, "ctr"), 1)
     client.force_login(administrator)
 
     assert upload(client, theirs).status_code == 404

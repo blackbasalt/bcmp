@@ -33,6 +33,26 @@ class Party(CommonModel):
         return self.name
 
 
+class OrgQuerySet(models.QuerySet):
+    def administered_by(self, user):
+        """The organisations whose data the user may maintain — the write checkpoint (ADR 0005).
+
+        The question lives here, where the right itself does: administratorship belongs to
+        the pair "employee + organisation", and everything written is written into some
+        organisation's data. Spaces and documents ask this one place rather than each
+        assembling the same filter over memberships — two of them would be two answers to
+        one question, and the second one to drift would let a reader write.
+
+        A superuser administers everything for the same reason they see everything: they
+        already write through the Django admin, so a ban here would close nothing.
+        """
+        if not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        return self.filter(pk__in=user.memberships.filter(is_admin=True).values("org_id"))
+
+
 class Org(CommonModel):
     """A tenant of the platform. A thin layer over Party, not a duplicate."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -40,6 +60,8 @@ class Org(CommonModel):
     plan = models.CharField(max_length=32, blank=True, null=True)
     settings = models.JSONField(default=dict, blank=True, db_default={})
     is_active = models.BooleanField(default=True, db_default=True)
+
+    objects = OrgQuerySet.as_manager()
 
     @property
     def name(self):

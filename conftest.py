@@ -43,9 +43,34 @@ def member(django_user_model, downtown):
 
 
 @pytest.fixture
-def manhattan(downtown):
+def administrator(django_user_model, downtown):
+    """An organisation administrator: the same employee, with the right to maintain data.
+
+    It lives here rather than beside the plan upload for the same reason `manhattan` does:
+    the write right is asked about on more than one screen — the floor and the documents
+    section — and a second definition of the same employee would drift from the first.
+    """
+    user = django_user_model.objects.create_user("director")
+    OrgMembership.objects.create(user=user, org=downtown, is_admin=True)
+    return user
+
+
+@pytest.fixture
+def make_building(db):
+    """A BC of an organisation. The second client's buildings are made here too: isolation
+    is checked with a building of theirs on more than one screen, and it is the same
+    building each time."""
+
+    def _make_building(org, code, name=None):
+        return Space.objects.create(org=org, type="building", code=code, name=name or code)
+
+    return _make_building
+
+
+@pytest.fixture
+def manhattan(downtown, make_building):
     """The only BC with any innards — everything inside a building is checked on it."""
-    return Space.objects.create(org=downtown, type="building", code="man", name="Manhattan")
+    return make_building(downtown, "man", "Manhattan")
 
 
 @pytest.fixture

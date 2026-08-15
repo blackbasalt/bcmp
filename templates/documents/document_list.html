@@ -7,6 +7,13 @@
 
 {% block content %}
   {% comment %}
+    The upload stands above the shelf: the batch that has just been sent lands at the top
+    of the table, so the form and its result are read in the same movement down the screen.
+    An employee without the administrator flag gets no form at all (ADR 0005).
+  {% endcomment %}
+  {% if upload %}{% include "documents/_document_upload.html" %}{% endif %}
+
+  {% comment %}
     A table, not cards: there are hundreds of documents, and what tells them apart are
     their particulars — the number, the date, the issuer — which read as columns, whereas
     as cards they would sprawl across several screens.
@@ -35,7 +42,19 @@
                 <tr data-document="{{ document.pk }}">
                   {% if organisation_named %}<td class="opacity-60">{{ document.org.name }}</td>{% endif %}
                   <td class="whitespace-nowrap">{{ document.get_kind_display }}</td>
-                  <td>{{ document.title }}</td>
+                  {% comment %}
+                    The original is downloaded from the title itself: that is where the
+                    document is read about, and a separate column would stand empty for
+                    every document entered in the admin without a file. The address goes
+                    through the documents chokepoint — there is no direct one to a file.
+                  {% endcomment %}
+                  <td>
+                    {% if document.file_uri %}
+                      <a class="link" href="{% url 'documents:document_file' document.pk %}">{{ document.title }}</a>
+                    {% else %}
+                      {{ document.title }}
+                    {% endif %}
+                  </td>
                   <td class="whitespace-nowrap">{{ document.doc_no|or_missing }}</td>
                   <td class="whitespace-nowrap">{{ document.issued_at|date:"d.m.Y"|or_missing }}</td>
                   <td>{{ document.issuer_party.name|or_missing }}</td>

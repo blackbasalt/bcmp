@@ -65,21 +65,29 @@ class SpaceQuerySet(models.QuerySet):
         membership rather than by a global `is_staff`. There is still only one place,
         as with reading: the write path asks it instead of assembling a filter itself.
 
+        Which organisations those are is not worked out here but asked of the
+        organisations themselves: documents are written into the same organisations as
+        spaces, and the right belongs to the pair "employee + organisation" rather than
+        to either of the things being written.
+
         A superuser administers everything for the same reason they see everything:
         they already write through the Django admin, so a ban here would close nothing
-        and would only split one question into two answers.
+        and would only split one question into two answers. It is said here as well as
+        in `Org`: a space may belong to no organisation at all, and going through the
+        filter would hide such a space from the very user who sees all of them.
         """
-        if not user.is_authenticated:
-            return self.none()
         if user.is_superuser:
             return self
-        return self.filter(
-            org_id__in=user.memberships.filter(is_admin=True).values("org_id")
-        )
+        return self.filter(org_id__in=Org.objects.administered_by(user))
 
     def buildings_visible_to(self, user):
         """The business centres available to the user: a BC is a space of type building."""
         return self.visible_to(user).filter(type=DictSpaceType.BUILDING)
+
+    def buildings_administered_by(self, user):
+        """The business centres the user may maintain the data of — the ones a batch of
+        documents may be attached to."""
+        return self.administered_by(user).filter(type=DictSpaceType.BUILDING)
 
     def floors_of(self, building):
         """The floors of a building bottom to top — the card's "Этажи" section and the switcher.

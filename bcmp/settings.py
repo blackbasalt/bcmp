@@ -182,10 +182,19 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Uploaded files (floor plans). A bind-mounted directory next to the SQLite
 # database, so a redeploy does not discard them.
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
-# MEDIA_URL is deliberately left unset. Uploaded plans are served by a view that
-# goes through the scoped-queryset chokepoint (ADR 0001); nginx has no /media/
-# location, and without a MEDIA_URL `FieldFile.url` raises rather than quietly
-# handing out a direct address to another client's floor plan.
+# How many files a batch of documents may hold is decided by
+# `documents.uploaded_files.BATCH_LIMIT`, and Django's own guard stops at 100 — with the
+# default it is the framework that would answer an ordinary archive transfer, with a 400
+# and no word about splitting the batch. The platform's limit is the one that must speak,
+# so this one is raised well above it and stays only as a backstop against a request nobody
+# meant to send.
+DATA_UPLOAD_MAX_NUMBER_FILES = 1000
+
+# MEDIA_URL is deliberately left unset. Uploaded plans and documents are served by views
+# that go through the scoped-queryset chokepoints (ADR 0001, ADR 0006): nginx has no
+# /media/ location and Django serves nothing out of MEDIA_ROOT itself, so the address
+# `FieldFile.url` assembles from the script prefix leads nowhere at all — the only way to
+# another client's floor plan or scanned contract is through the checkpoint that refuses it.
 
 LOGIN_REDIRECT_URL = "building_passport:bc_list"
 LOGIN_URL = "/login/"
