@@ -16,4 +16,9 @@ urlpatterns = [
     # kind of file it is the document knows. It carries no extension, because the extension
     # would be a second account of the format alongside the one the file's own bytes give.
     path("<uuid:pk>/file/", views.DocumentFileView.as_view(), name="document_file"),
+    # The близнец, at the документ's address and not at one of its own: there is at most one
+    # per документ and it is named by nothing else. Reading only — attaching, replacing and
+    # removing are submissions of the form that stands on the документ's page, and they go
+    # to that page's address, where a refusal has the документ to come back onto (ADR 0005).
+    path("<uuid:pk>/twin/", views.DocumentTwinView.as_view(), name="document_twin"),
 ]

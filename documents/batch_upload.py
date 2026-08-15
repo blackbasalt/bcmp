@@ -33,6 +33,7 @@ from .uploaded_files import (
     BATCH_LIMIT,
     FILE_LIMIT,
     MEGABYTE,
+    MultipleFileInput,
     digest_of,
     head_of,
     refusal_for,
@@ -69,12 +70,6 @@ class BatchReport:
     already_stored: list = field(default_factory=list)
     #: The files that were not taken, each with the reason.
     refused: list = field(default_factory=list)
-
-
-class MultipleFileInput(forms.ClearableFileInput):
-    """A file input that takes more than one file — a folder is chosen in one go."""
-
-    allow_multiple_selected = True
 
 
 class SubmittedFiles(forms.FileField):

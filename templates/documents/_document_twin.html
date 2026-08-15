@@ -1,0 +1,78 @@
+{% comment %}
+  Приложить близнеца — the документ's content in markdown, for the ИИ-управляющий to read.
+  BCMP does not make близнецы and does not pretend to (ADR 0007): what arrives here has been
+  converted elsewhere, and this form is where a one-off conversion lands without a batch.
+
+  It posts to the документ's own address, like the реквизиты beside it, and names itself in
+  `submitted`: three submissions arrive at that address and the page must know which one it
+  is holding. A refusal comes back here, over the документ it was meant to complete.
+
+  `data-attach` is the page's contract: it shows whether attaching is on offer. An employee
+  without the administrator flag does not get this markup at all — neither the form nor the
+  removal, because a близнец already attached is theirs to read and not to replace.
+
+  Attaching and replacing are one form: a близнец is replaced whole, and the two differ in
+  what is already there, not in what is sent. The heading says which of the two it is, so
+  that a close look at the button is not what tells a первый близнец from a replacement.
+{% endcomment %}
+<section class="card bg-base-100 shadow-sm" data-attach="twin">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-lg">{% if twin %}Заменить близнеца{% else %}Приложить близнеца{% endif %}</h2>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="submitted" value="twin">
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ attach.markdown.label }}</legend>
+        {% comment %}
+          What the dialog opens on comes from the place that decides what is accepted — the
+          hint below and the refusal a rejected file gets come from there too, and three
+          accounts of one rule would drift apart.
+        {% endcomment %}
+        <input type="file" name="{{ attach.markdown.html_name }}"
+               accept="{{ attach.markdown.field.widget.attrs.accept }}"
+               required class="file-input w-full">
+        {% if attach.markdown.errors %}
+          <p class="text-sm text-error">{{ attach.markdown.errors|join:" " }}</p>
+        {% endif %}
+        <p class="label">{{ attach.markdown.help_text }}</p>
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ attach.images.label }}</legend>
+        {% comment %}
+          The pictures the markdown refers to, chosen in one go. They are addressed by name:
+          `![](p3-img1.png)` finds the file called `p3-img1.png`, and a reference that finds
+          nothing is reported on this page rather than silently dropped.
+        {% endcomment %}
+        <input type="file" name="{{ attach.images.html_name }}" multiple
+               accept="{{ attach.images.field.widget.attrs.accept }}"
+               class="file-input w-full">
+        {% if attach.images.errors %}
+          <p class="text-sm text-error">{{ attach.images.errors|join:" " }}</p>
+        {% endif %}
+        <p class="label">{{ attach.images.help_text }}</p>
+      </fieldset>
+
+      <button type="submit" class="btn btn-primary btn-sm">
+        {% if twin %}Заменить{% else %}Приложить{% endif %}
+      </button>
+    </form>
+
+    {% comment %}
+      Removing stands apart, as its own submission: it sends no files and asks for the
+      opposite of what the form above does. It is offered only when there is something to
+      remove, and it says out loud what it does not touch — the документ and its оригинал
+      stay where they are, which is the whole reason a близнец is a row of its own.
+    {% endcomment %}
+    {% if twin %}
+      <form method="post" class="border-t border-base-300 pt-3">
+        {% csrf_token %}
+        <input type="hidden" name="submitted" value="twin-removal">
+        <button type="submit" class="btn btn-ghost btn-sm text-error">Снять близнеца</button>
+        <p class="label">Снимается один близнец: сам документ и его скан не затрагиваются.</p>
+      </form>
+    {% endif %}
+  </div>
+</section>

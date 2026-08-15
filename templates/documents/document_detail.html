@@ -67,7 +67,44 @@
               {{ ""|or_missing }}
             {% endif %}
           </dd>
+
+          {% comment %}
+            The близнец: what the ИИ-управляющий would read of this документ. Having none is
+            the ordinary state — BCMP stores близнецы and does not make them (ADR 0007) — and
+            it is said in words rather than by a dash, because a dash reads as a field nobody
+            got round to. What is stated instead is the consequence: this документ is one the
+            модель does not read.
+
+            `data-twin` is the indicator, and the same attribute stands in the row of the
+            shelf: one близнец, two screens, and they must not say different things.
+          {% endcomment %}
+          <dt class="opacity-60">Близнец</dt>
+          <dd data-field="twin" data-twin="{% if twin %}attached{% else %}none{% endif %}">
+            {% if twin %}
+              <a class="link" href="{% url 'documents:document_twin' document.pk %}">Скачать близнец</a>
+            {% else %}
+              Нет — ИИ-управляющий этот документ не читает
+            {% endif %}
+          </dd>
         </dl>
+
+        {% comment %}
+          The references the markdown makes and no attached picture answers — parsed once,
+          while the близнец was being attached, and shown ever since. The same treatment
+          `unmatched_ids` gets on a поэтажный план, and for a sharper reason: a близнец must
+          be complete, because one broken reference means the модель reads the документ
+          without its схема and never learns that it did.
+
+          `data-unmatched` carries the reference as the markdown wrote it — that is the line
+          whoever prepares the близнец anew has to find.
+        {% endcomment %}
+        {% if twin.unmatched_images %}
+          <div class="alert alert-warning" role="alert">
+            <span>Ссылки на картинки, которых нет:
+              {% for reference in twin.unmatched_images %}<code data-unmatched="{{ reference }}">{{ reference }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.
+              ИИ-управляющий прочтёт документ без этих изображений.</span>
+          </div>
+        {% endif %}
       </div>
     </section>
 
@@ -77,5 +114,13 @@
       flag gets no form at all (ADR 0005).
     {% endcomment %}
     {% if edit %}{% include "documents/_document_edit.html" %}{% endif %}
+
+    {% comment %}
+      Attaching a близнец stands beside what it fills: the slot above says there is none,
+      and the form below is what puts one there. An employee without the administrator flag
+      gets neither this form nor the removal — a близнец already attached is theirs to read
+      and download, not to replace (ADR 0005).
+    {% endcomment %}
+    {% if attach %}{% include "documents/_document_twin.html" %}{% endif %}
   </div>
 {% endblock %}

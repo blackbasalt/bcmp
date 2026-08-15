@@ -34,6 +34,13 @@
                 <th>Номер</th>
                 <th>Дата выдачи</th>
                 <th>Кем выдан</th>
+                {% comment %}
+                  Whether the ИИ-управляющий can read this документ. A column and not a mark
+                  beside the title: it is asked of every row — how much of the shelf is
+                  readable is the question the section will be counting — and a mark that
+                  appears only sometimes says nothing about the rows it is missing from.
+                {% endcomment %}
+                <th>Близнец</th>
               </tr>
             </thead>
             <tbody>
@@ -63,6 +70,16 @@
                   <td class="whitespace-nowrap">{{ document.doc_no|or_missing }}</td>
                   <td class="whitespace-nowrap">{{ document.issued_at|day|or_missing }}</td>
                   <td>{{ document.issuer_party.name|or_missing }}</td>
+                  {% comment %}
+                    `data-twin` is the screen's contract and the same attribute the документ's
+                    own page carries: one близнец, two screens, and they must not say
+                    different things. «Нет» is a state and not missing data, so it is a word
+                    and not a dash — having no близнец is ordinary, not an omission.
+                  {% endcomment %}
+                  <td class="whitespace-nowrap"
+                      data-twin="{% if document.has_twin %}attached{% else %}none{% endif %}">
+                    {% if document.has_twin %}есть{% else %}нет{% endif %}
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>

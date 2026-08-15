@@ -99,6 +99,40 @@ def files_stored(count):
     return f"{loaded} {count}{NBSP}{files}."
 
 
+#: The word for a picture in each of its three forms — a picture is counted in more than one
+#: phrase, and two lists would sooner or later disagree about the middle one.
+PICTURES = ("картинка", "картинки", "картинок")
+
+
+def twin_report(twin):
+    """What to say about a близнец that has just been attached — and how loudly.
+
+    Attached is not the same as complete, and one green line for both would hide the
+    difference. A close read of the count: «Близнец приложен, 3 картинки» is what a сотрудник
+    reconciles against the folder they converted, while an unresolved reference is a finding
+    and is said as one — the документ will be read by the модель without that схема, and
+    nothing further will report it.
+    """
+    pictures = twin.images.count()
+    attached = f"Близнец приложен, {pictures}{NBSP}{agreeing_with(pictures, *PICTURES)}."
+    if not twin.unmatched_images:
+        return messages.SUCCESS, attached
+    return messages.WARNING, (
+        f"{attached} Не разрешились ссылки на картинки: "
+        f"{', '.join(twin.unmatched_images)}. Эти изображения ИИ-управляющий не прочтёт."
+    )
+
+
+def twin_removed():
+    """What is said when a близнец is taken off.
+
+    The документ is named as untouched out loud: «снят» alone leaves whoever withdrew a bad
+    conversion wondering what else went with it, and the answer — nothing — is the reason
+    a близнец is a row of its own.
+    """
+    return "Близнец снят. Документ и его оригинал остались на месте."
+
+
 def _as_stored(already_stored):
     """A file already on the shelf, named by the document it is stored as.
 

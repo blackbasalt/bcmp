@@ -3,6 +3,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db.models import Exists, OuterRef
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
@@ -12,11 +13,12 @@ from building_passport.models import Space
 from parties.models import Org
 
 from .batch_upload import DocumentBatchForm
-from .document_display import batch_report, documents_shown
+from .document_display import batch_report, documents_shown, twin_removed, twin_report
 from .document_edit import DocumentParticularsForm
 from .document_page import linked_buildings, particulars
-from .models import Document
-from .uploaded_files import content_type_for, head_of
+from .models import Document, DocumentTwin
+from .twin_attach import DocumentTwinForm
+from .uploaded_files import MARKDOWN_CONTENT_TYPE, content_type_for, head_of
 
 
 class DocumentListView(LoginRequiredMixin, ListView):
@@ -42,6 +44,11 @@ class DocumentListView(LoginRequiredMixin, ListView):
             # The organisation and the issuing party are said by name, so they travel in
             # the same query as the documents themselves.
             .select_related("org__party", "issuer_party")
+            # Whether the ИИ-управляющий can read this документ, in the same query as the
+            # rows: there are hundreds of them, and a близнец asked for row by row would be
+            # a query per document. The subquery goes through no checkpoint of its own —
+            # the близнец is another client's exactly when its документ is (ADR 0006).
+            .annotate(has_twin=Exists(DocumentTwin.objects.filter(document=OuterRef("pk"))))
         )
 
     def get_context_data(self, **kwargs):
@@ -149,34 +156,86 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
         context["links"] = linked_buildings(
             self.object, Space.objects.buildings_visible_to(self.request.user)
         )
-        # The form goes only to whoever may fill it in: an action an employee cannot
-        # perform is not offered to them either. A rejection brings its own already
-        # filled-in form, so the empty one is only put in its place.
+        # The близнец, or nothing at all — and nothing is the ordinary state: BCMP stores
+        # близнецы and does not make them (ADR 0007), so the page says which of the two it
+        # is. A документ the ИИ-управляющий cannot read is identifiable only if it says so.
+        context["twin"] = self.twin
+        # The forms go only to whoever may write: an action an employee cannot perform is
+        # not offered to them either. A rejection brings its own already filled-in form, so
+        # the empty one is only put in its place.
         if not self.administers_the_document:
             context["edit"] = None
+            context["attach"] = None
         else:
             context.setdefault("edit", DocumentParticularsForm(instance=self.object))
+            context.setdefault("attach", DocumentTwinForm(document=self.object))
         return context
 
     def post(self, request, *args, **kwargs):
-        """Filling in the реквизиты: the same address as the page — the form stands on it.
+        """Three submissions at one address: the реквизиты, the близнец, and taking it off.
 
-        A refusal returns the same page with the reason on the form, and a save redirects
-        back to it: the reloaded page is the confirmation, and what was entered is read
-        where it was entered.
+        One address because all three stand on this page and are read off it: a refusal
+        comes back onto the page it was sent from, with the document around it (ADR 0005).
+        The близнец names its submissions, and the реквизиты do not need to: they are the
+        page's own form, and everything that does not name itself is them.
         """
         self.object = self.get_object()
         if not self.administers_the_document:
             # 403 and not 404, by the rule the section screen states in full: a document
             # this employee has already been shown does not become non-existent because
             # they may not write to it (ADR 0005).
-            raise PermissionDenied("Заполнять реквизиты документа может администратор организации.")
+            raise PermissionDenied("Вести данные документа может администратор организации.")
+        submitted = request.POST.get("submitted")
+        if submitted == "twin":
+            return self.attach_twin(request)
+        if submitted == "twin-removal":
+            return self.remove_twin(request)
+        return self.fill_in_particulars(request)
+
+    def fill_in_particulars(self, request):
+        """Filling in the реквизиты — the other half of the bulk transfer.
+
+        A refusal returns the same page with the reason on the form, and a save redirects
+        back to it: the reloaded page is the confirmation, and what was entered is read
+        where it was entered.
+        """
         form = DocumentParticularsForm(request.POST, instance=self.object)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(edit=form))
         form.save()
         messages.success(request, "Реквизиты документа сохранены.")
         return redirect("documents:document_detail", self.object.pk)
+
+    def attach_twin(self, request):
+        """Attaching a близнец, or replacing the one that is there — one submission for both.
+
+        What was attached is said in words, because the reloaded page shows only that there
+        is a близнец: how many pictures came with it, and which of its references found
+        none, are read nowhere else at that moment.
+        """
+        form = DocumentTwinForm(request.POST, request.FILES, document=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(attach=form))
+        messages.add_message(request, *twin_report(form.save()))
+        return redirect("documents:document_detail", self.object.pk)
+
+    def remove_twin(self, request):
+        """Taking a близнец off: a bad conversion is withdrawn, the документ stays as it was.
+
+        A документ that has no близнец by now is not a failure: this submission is only sent
+        from a page that showed the button, so the second click of a double is what reaches
+        here, and it asks for a state the page is already in.
+        """
+        if self.twin is not None:
+            self.twin.discard()
+            messages.success(request, twin_removed())
+        return redirect("documents:document_detail", self.object.pk)
+
+    @cached_property
+    def twin(self):
+        """The документ's близнец, or `None`. Asked once per request: the page states whether
+        there is one, and the removal takes the same one off."""
+        return self.object.attached_twin()
 
     @cached_property
     def administers_the_document(self):
@@ -224,6 +283,41 @@ class DocumentFileView(LoginRequiredMixin, View):
         # domain: opened by its address it would otherwise act as one of our pages. The
         # sandbox strips it of our origin, and `nosniff` of the chance to call itself
         # another type — the same treatment as the plan drawings.
+        response["Content-Security-Policy"] = "sandbox"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class DocumentTwinView(LoginRequiredMixin, View):
+    """The близнец itself — what the ИИ-управляющий would be reading, so a человек can check.
+
+    It comes out through the документ's own chokepoint and not through one of its own: the
+    близнец is visible exactly where the документ is, and a second place deciding whose data
+    to show would be a second place to one day disagree with the first (ADR 0006). Another
+    client's близнец is therefore missing rather than forbidden, like their документ.
+    """
+
+    def get(self, request, pk):
+        document = get_object_or_404(Document.objects.visible_to(request.user), pk=pk)
+        twin = document.attached_twin()
+        if twin is None or not twin.markdown:
+            # Having no близнец is the ordinary state of a документ, and it is told the same
+            # way as a документ that is not ours: what does not exist is missing.
+            raise Http404("У документа нет близнеца.")
+        response = FileResponse(
+            twin.markdown.open("rb"),
+            # Stated rather than read off the file: text begins with nothing in particular,
+            # and the reading that accepted it — that it decodes as UTF-8 — is what this
+            # says out loud.
+            content_type=MARKDOWN_CONTENT_TYPE,
+            as_attachment=True,
+            # Under the документ's own name, like the original: the stored name is the file
+            # the converter happened to produce, and a folder of «akt_K7x2p1.md» is a folder
+            # nobody can navigate.
+            filename=f"{document.title}.md",
+        )
+        # The близнец comes from whoever converted the документ and is served from our own
+        # domain — the same treatment as the original file and the plan drawings.
         response["Content-Security-Policy"] = "sandbox"
         response["X-Content-Type-Options"] = "nosniff"
         return response

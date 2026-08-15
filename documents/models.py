@@ -136,6 +136,137 @@ class Document(CommonModel):
     def __str__(self):
         return self.title
 
+    def attached_twin(self):
+        """The близнец of this документ, or `None` — asked as a question with two answers.
+
+        Having none is the ordinary state (ADR 0007), so it must not be an attribute that
+        raises: every place that asks — the page, the download, the replacement — would
+        then carry its own account of what "no близнец" looks like, and the four accounts
+        would be four chances to disagree.
+        """
+        return getattr(self, "twin", None)
+
+
+def twin_file_path(instance, filename):
+    """The markdown of a близнец, in a directory of its own.
+
+    Laid out by organisation like the original — the directory is the last place a file can
+    say whose it is once the database is out of reach — and then by близнец rather than by
+    документ, because a близнец is replaced whole: a new conversion gets an empty directory
+    and keeps the names the markdown refers to, instead of squeezing in beside the previous
+    one's files and being renamed by the suffix Django adds to avoid a collision.
+    """
+    return f"documents/{instance.document.org_id}/twins/{instance.pk}/{filename}"
+
+
+def twin_image_path(instance, filename):
+    """A picture of a близнец — beside the markdown that refers to it, in the same directory."""
+    return twin_file_path(instance.twin, filename)
+
+
+class DocumentTwin(CommonModel):
+    """The content of a документ in markdown, for the ИИ-управляющий to read.
+
+    BCMP **stores** близнецы and does not produce them: there is no PDF parser, no OCR and
+    no markdown library here, and acquiring one is a different stage's problem (ADR 0007).
+    Having none is the ordinary state of a документ, not an error — and the документ says
+    so, which is what makes a документ the ИИ-управляющий cannot read identifiable.
+
+    A row of its own, one-to-one with the документ, rather than fields on it: a близнец is
+    replaced whole together with its pictures while the документ does not change. As a row
+    the replacement is a delete and an insert and the pictures follow by cascade; as fields
+    they would need clearing by hand, and the first missed clearing would leave the store
+    holding pictures from a conversion nobody can reach any more.
+
+    It is not registered in the Django admin, and deliberately: the image references are
+    resolved by whoever attaches the markdown and the pictures together, and a близнец
+    created in the admin would be one nobody ever asked that question of — recorded as
+    complete because the question was never put.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.OneToOneField(
+        Document, on_delete=models.CASCADE, related_name="twin", verbose_name="документ"
+    )
+    #: The markdown itself, in the same protected directory as the original and served by a
+    #: view through the same chokepoint (ADR 0006). A file and not a text field: it is
+    #: written once, read whole and downloaded as it came.
+    markdown = models.FileField(
+        upload_to=twin_file_path, max_length=512, verbose_name="маркдаун"
+    )
+    #: The image references the markdown makes and no attached picture answers, written the
+    #: way the markdown wrote them. Kept because they are noticed on attaching and shown on
+    #: the документ's page — the same treatment `unmatched_ids` gets on a поэтажный план.
+    #: A близнец must be complete: one broken reference means the модель reads the документ
+    #: without its схема and never learns that it did.
+    unmatched_images = models.JSONField(
+        default=list, editable=False, verbose_name="неразрешённые ссылки"
+    )
+
+    class Meta:
+        verbose_name = "близнец"
+        verbose_name_plural = "близнецы"
+
+    def __str__(self):
+        return f"Близнец: {self.document.title}"
+
+    def stored_files(self):
+        """Everything this близнец put in the store — the markdown and every picture.
+
+        Asked before the rows go, because after the cascade there is nothing left to ask:
+        a file is not deleted by deleting the row that names it, and nothing else in the
+        project would ever come back for it.
+        """
+        return [image.file for image in self.images.all()] + [self.markdown]
+
+    def discard(self):
+        """Take the близнец off: the rows, and then what they stored.
+
+        The rows first and the files after them, never the other way round: a removal that
+        emptied the store and then failed would leave a близнец pointing at files that are
+        no longer there — worse than the orphans this is here to prevent, because it looks
+        complete.
+        """
+        stored = self.stored_files()
+        self.delete()
+        for file in stored:
+            if file:
+                file.delete(save=False)
+
+
+class TwinImage(models.Model):
+    """A picture pulled out of the документ, which the близнец's markdown refers to.
+
+    Addressed by name and not by URL: the markdown says `![](p3-img1.png)`, and it is
+    against these names that it is resolved. Whoever later shows a близнец to a human is
+    responsible for turning a name into an address; the ИИ-управляющий reads text and needs
+    nothing here.
+
+    A child row and not a field: it appears and disappears with the близнец, and outlives
+    it in no form at all.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    twin = models.ForeignKey(
+        DocumentTwin, on_delete=models.CASCADE, related_name="images", verbose_name="близнец"
+    )
+    #: What the markdown calls the picture. The name is the contract, so two pictures under
+    #: one name would make a reference ambiguous — hence the constraint, and the form says
+    #: as much in words before the database has to.
+    name = models.CharField(max_length=512, verbose_name="имя")
+    file = models.FileField(upload_to=twin_image_path, max_length=512, verbose_name="файл")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "картинка близнеца"
+        verbose_name_plural = "картинки близнеца"
+        constraints = [
+            models.UniqueConstraint(fields=["twin", "name"], name="twin_image_uq"),
+        ]
+
+    def __str__(self):
+        return self.name
+
 
 class DocumentLink(models.Model):
     """A polymorphic link from a document to any passport entity."""
