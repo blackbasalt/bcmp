@@ -18,7 +18,7 @@ import pytest
 from django.urls import reverse
 
 from documents.models import Document
-from parties.models import OrgMembership, Party
+from parties.models import OrgMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -53,12 +53,6 @@ def make_document(org, title, **fields):
     """An organisation's document. Everything but kind and title is optional — as in life."""
     fields.setdefault("kind", Document.Kind.ACT)
     return Document.objects.create(org=org, title=title, **fields)
-
-
-@pytest.fixture
-def issuer(db):
-    """The party that issued the document — the same as «кем выдан» in the table row."""
-    return Party.objects.create(kind=Party.Kind.COMPANY, name="ТОО Промэнерго")
 
 
 @pytest.fixture

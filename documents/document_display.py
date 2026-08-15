@@ -1,10 +1,10 @@
 """How the documents section reads on screen.
 
-There are two rules here: how many documents are on screen, and what is said about a batch
-that has just been uploaded. Both are numbers, and both are said as phrases rather than as
-figures beside the table: «Показано 12 документов» answers a question, while «12» next to a
-table is a quantity the reader has to guess at. The same device as «нанесено 47 из 82
-помещений» on a floor.
+Three rules: how a date is written, how many documents are on screen, and what is said
+about a batch that has just been uploaded. The last two are numbers, and both are said as
+phrases rather than as figures beside the table: «Показано 12 документов» answers a
+question, while «12» next to a table is a quantity the reader has to guess at. The same
+device as «нанесено 47 из 82 помещений» on a floor.
 
 Agreement with the numeral is worked out here rather than assembled in the markup:
 «Показано 1 документов» reads as a glitch on the screen, not as a single document, and it
@@ -16,6 +16,19 @@ from django.contrib import messages
 #: A non-breaking space: a number and the word attached to it must not drift apart across
 #: lines — the same rule as for the areas in the building passport.
 NBSP = "\u00a0"
+
+
+def day(value):
+    """A date as it is read in this section: 14.03.2024.
+
+    The format is stated once and not twice: the same date stands in the table and on the
+    document's own page, and two accounts of how a date looks would drift — the reader
+    would then be told the same day in two notations on two screens of one section.
+
+    A date that was never filled in stays None: the dash over it is `or_missing`'s business,
+    the same rule as everywhere else in the project.
+    """
+    return value.strftime("%d.%m.%Y") if value else None
 
 
 def agreeing_with(count, one, few, many):

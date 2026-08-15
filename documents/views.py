@@ -6,12 +6,15 @@ from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
-from django.views.generic import ListView, View
+from django.views.generic import DetailView, ListView, View
 
+from building_passport.models import Space
 from parties.models import Org
 
 from .batch_upload import DocumentBatchForm
 from .document_display import batch_report, documents_shown
+from .document_edit import DocumentParticularsForm
+from .document_page import linked_buildings, particulars
 from .models import Document
 from .uploaded_files import content_type_for, head_of
 
@@ -110,6 +113,82 @@ class DocumentListView(LoginRequiredMixin, ListView):
         if user.is_superuser:
             return Org.objects.count()
         return user.memberships.count()
+
+
+class DocumentDetailView(LoginRequiredMixin, DetailView):
+    """A документ's own page — everything recorded about it, and the filling in of the rest.
+
+    The other half of the bulk transfer: a batch lands with nothing but a название, and the
+    реквизиты are entered here, one document at a time, as they are found. The form stands
+    on the page and posts to that same address — the same arrangement as the batch upload
+    on the section screen and the plan upload on the floor screen (ADR 0005): a refusal
+    comes back onto the page the реквизиты are read from.
+    """
+
+    template_name = "documents/document_detail.html"
+    context_object_name = "document"
+
+    def get_queryset(self):
+        """Another client's document answers 404, not 403 — the documents chokepoint (ADR 0006).
+
+        The answer must not confirm that the document exists: telling "forbidden" from "no
+        such thing" tells a reader what another client has on their shelf.
+        """
+        return Document.objects.visible_to(self.request.user).select_related(
+            # The organisation and the issuing party are said by name, so they travel in
+            # the same query as the document itself.
+            "org__party",
+            "issuer_party",
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["particulars"] = particulars(self.object)
+        # The привязки are resolved against the BCs this reader may see: a document and a
+        # building answer to two different checkpoints, and the page asks both.
+        context["links"] = linked_buildings(
+            self.object, Space.objects.buildings_visible_to(self.request.user)
+        )
+        # The form goes only to whoever may fill it in: an action an employee cannot
+        # perform is not offered to them either. A rejection brings its own already
+        # filled-in form, so the empty one is only put in its place.
+        if not self.administers_the_document:
+            context["edit"] = None
+        else:
+            context.setdefault("edit", DocumentParticularsForm(instance=self.object))
+        return context
+
+    def post(self, request, *args, **kwargs):
+        """Filling in the реквизиты: the same address as the page — the form stands on it.
+
+        A refusal returns the same page with the reason on the form, and a save redirects
+        back to it: the reloaded page is the confirmation, and what was entered is read
+        where it was entered.
+        """
+        self.object = self.get_object()
+        if not self.administers_the_document:
+            # 403 and not 404, by the rule the section screen states in full: a document
+            # this employee has already been shown does not become non-existent because
+            # they may not write to it (ADR 0005).
+            raise PermissionDenied("Заполнять реквизиты документа может администратор организации.")
+        form = DocumentParticularsForm(request.POST, instance=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(edit=form))
+        form.save()
+        messages.success(request, "Реквизиты документа сохранены.")
+        return redirect("documents:document_detail", self.object.pk)
+
+    @cached_property
+    def administers_the_document(self):
+        """Whether this employee maintains the data of this document's organisation (ADR 0005).
+
+        Narrower than the section's question and deliberately so: there the batch names the
+        organisation it lands on, so "does this employee administer anything at all" is the
+        most that can be asked before the form is filled in, while here the organisation is
+        already named by the document. Asking the broader question on this page would offer
+        an administrator of one client the form over another client's paper.
+        """
+        return Org.objects.administered_by(self.request.user).filter(pk=self.object.org_id).exists()
 
 
 class DocumentFileView(LoginRequiredMixin, View):

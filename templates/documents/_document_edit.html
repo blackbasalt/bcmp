@@ -1,0 +1,80 @@
+{% load documents %}
+{% comment %}
+  Filling in the реквизиты — the other half of the bulk transfer. A batch arrives with
+  nothing but a название (ADR 0008), and what was not known then is entered here, one
+  document at a time, as it is found. The form stands on the document's own page and posts
+  to that page's address: filling in happens where reading happens, and a refusal comes
+  back next to the particulars it was meant to complete.
+
+  `data-edit` is the page's contract: it shows whether editing is on offer. An employee
+  without the administrator flag does not get this markup at all, by the same rule the
+  plan upload states in full (ADR 0005).
+
+  Nothing is required. A document is enriched over time, and a form insisting on all five
+  at once would keep a known номер out until a дата выдачи is found for it.
+{% endcomment %}
+<section class="card bg-base-100 shadow-sm" data-edit="document">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-lg">Заполнить реквизиты</h2>
+
+    <form method="post" class="space-y-3">
+      {% csrf_token %}
+
+      {% comment %}
+        Each field is rendered by its own widget: a date already stored has to come back
+        into `type="date"` in the notation that field reads, and printed by hand it would
+        come back empty — and be saved away by whoever came to fill in the номер. The
+        classes are passed in from here because Tailwind scans the templates and nothing
+        else.
+      {% endcomment %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ edit.doc_no.label }}</legend>
+        {{ edit.doc_no|styled:"input w-full" }}
+        {% if edit.doc_no.errors %}
+          <p class="text-sm text-error">{{ edit.doc_no.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ edit.issued_at.label }}</legend>
+        {{ edit.issued_at|styled:"input w-full" }}
+        {% if edit.issued_at.errors %}
+          <p class="text-sm text-error">{{ edit.issued_at.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ edit.issuer_party.label }}</legend>
+        {# The parties are the system-wide directory the passport names an owner from. #}
+        {{ edit.issuer_party|styled:"select w-full" }}
+        {% if edit.issuer_party.errors %}
+          <p class="text-sm text-error">{{ edit.issuer_party.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ edit.valid_until.label }}</legend>
+        {{ edit.valid_until|styled:"input w-full" }}
+        {% if edit.valid_until.errors %}
+          <p class="text-sm text-error">{{ edit.valid_until.errors|join:" " }}</p>
+        {% endif %}
+        {% comment %}
+          Said out loud on the field itself: the date is stored and shown and watched by
+          nothing. Without this line whoever enters it expects a reminder that no one has
+          ordered yet — a реестр сроков is a different stage.
+        {% endcomment %}
+        <p class="label">Хранится и показывается; напоминаний по сроку система не шлёт.</p>
+      </fieldset>
+
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ edit.revision.label }}</legend>
+        {{ edit.revision|styled:"input w-full" }}
+        {% if edit.revision.errors %}
+          <p class="text-sm text-error">{{ edit.revision.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+    </form>
+  </div>
+</section>

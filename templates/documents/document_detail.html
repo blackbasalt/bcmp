@@ -1,0 +1,81 @@
+{% extends "shell.html" %}
+{% load passport %}
+
+{% block title %}{{ document.title }} — BCMP{% endblock %}
+{% block page_title %}{{ document.title }}{% endblock %}
+
+{% comment %}
+  The way back to the shelf is a breadcrumb in the header: documents are read one after
+  another, and the return must come to hand before the page has been read to the end.
+{% endcomment %}
+{% block breadcrumbs %}
+  <li><a href="{% url 'documents:document_list' %}">Документы</a></li>
+  <li>{{ document.title }}</li>
+{% endblock %}
+
+{% block content %}
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Реквизиты</h2>
+
+        {% comment %}
+          The particulars arrive from the view already assembled and already formatted: an
+          empty one is shown as a dash by the same rule as everywhere in the project, and
+          `data-field` is the page's contract — it names the particular the value belongs
+          to, so a rebuild of the layout does not move it out of reach.
+
+          Срок действия and Ревизия stand among the rest and are not marked out: they are
+          shown and they trigger nothing.
+        {% endcomment %}
+        <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          {% for field in particulars %}
+            <dt class="opacity-60">{{ field.label }}</dt>
+            <dd data-field="{{ field.name }}">{{ field.value|or_missing }}</dd>
+          {% endfor %}
+
+          {% comment %}
+            The привязки: which BCs this paper belongs to. Each one leads to the building
+            it names — the reader arrived here from the shelf, and from a договор on
+            Manhattan the next question is about Manhattan. A document attached to nothing
+            at all reads as «— нет данных»: the устав and the лицензия belong to no
+            building, and there is nothing here to tell that from a привязка nobody has
+            got round to.
+          {% endcomment %}
+          <dt class="opacity-60">Привязки</dt>
+          <dd data-field="links">
+            {% for building in links %}
+              <a class="link" href="{% url 'building_passport:bc_detail' building.pk %}">{{ building|space_label }}</a>{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              {{ ""|or_missing }}
+            {% endfor %}
+          </dd>
+
+          {% comment %}
+            The original comes out through the documents chokepoint — there is no direct
+            address to a file. A document entered in the admin may have no file at all, and
+            that is a state of the data, said in the same words as an unfilled field.
+
+            «Оригинал» and not «Файл»: what is attached to a passport entity is a документ,
+            and «файл» is one of the words the glossary tells us not to call it by.
+          {% endcomment %}
+          <dt class="opacity-60">Оригинал</dt>
+          <dd data-field="original">
+            {% if document.file_uri %}
+              <a class="link" href="{% url 'documents:document_file' document.pk %}">Скачать оригинал</a>
+            {% else %}
+              {{ ""|or_missing }}
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </section>
+
+    {% comment %}
+      The form stands beside what it fills in, so that «— нет данных» and the empty field
+      that will replace it are read in one glance. An employee without the administrator
+      flag gets no form at all (ADR 0005).
+    {% endcomment %}
+    {% if edit %}{% include "documents/_document_edit.html" %}{% endif %}
+  </div>
+{% endblock %}

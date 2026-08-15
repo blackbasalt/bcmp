@@ -1,5 +1,5 @@
 {% extends "shell.html" %}
-{% load passport %}
+{% load documents passport %}
 
 {% block title %}Документы — BCMP{% endblock %}
 {% block page_title %}Документы{% endblock %}
@@ -43,20 +43,25 @@
                   {% if organisation_named %}<td class="opacity-60">{{ document.org.name }}</td>{% endif %}
                   <td class="whitespace-nowrap">{{ document.get_kind_display }}</td>
                   {% comment %}
-                    The original is downloaded from the title itself: that is where the
-                    document is read about, and a separate column would stand empty for
-                    every document entered in the admin without a file. The address goes
-                    through the documents chokepoint — there is no direct one to a file.
+                    The title opens the document's own page: the row holds what tells the
+                    documents apart, and everything else recorded about one of them —
+                    срок, ревизия, привязки — is read there.
+
+                    The original hangs beside the title rather than in a column of its
+                    own: a column would stand empty for every document entered in the
+                    admin without a file, and the download belongs where the document is
+                    read about. Both addresses go through the documents chokepoint —
+                    there is no direct one to a file.
                   {% endcomment %}
                   <td>
+                    <a class="link" href="{% url 'documents:document_detail' document.pk %}">{{ document.title }}</a>
                     {% if document.file_uri %}
-                      <a class="link" href="{% url 'documents:document_file' document.pk %}">{{ document.title }}</a>
-                    {% else %}
-                      {{ document.title }}
+                      <a class="link ml-2 text-xs opacity-60"
+                         href="{% url 'documents:document_file' document.pk %}">оригинал</a>
                     {% endif %}
                   </td>
                   <td class="whitespace-nowrap">{{ document.doc_no|or_missing }}</td>
-                  <td class="whitespace-nowrap">{{ document.issued_at|date:"d.m.Y"|or_missing }}</td>
+                  <td class="whitespace-nowrap">{{ document.issued_at|day|or_missing }}</td>
                   <td>{{ document.issuer_party.name|or_missing }}</td>
                 </tr>
               {% endfor %}
