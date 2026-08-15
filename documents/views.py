@@ -13,9 +13,15 @@ from building_passport.models import Space
 from parties.models import Org
 
 from .batch_upload import DocumentBatchForm
-from .document_display import batch_report, documents_shown, twin_removed, twin_report
+from .document_display import (
+    batch_report,
+    document_deleted,
+    documents_shown,
+    twin_removed,
+    twin_report,
+)
 from .document_edit import DocumentParticularsForm
-from .document_page import linked_buildings, particulars
+from .document_page import Deletion, linked_buildings, particulars, taken_with
 from .models import Document, DocumentTwin
 from .twin_attach import DocumentTwinForm
 from .uploaded_files import MARKDOWN_CONTENT_TYPE, content_type_for, head_of
@@ -166,18 +172,23 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
         if not self.administers_the_document:
             context["edit"] = None
             context["attach"] = None
+            # The deletion is not offered to a reader at all: the shelf is not editable by
+            # them, and an action they would be refused is not named on their screen either.
+            context["deletion"] = None
         else:
             context.setdefault("edit", DocumentParticularsForm(instance=self.object))
             context.setdefault("attach", DocumentTwinForm(document=self.object))
+            context.setdefault("deletion", Deletion(confirming=False))
         return context
 
     def post(self, request, *args, **kwargs):
-        """Three submissions at one address: the реквизиты, the близнец, and taking it off.
+        """Five submissions at one address: the реквизиты, the близнец, taking it off, and
+        the two steps of a deletion.
 
-        One address because all three stand on this page and are read off it: a refusal
+        One address because all of them stand on this page and are read off it: a refusal
         comes back onto the page it was sent from, with the document around it (ADR 0005).
-        The близнец names its submissions, and the реквизиты do not need to: they are the
-        page's own form, and everything that does not name itself is them.
+        The близнец and the deletion name their submissions, and the реквизиты do not need
+        to: they are the page's own form, and everything that does not name itself is them.
         """
         self.object = self.get_object()
         if not self.administers_the_document:
@@ -190,6 +201,10 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
             return self.attach_twin(request)
         if submitted == "twin-removal":
             return self.remove_twin(request)
+        if submitted == "deletion":
+            return self.ask_about_deletion()
+        if submitted == "deletion-confirmed":
+            return self.delete_document(request)
         return self.fill_in_particulars(request)
 
     def fill_in_particulars(self, request):
@@ -230,6 +245,39 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
             self.twin.discard()
             messages.success(request, twin_removed())
         return redirect("documents:document_detail", self.object.pk)
+
+    def ask_about_deletion(self):
+        """The question, asked on the документ's own page and destroying nothing.
+
+        Asked by the application and not by the browser. Everything else on this page is
+        decided on the request rather than by what the screen offers, and a confirmation is
+        no different: one that lived in a script would be gone the moment the script did not
+        run, and the press behind it would delete a документ nobody was asked about.
+
+        Two presses in two different places, and the second one is reached only through a
+        reloaded page — which is what makes the misclick this exists for impossible, not the
+        wording of the sentence between them.
+        """
+        return self.render_to_response(
+            self.get_context_data(deletion=Deletion(confirming=True, taken=taken_with(self.object)))
+        )
+
+    def delete_document(self, request):
+        """Destroy the документ, and with it everything that only existed as part of it.
+
+        What went is worked out before the deleting and not after: the близнец and its
+        картинки go with the документ, and afterwards the phrase would have nothing left to
+        count.
+
+        The reader lands on the shelf, because the page they deleted from is gone with the
+        документ. A документ deleted twice — the second click of a double — finds nothing to
+        delete and is answered by `get_object` the way everything missing is answered.
+        """
+        taken = taken_with(self.object)
+        title = self.object.title
+        self.object.discard()
+        messages.success(request, document_deleted(title, taken))
+        return redirect("documents:document_list")
 
     @cached_property
     def twin(self):

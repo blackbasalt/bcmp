@@ -1,0 +1,68 @@
+{% comment %}
+  Удалить документ — the whole of it and for good. A mistaken upload is undone here: the
+  документ goes with its близнец, that близнец's картинки and every file all of them put in
+  the store. There is no soft delete in this project, and one introduced here would be a
+  second lifecycle (ADR 0013).
+
+  Two states of one action in one place on the screen: the offer, and the question over the
+  answer. Both post to the документ's own address like everything else on this page, and
+  each names its own submission — the second is a different word, so a resent first press
+  cannot become the answer to a question nobody read.
+
+  `data-deletion` is the page's contract: it says whether the deletion is on offer and
+  whether the screen is holding the question. An employee without the administrator flag
+  gets none of this markup — the shelf is theirs to read, not to edit (ADR 0005).
+{% endcomment %}
+<section class="card bg-base-100 shadow-sm"
+         data-deletion="{% if deletion.confirming %}confirming{% else %}offered{% endif %}">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-lg">Удалить документ</h2>
+
+    {% if deletion.confirming %}
+      {% comment %}
+        The question names the документ and what goes with it: the reader pressed a button
+        on a page showing one paper, and «близнец и 3 картинки» is the part of the answer
+        that is not on the screen in front of them. `data-taken` names the thing rather than
+        the words about it — the same device as `data-field` — so that "something goes with
+        it" and "this is what goes with it" are two different assertions.
+      {% endcomment %}
+      <p class="text-sm">Документ «{{ document.title }}» будет удалён без возможности восстановления.</p>
+
+      {% if deletion.taken %}
+        <div>
+          <p class="text-sm">Вместе с ним удаляются:</p>
+          <ul class="list-disc pl-5 text-sm">
+            {% for taken in deletion.taken %}
+              <li data-taken="{{ taken.name }}">{{ taken.said }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <form method="post" class="flex items-center gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="submitted" value="deletion-confirmed">
+        <button type="submit" class="btn btn-error btn-sm">Удалить</button>
+        {% comment %}
+          Отмена is a link back to the документ's page and not a button: nothing was written
+          when the question was asked, so there is nothing to take back — the page is simply
+          read again as it was.
+        {% endcomment %}
+        <a class="btn btn-ghost btn-sm" href="{% url 'documents:document_detail' document.pk %}">Отмена</a>
+      </form>
+    {% else %}
+      {% comment %}
+        The offer promises no particular part of the документ. What exactly goes with this
+        one is worked out for the question that follows, and saying it twice — here in
+        general and there in fact — would let a документ with neither файл nor близнец be
+        told it is losing both.
+      {% endcomment %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="submitted" value="deletion">
+        <button type="submit" class="btn btn-ghost btn-sm text-error">Удалить документ</button>
+        <p class="label">Удаление необратимо. Что именно будет удалено, названо на следующем шаге.</p>
+      </form>
+    {% endif %}
+  </div>
+</section>

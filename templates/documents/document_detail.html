@@ -122,5 +122,13 @@
       and download, not to replace (ADR 0005).
     {% endcomment %}
     {% if attach %}{% include "documents/_document_twin.html" %}{% endif %}
+
+    {% comment %}
+      Deleting stands last and apart from everything the документ is filled in with: it
+      takes the документ itself, its близнец and the files with it, and it asks before
+      anything is destroyed. An employee without the administrator flag is not shown it at
+      all (ADR 0005).
+    {% endcomment %}
+    {% if deletion %}{% include "documents/_document_deletion.html" %}{% endif %}
   </div>
 {% endblock %}

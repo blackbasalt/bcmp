@@ -1,10 +1,11 @@
 """How the documents section reads on screen.
 
-Three rules: how a date is written, how many documents are on screen, and what is said
-about a batch that has just been uploaded. The last two are numbers, and both are said as
-phrases rather than as figures beside the table: «Показано 12 документов» answers a
-question, while «12» next to a table is a quantity the reader has to guess at. The same
-device as «нанесено 47 из 82 помещений» on a floor.
+The rules of its wording: how a date is written, how many documents are on screen, what is
+said about a batch that has just been uploaded, about a близнец that has just been attached
+or taken off, and about a документ that has been deleted. Most of them are numbers, and
+they are said as phrases rather than as figures beside the table: «Показано 12 документов»
+answers a question, while «12» next to a table is a quantity the reader has to guess at.
+The same device as «нанесено 47 из 82 помещений» on a floor.
 
 Agreement with the numeral is worked out here rather than assembled in the markup:
 «Показано 1 документов» reads as a glitch on the screen, not as a single document, and it
@@ -155,6 +156,38 @@ def twin_removed():
     a близнец is a row of its own.
     """
     return "Близнец снят. Документ и его оригинал остались на месте."
+
+
+def twin_and_its_pictures(count):
+    """A близнец together with its картинки — or the близнец on its own.
+
+    «Близнец и 0 картинок» is not what a близнец without pictures is: nothing has gone
+    astray there, and a zero in a warning reads as something that has.
+    """
+    if not count:
+        return "близнец"
+    return f"близнец и {count}{NBSP}{agreeing_with(count, *PICTURES)}"
+
+
+def document_deleted(title, taken):
+    """What is said after a документ is deleted — on the shelf, where the reader lands.
+
+    The документ is named, because the page it was deleted from went with it: the shelf it
+    lands on looks much the same as before with one row fewer, and nothing else on the
+    screen says which документ is missing from it.
+
+    What went with it is said again rather than left to the confirmation. The confirmation
+    is the screen before, and «удалён» alone leaves whoever deleted a документ with a
+    близнец wondering whether the близнец is still lying somewhere.
+
+    The same list the confirmation was holding is said back, word for word: assembled a
+    second time here, it would be a second account of what a deletion takes, and the two
+    would sooner or later promise and report different things.
+    """
+    deleted = f"Документ «{title}» удалён."
+    if not taken:
+        return deleted
+    return f"{deleted} Вместе с ним удалены: {', '.join(one.said for one in taken)}."
 
 
 def _incomplete(twins):

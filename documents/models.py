@@ -22,6 +22,30 @@ class CommonModel(models.Model):
         abstract = True
 
 
+def discarded_with_its_files(row):
+    """Delete a row and then everything it put in the store — the one account of the order.
+
+    The rows first and the files after them, never the other way round: a removal that
+    emptied the store and then failed would leave a row pointing at files that are no longer
+    there — worse than the orphans this is here to prevent, because it looks complete.
+
+    Two things are discarded this way, a близнец and a документ, and the order is the same
+    for both (ADR 0011, ADR 0013). Written twice it would be two accounts of it, and the
+    first one to be "tidied up" would be the one nobody was reading.
+
+    Whatever is handed over says what it stored, and says it before the row goes: after the
+    cascade there is nothing left to ask, and a file is not deleted by deleting the row that
+    names it.
+    """
+    stored = row.stored_files()
+    row.delete()
+    for file in stored:
+        # A документ entered by hand may have no файл at all, and an empty field names
+        # nothing in the store to delete.
+        if file:
+            file.delete(save=False)
+
+
 def document_file_path(instance, filename):
     """Files are laid out by organisation: the directory shows whose they are.
 
@@ -146,6 +170,29 @@ class Document(CommonModel):
         """
         return getattr(self, "twin", None)
 
+    def stored_files(self):
+        """Everything this документ put in the store — its original, and its близнец's files.
+
+        Asked before the rows go, because after the cascade there is nothing left to ask:
+        the близнец and its картинки are children of the документ, and once they are gone
+        nothing in the project names the files they wrote.
+        """
+        twin = self.attached_twin()
+        return [self.file_uri] + (twin.stored_files() if twin is not None else [])
+
+    def discard(self):
+        """Delete the документ — the whole of it, and for good.
+
+        The близнец, its картинки and the привязки follow the row by cascade, and the files
+        are taken out of the store after it, in the order stated once for both kinds of
+        discarding.
+
+        There is no soft delete here, as there is nowhere in this project (ADR 0013): a
+        hidden документ would be a second lifecycle, and the reader on the shelf would have
+        to be told which of the two they are looking at.
+        """
+        discarded_with_its_files(self)
+
 
 def twin_file_path(instance, filename):
     """The markdown of a близнец, in a directory of its own.
@@ -222,16 +269,11 @@ class DocumentTwin(CommonModel):
     def discard(self):
         """Take the близнец off: the rows, and then what they stored.
 
-        The rows first and the files after them, never the other way round: a removal that
-        emptied the store and then failed would leave a близнец pointing at files that are
-        no longer there — worse than the orphans this is here to prevent, because it looks
-        complete.
+        The документ itself is not touched — that is the whole reason a близнец is a row of
+        its own: a bad conversion is withdrawn and the скан it was made from stays where it
+        was.
         """
-        stored = self.stored_files()
-        self.delete()
-        for file in stored:
-            if file:
-                file.delete(save=False)
+        discarded_with_its_files(self)
 
 
 class TwinImage(models.Model):
