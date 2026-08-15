@@ -11,9 +11,13 @@
   The form is open where there is work for it: on an empty shelf — that is where the
   absence gets noticed — and with a refusal at hand, because a reason hidden under a
   summary is a reason nobody sees.
+
+  A shelf emptied by an отбор is not an empty shelf, and the form stays shut over it:
+  whoever narrowed the shelf to nothing is looking for a документ, not uploading one, and
+  a form unfolding under their hands answers a question they did not ask.
 {% endcomment %}
 <details class="mb-4 rounded-lg border border-base-300 bg-base-100 p-3" data-upload="documents"
-         {% if not documents or upload.errors %}open{% endif %}>
+         {% if not documents and not search.asked or upload.errors %}open{% endif %}>
   <summary class="cursor-pointer text-sm font-medium">Загрузить документы</summary>
 
   <form method="post" enctype="multipart/form-data" class="mt-3 space-y-3">

@@ -33,6 +33,7 @@ from building_passport.models import Space
 from parties.models import Org
 
 from .batch_twins import sort_out
+from .building_choice import BuildingChoice
 from .models import Document, DocumentLink
 from .twin_attach import attach_twin
 from .uploaded_files import (
@@ -110,19 +111,6 @@ class SubmittedFiles(forms.FileField):
         return files
 
 
-class BuildingChoice(forms.ModelChoiceField):
-    """The BCs on offer, named the way they are named everywhere else.
-
-    A space says itself as «man (building)» — the code and the type, which is what a row in
-    the admin needs. Whoever is uploading a folder knows the building as «Manhattan», and
-    a list of codes is a list they have to translate before every batch. The code is left
-    for a building with no name at all: it is worse than a name, but it is what there is.
-    """
-
-    def label_from_instance(self, building):
-        return building.name or building.code
-
-
 class DocumentBatchForm(forms.Form):
     """Files, вид документа and БЦ — one set of answers for the whole submission.
 
@@ -165,9 +153,7 @@ class DocumentBatchForm(forms.Form):
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        self.fields["building"].queryset = Space.objects.buildings_administered_by(
-            user
-        ).order_by("name", "code")
+        self.fields["building"].offer(Space.objects.buildings_administered_by(user))
 
     def clean(self):
         """Whose shelf the batch lands on (ADR 0010).

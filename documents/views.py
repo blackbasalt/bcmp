@@ -23,6 +23,7 @@ from .document_display import (
 from .document_edit import DocumentParticularsForm
 from .document_page import Deletion, linked_buildings, particulars, taken_with
 from .models import Document, DocumentTwin
+from .shelf_search import ShelfSearch
 from .twin_attach import DocumentTwinForm
 from .uploaded_files import MARKDOWN_CONTENT_TYPE, content_type_for, head_of
 
@@ -43,9 +44,15 @@ class DocumentListView(LoginRequiredMixin, ListView):
     context_object_name = "documents"
 
     def get_queryset(self):
-        """The data is taken through the documents chokepoint (ADR 0006); no filter is
-        assembled here."""
-        return (
+        """The data is taken through the documents chokepoint (ADR 0006) and narrowed after
+        it, never instead of it.
+
+        The order of the two is the whole point: whose документы these are is decided
+        first and by one place, and what the reader asked of them can only take rows away
+        from that answer. An отбор assembled here would be a second place deciding whose
+        shelf is being read.
+        """
+        return self.search.narrow(
             Document.objects.visible_to(self.request.user)
             # The organisation and the issuing party are said by name, so they travel in
             # the same query as the documents themselves.
@@ -63,6 +70,12 @@ class DocumentListView(LoginRequiredMixin, ListView):
         # The count is worked out over the same set that will go into the table: the
         # number beneath it and the rows within it must not diverge.
         context["shown"] = documents_shown(len(documents))
+        # The отбор, back on the screen it was typed into: it says both what was asked and
+        # whether anything was, and the markup asks it for both. Handed over as one thing
+        # rather than unpacked here, because the two answers must not drift — an empty
+        # screen reads as «ничего не нашлось» or «ничего не загружено» by exactly the
+        # question the bar above it is showing.
+        context["search"] = self.search
         # The organisation is named for whoever handles more than one client: for them
         # the shelf is shared, and "whose paper is this" is a question they ask of every
         # row. For an employee of a single client the column would repeat one name down
@@ -100,6 +113,16 @@ class DocumentListView(LoginRequiredMixin, ListView):
         for level, said in batch_report(form.save()):
             messages.add_message(request, level, said)
         return redirect("documents:document_list")
+
+    @cached_property
+    def search(self):
+        """What was asked of the shelf — read once and used by both the rows and the bar.
+
+        It hangs off the address and not off a submission, so it is read on a POST too: an
+        upload refused while the shelf was narrowed comes back onto the shelf as it was
+        narrowed, with the reason on the form rather than a shelf the reader did not leave.
+        """
+        return ShelfSearch(self.request.GET, user=self.request.user)
 
     @cached_property
     def administers_anything(self):

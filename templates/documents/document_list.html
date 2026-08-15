@@ -14,6 +14,14 @@
   {% if upload %}{% include "documents/_document_upload.html" %}{% endif %}
 
   {% comment %}
+    The question stands between the upload and the table: it is asked of what is below it
+    and answered by it. On a shelf nothing has ever been uploaded to there is nothing to
+    narrow, and the bar is not shown — but it stays on a shelf that a question emptied,
+    because that is where the question has to be corrected.
+  {% endcomment %}
+  {% if documents or search.asked %}{% include "documents/_document_search.html" %}{% endif %}
+
+  {% comment %}
     A table, not cards: there are hundreds of documents, and what tells them apart are
     their particulars — the number, the date, the issuer — which read as columns, whereas
     as cards they would sprawl across several screens.
@@ -92,6 +100,20 @@
         {% endcomment %}
         <p class="text-sm opacity-70">{{ shown }}</p>
       </div>
+    </div>
+  {% elif search.asked %}
+    {% comment %}
+      A question that matched nothing, said as such. It is the whole reason the count
+      follows the отбор: «ничего не нашлось» sends the reader to change the question,
+      «ничего не загружено» sends them to upload the folder, and one screen for both would
+      send them to the wrong one half the time.
+
+      Which of the two it is follows from whether anything was asked, not from what came
+      back: a shelf can be empty and questioned at the same time, and then it is still the
+      question that is on screen and still the question that has to be cleared.
+    {% endcomment %}
+    <div class="alert alert-warning">
+      <span>По этому отбору ничего не нашлось. Измените условия или сбросьте отбор.</span>
     </div>
   {% else %}
     {% comment %}

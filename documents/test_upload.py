@@ -18,6 +18,7 @@ offered at all.
 """
 
 import hashlib
+import re
 from pathlib import Path
 
 import pytest
@@ -75,6 +76,17 @@ def upload_form(page):
     return page if 'data-upload="documents"' in page else None
 
 
+def unfolded(page):
+    """Whether the form stands open rather than under its summary.
+
+    Read off the same `data-upload` tag the offer itself is read off: offered and unfolded
+    are two different assertions about one element, and a second foothold for the second
+    of them would be a second thing to keep in step with the markup.
+    """
+    tag = re.search(r"<details[^>]*data-upload=\"documents\"[^>]*>", page)
+    return tag is not None and re.search(r"\bopen\b", tag.group()) is not None
+
+
 def said_to(client):
     """What the section says after a batch: the reloaded screen carries the report."""
     _, page = section(client)
@@ -101,6 +113,26 @@ def test_an_administrator_of_the_organisation_is_offered_the_upload(client, admi
     _, page = section(client)
 
     assert upload_form(page) is not None
+
+
+def test_the_form_stays_folded_over_a_shelf_a_search_emptied(
+    client, administrator, downtown
+):
+    """The form unfolds on an empty shelf, and a shelf narrowed to nothing is not one.
+
+    Whoever narrowed the shelf is looking for a документ, not uploading one, and a form
+    unfolding under their hands answers a question they did not ask. It stays offered —
+    folded, not withheld: the right to upload has not changed.
+    """
+    Document.objects.create(org=downtown, kind=Document.Kind.ACT, title="Акт разграничения")
+    client.force_login(administrator)
+
+    page = client.get(
+        reverse("documents:document_list"), {"q": "протокол замеров"}
+    ).content.decode()
+
+    assert upload_form(page) is not None
+    assert not unfolded(page)
 
 
 def test_a_member_without_the_flag_is_offered_no_upload_form_at_all(client, member):
