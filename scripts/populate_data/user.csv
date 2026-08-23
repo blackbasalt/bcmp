@@ -1,5 +1,5 @@
 Username,First name,Last name,Email address,Superuser status,Staff status,password
-user,Юзер,Юзербеков,user@example.com,TRUE,TRUE,user
+user,Юзер,Юзербеков,user@example.com,TRUE,TRUE,Altynbek2Kalitanov
 birzhan,Биржан,Кажигалиев,birzhan@example.com,FALSE,TRUE,birzhan123QWE
 aset,Асет,Агадилов,aset@example.com,FALSE,TRUE,aset123QWE
 symbat,Сымбат,Абильдина,symbat@example.com,FALSE,TRUE,symbat123QWE

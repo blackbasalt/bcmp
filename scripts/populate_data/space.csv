@@ -15,7 +15,7 @@ id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_co
 ,man,floor,standard,3 Этаж,man-f3,,man,3,581.82,,
 ,man,floor,standard,4 Этаж,man-f4,,man,4,655.76,,
 ,man,floor,technical,5 Этаж,man-f5,,man,5,56.93,,
-,man,roof,operated,Крыша,man-roof,,man,,,,
+,man,floor,operated,Крыша,man-f6,,man,6,,,
 ,man-f1,stairwell,regular,Лестничная клетка 1,man-f1-sw1,,man,1,,,
 ,man-f1,stairwell,regular,Лестничная клетка 2,man-f1-sw2,,man,1,,,
 ,man-f1,shaft,elevator,Лифтовая шахта,man-f1-sl1,,man,1,,,
@@ -70,10 +70,13 @@ id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_co
 ,man-f3-c,room,office,Каб302 (каморка 2),man-f3-c2,,man,3,17.39,FALSE,TRUE
 ,man-f3-c,room,office,Каб302 (каморка 3),man-f3-c3,,man,3,14.26,FALSE,TRUE
 ,man-f3,room,office,Каб301,man-f3-d,,man,3,41.02,FALSE,TRUE
-,man-f3,room,office,Каб308,man-f3-e,,man,3,64.21,FALSE,TRUE
+,man-f3,room,office,Каб308,man-f3-e,,man,3,14.62,FALSE,TRUE
+,man-f3-e,room,office,Каб308 (каморка 1),man-f3-e1,,man,3,26.22,FALSE,TRUE
+,man-f3-e,room,office,Каб308 (каморка 2),man-f3-e2,,man,3,22.63,FALSE,TRUE
 ,man-f3,room,office,Каб306,man-f3-f,,man,3,37.6,FALSE,TRUE
 ,man-f3-f,room,office,Каб306 (каморка),man-f3-f1,,man,3,57.26,FALSE,TRUE
 ,man-f3,room,office,Каб305,man-f3-g,,man,3,47.22,FALSE,TRUE
+,man-f3,room,office,Каморка у туалета,man-f3-h,,man,3,1.05,FALSE,FALSE
 ,man-f3,room,restroom,УборнаяЖен 3эт,man-f3-rr-f,,man,3,,TRUE,FALSE
 ,man-f3-rr-f,room,restroom,ТуалетЖен1 3эт,man-f3-rr-f-t1,,man,3,,TRUE,FALSE
 ,man-f3-rr-f,room,restroom,ТуалетЖен2 3эт,man-f3-rr-f-t2,,man,3,,TRUE,FALSE
@@ -99,8 +102,637 @@ id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_co
 ,man-f4,room,restroom,УборнаяМуж 4эт,man-f4-rr-m,,man,4,,TRUE,FALSE
 ,man-f4-rr-m,room,restroom,ТуалетМуж1 4эт,man-f4-rr-m-t1,,man,4,,TRUE,FALSE
 ,man-f4-rr-m,room,restroom,ТуалетМуж2 4эт,man-f4-rr-m-t2,,man,4,,TRUE,FALSE
-,man-f5,stairwell,regular,Лестничная клетка на крышу,man-f5-sw1,,man,5,3.8,,
+,man-f5,stairwell,regular,Лестничная клетка на крышу,man-f5-sw2,,man,5,3.8,,
 ,man-f5,room,corridor,Коридор на 5 эт,man-f5-cor,,man,5,4.03,TRUE,FALSE
 ,man-f5,room,office,Кабинет на 5 эт,man-f5-a,,man,5,40.53,FALSE,TRUE
-,man-f5-a,room,restroom,Туалет 5эт,man-f5-rr,,man,5,8.57,FALSE,TRUE
-,man-roof,room,tech_combined,Тех помещение на крыше,man-roof-a,,man,,25.16,FALSE,FALSE
+,man-f5-a,room,office,Кладовка на 5 эт,man-f5-a1,,man,5,40.53,FALSE,TRUE
+,man-f5-a,room,restroom,Туалет 5эт,man-f5-a-rr,,man,5,8.57,FALSE,TRUE
+,man-f6,room,tech_combined,Тех помещение на крыше,man-roof-a,,man,6,25.16,FALSE,FALSE
+,man-f6,roof,non_operated,Кровля,man-roof-roof,,man,6,,FALSE,FALSE
+,tok,floor,ground,1 Этаж,tok-f1,,tok,1,566.09,,
+,tok,floor,standard,2 Этаж,tok-f2,,tok,2,658.72,,
+,tok,floor,standard,3 Этаж,tok-f3,,tok,3,641.73,,
+,tok,floor,standard,4 Этаж,tok-f4,,tok,4,659.16,,
+,tok,floor,standard,5 Этаж,tok-f5,,tok,5,657.63,,
+,tok,floor,standard,6 Этаж,tok-f6,,tok,6,657.95,,
+,tok,floor,technical,7 Этаж,tok-f7,,tok,7,120.23,,
+,tok,roof,operated,Крыша,tok-roof,,tok,,,,
+,tok-f1,stairwell,regular,Лестничная клетка 1,tok-f1-sw1,,tok,1,5.59,,
+,tok-f1,stairwell,regular,Лестничная клетка 2,tok-f1-sw2,,tok,1,19.59,,
+,tok-f1,shaft,elevator,Лифтовая шахта,tok-f1-sl1,,tok,1,5.37,,
+,tok-f1,shaft,elevator,Лифтовая шахта,tok-f1-sl2,,tok,1,5.37,,
+,tok-f1,room,vestibule,Входной Тамбур,tok-f1-ev,entrance vestibule,tok,1,10.3,TRUE,FALSE
+,tok-f1,room,lobby,Лобби,tok-f1-lb,lobby,tok,1,152.79,TRUE,FALSE
+,tok-f1,room,corridor,Коридор Лестничная клетка 1,tok-f1-cor1,,tok,1,16.58,TRUE,FALSE
+,tok-f1,room,corridor,Коридор Лестничная клетка 2,tok-f1-cor2,,tok,1,9.53,TRUE,FALSE
+,tok-f1,room,office,каб. 102,tok-f1-a,,tok,1,48,FALSE,TRUE
+,tok-f1,room,tech_combined,Серверная,tok-f1-b,,tok,1,3.7,FALSE,FALSE
+,tok-f1,room,tech_combined,Тепловой пункт,tok-f1-c,,tok,1,21.85,FALSE,FALSE
+,tok-f1,room,tech_combined,Склад технический,tok-f1-d,,tok,1,49.48,FALSE,FALSE
+,tok-f1,room,office,каб. 103,tok-f1-e,,tok,1,97,FALSE,TRUE
+,tok-f1,room,tech_combined,Щитовая,tok-f1-f,,tok,1,4.27,FALSE,FALSE
+,tok-f1,room,office,каб. 101,tok-f1-g,,tok,1,102.08,FALSE,TRUE
+,tok-f1,room,restroom,WS/W,tok-f1-rr-f,,tok,1,4.42,TRUE,FALSE
+,tok-f1-rr-f,room,restroom,WS/W-1,tok-f1-rr-f-t1,,tok,1,1.45,TRUE,FALSE
+,tok-f1-rr-f,room,restroom,WS/W-2,tok-f1-rr-f-t2,,tok,1,1.49,TRUE,FALSE
+,tok-f1,room,restroom,WS/M,tok-f1-rr-m,,tok,1,4.44,TRUE,FALSE
+,tok-f1-rr-m,room,restroom,WS/M-1,tok-f1-rr-m-t1,,tok,1,1.38,TRUE,FALSE
+,tok-f1-rr-m,room,restroom,WS/M-2,tok-f1-rr-m-t2,,tok,1,1.41,TRUE,FALSE
+,tok-f1,room,tech_combined,Тех.помещение,tok-f1-h,,tok,1,,FALSE,FALSE
+,tok-f2,stairwell,regular,Лестничная клетка 1,tok-f2-sw1,,tok,2,17.5,,
+,tok-f2,stairwell,regular,Лестничная клетка 2,tok-f2-sw2,,tok,2,18.43,,
+,tok-f2,shaft,elevator,Лифтовая шахта,tok-f2-sl1,,tok,2,5.37,,
+,tok-f2,shaft,elevator,Лифтовая шахта,tok-f2-sl2,,tok,2,5.37,,
+,tok-f2,room,corridor,Главный коридор,tok-f2-cor1,,tok,2,98.97,TRUE,FALSE
+,tok-f2,room,corridor,Лифтовый холл,tok-f2-cor2,,tok,2,25.68,TRUE,FALSE
+,tok-f2,room,office,Каб. 205,tok-f2-a,,tok,2,35.93,FALSE,TRUE
+,tok-f2,room,office,Каб. 206,tok-f2-b,,tok,2,42.69,FALSE,TRUE
+,tok-f2,room,office,Каб. 207,tok-f2-c,,tok,2,108.37,FALSE,TRUE
+,tok-f2,room,tech_combined,Тех.помещение (за дверью лифтового холла),tok-f2-d,,tok,2,2.16,FALSE,FALSE
+,tok-f2,room,office,Каб. 201,tok-f2-e,,tok,2,36.34,FALSE,TRUE
+,tok-f2,room,office,Каб. 202,tok-f2-f,,tok,2,86.27,FALSE,TRUE
+,tok-f2,room,office,Каб. 202/а,tok-f2-f1,,tok,2,17.13,FALSE,TRUE
+,tok-f2,room,office,Каб. 203,tok-f2-g,,tok,2,46.31,FALSE,TRUE
+,tok-f2,room,office,Каб. 204,tok-f2-h,,tok,2,46.93,FALSE,TRUE
+,tok-f2,room,office,Каб. 204/а,tok-f2-h1,,tok,2,8.21,FALSE,TRUE
+,tok-f2,room,tech_combined,Склад,tok-f2-i,,tok,2,7.26,FALSE,TRUE
+,tok-f2,room,office,Каб. 208,tok-f2-j,,tok,2,22.04,FALSE,TRUE
+,tok-f2,room,office,Каб. 209,tok-f2-k,,tok,2,16.41,FALSE,TRUE
+,tok-f2,room,restroom,WS/W,tok-f2-rr-f,,tok,2,4.12,TRUE,FALSE
+,tok-f2-rr-f,room,restroom,WS/W-1,tok-f2-rr-f-t1,,tok,2,0.98,TRUE,FALSE
+,tok-f2-rr-f,room,restroom,WS/W-2,tok-f2-rr-f-t2,,tok,2,0.98,TRUE,FALSE
+,tok-f2,room,restroom,WS/M,tok-f2-rr-m,,tok,2,3.51,TRUE,FALSE
+,tok-f2-rr-m,room,restroom,WS/M-1,tok-f2-rr-m-t1,,tok,2,0.88,TRUE,FALSE
+,tok-f2-rr-m,room,restroom,WS/M-2,tok-f2-rr-m-t2,,tok,2,0.88,TRUE,FALSE
+,tok-f3,stairwell,regular,Лестничная клетка 1,tok-f3-sw1,,tok,3,16.4,,
+,tok-f3,stairwell,regular,Лестничная клетка 2,tok-f3-sw2,,tok,3,13.97,,
+,tok-f3,shaft,elevator,Лифтовая шахта,tok-f3-sl1,,tok,3,5.37,,
+,tok-f3,shaft,elevator,Лифтовая шахта,tok-f3-sl2,,tok,3,5.37,,
+,tok-f3,room,corridor,Лифтовый холл,tok-f3-cor1,,tok,3,26.61,TRUE,FALSE
+,tok-f3,room,office,Каб. b (из коридора за дверью Лифтового холла),tok-f3-a,,tok,3,32.05,FALSE,TRUE
+,tok-f3,room,office,Каб. c (из коридора за дверью Лифтового холла),tok-f3-b,,tok,3,26.29,FALSE,TRUE
+,tok-f3,room,office,Каб. d (из коридора за дверью Лифтового холла),tok-f3-c,,tok,3,26.45,FALSE,TRUE
+,tok-f3,room,office,Каб. e (из коридора за дверью Лифтового холла),tok-f3-d,,tok,3,38.38,FALSE,TRUE
+,tok-f3,room,office,Каб. f (из коридора за дверью Лифтового холла),tok-f3-e,,tok,3,30.71,FALSE,TRUE
+,tok-f3,room,office,Каб. a (из коридора за дверью Лифтового холла),tok-f3-f,,tok,3,31.52,FALSE,TRUE
+,tok-f3,room,corridor,Коридор (за дверью Лифтового холла),tok-f3-cor2,,tok,3,32.89,FALSE,TRUE
+,tok-f3,room,tech_combined,Тех.помещение (за дверью лифтового холла),tok-f3-g,,tok,3,2.71,FALSE,FALSE
+,tok-f3,room,office,Опен-спейс 1 (Главный),tok-f3-h,,tok,3,151.86,FALSE,TRUE
+,tok-f3,room,office,Опен-спейс 2,tok-f3-i,,tok,3,125.84,FALSE,TRUE
+,tok-f3,room,office,Каб. a (внутри Опен-спейс 2),tok-f3-j,,tok,3,14.37,FALSE,TRUE
+,tok-f3,room,office,Каб. b (внутри Опен-спейс 2),tok-f3-k,,tok,3,23.27,FALSE,TRUE
+,tok-f3,room,office,Каб. c (внутри Опен-спейс 2),tok-f3-l,,tok,3,9.94,FALSE,TRUE
+,tok-f3,room,office,Каб. d (внутри Опен-спейс 2),tok-f3-m,,tok,3,5.91,FALSE,TRUE
+,tok-f3,room,corridor,Коридор (за дверью Опен-спейс 2),tok-f3-cor3,,tok,3,8.55,FALSE,TRUE
+,tok-f3,room,office,Каб. a (из коридора за дверью Опен-спейс 2),tok-f3-n,,tok,3,4.57,FALSE,TRUE
+,tok-f3,room,office,Каб. b (из коридора за дверью Опен-спейс 2),tok-f3-o,,tok,3,4.47,FALSE,TRUE
+,tok-f3,room,office,Каб. a (внутри Опен-спейс 1),tok-f3-p,,tok,3,3.22,FALSE,TRUE
+,tok-f3,room,office,Каб. b (внутри Опен-спейс 1),tok-f3-q,,tok,3,3.15,FALSE,TRUE
+,tok-f3,room,restroom,WS/W,tok-f3-rr-f,,tok,3,4.8,TRUE,FALSE
+,tok-f3-rr-f,room,restroom,WS/W-1,tok-f3-rr-f-t1,,tok,3,0.88,TRUE,FALSE
+,tok-f3-rr-f,room,restroom,WS/W-2,tok-f3-rr-f-t2,,tok,3,0.88,TRUE,FALSE
+,tok-f3,room,restroom,WS/M,tok-f3-rr-m,,tok,3,5.74,TRUE,FALSE
+,tok-f3-rr-m,room,restroom,WS/M-1,tok-f3-rr-m-t1,,tok,3,0.98,TRUE,FALSE
+,tok-f3-rr-m,room,restroom,WS/M-2,tok-f3-rr-m-t2,,tok,3,0.98,TRUE,FALSE
+,tok-f4,shaft,elevator,Лифтовая шахта,tok-f4-sl1,,tok,4,5.37,,
+,tok-f4,shaft,elevator,Лифтовая шахта,tok-f4-sl2,,tok,4,5.37,,
+,tok-f4,room,corridor,Лифтовый холл,tok-f4-cor1,,tok,4,31.61,TRUE,FALSE
+,tok-f4,stairwell,regular,Лестничная клетка 1,tok-f4-sw1,,tok,4,16.29,,
+,tok-f4,stairwell,regular,Лестничная клетка 2,tok-f4-sw2,,tok,4,13.89,,
+,tok-f4,room,office,Опен-спейс 1 (из главного коридора),tok-f4-a,,tok,4,151.26,FALSE,TRUE
+,tok-f4,room,office,Каб. a (внутри Опен-спейс 1),tok-f4-m,,tok,4,5.63,FALSE,TRUE
+,tok-f4,room,office,Каб. i (из главного коридора),tok-f4-b,,tok,4,30.87,FALSE,TRUE
+,tok-f4,room,office,Каб. j (из главного коридора),tok-f4-c,,tok,4,30.39,FALSE,TRUE
+,tok-f4,room,tech_combined,Тех.помещение (из главного коридора),tok-f4-d,,tok,4,4.18,FALSE,TRUE
+,tok-f4,room,tech_combined,Тех.помещение (за дверью лифтового холла),tok-f4-e,,tok,4,1.86,FALSE,FALSE
+,tok-f4,room,office,Каб. a (из главного коридора),tok-f4-f,,tok,4,38.15,FALSE,TRUE
+,tok-f4,room,office,Каб. b (из главного коридора),tok-f4-g,,tok,4,27.16,FALSE,TRUE
+,tok-f4,room,office,Каб. c (из главного коридора),tok-f4-h,,tok,4,37.76,FALSE,TRUE
+,tok-f4,room,office,Каб. d (из главного коридора),tok-f4-i,,tok,4,48.87,FALSE,TRUE
+,tok-f4,room,office,Каб. e (из главного коридора),tok-f4-j,,tok,4,24.66,FALSE,TRUE
+,tok-f4,room,office,Каб. f (из главного коридора),tok-f4-k,,tok,4,55.73,FALSE,TRUE
+,tok-f4,room,office,Каб. f-1 (внутри кабинета f),tok-f4-l,,tok,4,9.59,FALSE,TRUE
+,tok-f4,room,office,Каб. h (из главного коридора),tok-f4-n,,tok,4,13.7,FALSE,TRUE
+,tok-f4,room,office,Каб. g (из главного коридора),tok-f4-o,,tok,4,14.8,FALSE,TRUE
+,tok-f4,room,corridor,Коридор (главный за дверью от лифтового холла),tok-f4-cor2,,tok,4,80.67,FALSE,TRUE
+,tok-f4,room,restroom,WS/W,tok-f4-rr-f,,tok,4,4.12,TRUE,FALSE
+,tok-f4-rr-f,room,restroom,WS/W-1,tok-f4-rr-f-t1,,tok,4,0.98,TRUE,FALSE
+,tok-f4-rr-f,room,restroom,WS/W-2,tok-f4-rr-f-t2,,tok,4,0.98,TRUE,FALSE
+,tok-f4,room,restroom,WS/M,tok-f4-rr-m,,tok,4,3.51,TRUE,FALSE
+,tok-f4-rr-m,room,restroom,WS/M-1,tok-f4-rr-m-t1,,tok,4,0.88,TRUE,FALSE
+,tok-f4-rr-m,room,restroom,WS/M-2,tok-f4-rr-m-t2,,tok,4,0.88,TRUE,FALSE
+,tok-f5,shaft,elevator,Лифтовая шахта,tok-f5-sl1,,tok,5,5.37,,
+,tok-f5,shaft,elevator,Лифтовая шахта,tok-f5-sl2,,tok,5,5.37,,
+,tok-f5,room,corridor,Лифтовый холл,tok-f5-cor1,,tok,5,26.16,TRUE,FALSE
+,tok-f5,stairwell,regular,Лестничная клетка 1,tok-f5-sw1,,tok,5,16.27,,
+,tok-f5,stairwell,regular,Лестничная клетка 2,tok-f5-sw2,,tok,5,14.72,,
+,tok-f5,room,office,Каб. а (из второго коридора),tok-f5-a,,tok,5,55.62,FALSE,TRUE
+,tok-f5,room,office,Каб. а-1 (из второго коридора),tok-f5-b,,tok,5,26.92,FALSE,TRUE
+,tok-f5,room,office,Каб./а (за дверью от лифтового холла),tok-f5-c,,tok,5,84.1,FALSE,TRUE
+,tok-f5,room,office,Каб./а-1 (внутри кабинета- а),tok-f5-d,,tok,5,17.09,FALSE,TRUE
+,tok-f5,room,tech_combined,Тех.помещение (за дверью лифтового холла),tok-f5-e,,tok,5,2.81,FALSE,FALSE
+,tok-f5,room,office,Каб. a (из главного коридора),tok-f5-f,,tok,5,36.35,FALSE,TRUE
+,tok-f5,room,office,Каб. b (из главного коридора),tok-f5-g,,tok,5,65.26,FALSE,TRUE
+,tok-f5,room,office,Каб. c (из главного коридора),tok-f5-h,,tok,5,99.4,FALSE,TRUE
+,tok-f5,room,office,Каб. d (из главного коридора),tok-f5-i,,tok,5,32.76,FALSE,TRUE
+,tok-f5,room,office,Каб. d-1 (внутри кабинета d),tok-f5-j,,tok,5,7.95,FALSE,TRUE
+,tok-f5,room,office,Каб. d-2 (внутри кабинета d),tok-f5-k,,tok,5,6.35,FALSE,TRUE
+,tok-f5,room,office,Каб. е (из главного коридора),tok-f5-l,,tok,5,37.98,FALSE,TRUE
+,tok-f5,room,office,Каб. b (из второго коридора),tok-f5-m,,tok,5,17.08,FALSE,TRUE
+,tok-f5,room,corridor,Коридор (главный за дверью от лифтового холла),tok-f5-cor2,,tok,5,65.66,FALSE,TRUE
+,tok-f5,room,corridor,Второй коридор (из главного коридора),tok-f5-cor3,,tok,5,19.78,FALSE,TRUE
+,tok-f5,room,restroom,WS/W,tok-f5-rr-f,,tok,5,4.76,TRUE,FALSE
+,tok-f5-rr-f,room,restroom,WS/W-1,tok-f5-rr-f-t1,,tok,5,1.58,TRUE,FALSE
+,tok-f5-rr-f,room,restroom,WS/W-2,tok-f5-rr-f-t2,,tok,5,1.58,TRUE,FALSE
+,tok-f5,room,restroom,WS/M,tok-f5-rr-m,,tok,5,3.89,TRUE,FALSE
+,tok-f5-rr-m,room,restroom,WS/M-1,tok-f5-rr-m-t1,,tok,5,1.41,TRUE,FALSE
+,tok-f5-rr-m,room,restroom,WS/M-2,tok-f5-rr-m-t2,,tok,5,1.41,TRUE,FALSE
+,tok-f6,shaft,elevator,Лифтовая шахта,tok-f6-sl1,,tok,6,5.37,,
+,tok-f6,shaft,elevator,Лифтовая шахта,tok-f6-sl2,,tok,6,5.37,,
+,tok-f6,room,corridor,Лифтовый холл,tok-f6-cor1,,tok,6,21.61,TRUE,FALSE
+,tok-f6,stairwell,regular,Лестничная клетка 1,tok-f6-sw1,,tok,6,15.98,,
+,tok-f6,stairwell,regular,Лестничная клетка 2,tok-f6-sw2,,tok,6,13.89,,
+,tok-f6,room,office,Каб. d (из главного коридора),tok-f6-a,,tok,6,30.72,FALSE,TRUE
+,tok-f6,room,office,Каб. e-1 (внутри кабинета - е),tok-f6-b,,tok,6,51.51,FALSE,TRUE
+,tok-f6,room,office,Каб. e-2 (внутри кабинета - е),tok-f6-c,,tok,6,100.74,FALSE,TRUE
+,tok-f6,room,office,Каб. e-2/1 (внутри кабинета - е),tok-f6-l,,tok,6,5.06,FALSE,TRUE
+,tok-f6,room,office,Каб. е (из главного коридора),tok-f6-d,,tok,6,24.44,FALSE,TRUE
+,tok-f6,room,tech_combined,Тех.помещение (за дверью лифтового холла),tok-f6-e,,tok,6,2.81,FALSE,FALSE
+,tok-f6,room,office,Каб. A (Фитнес-зал) (из коридора лестничной клетки - 1),tok-f6-f,,tok,6,141.37,FALSE,TRUE
+,tok-f6,room,office,Каб. a (Конференц-зал) - (из главного коридора),tok-f6-g,,tok,6,47.19,FALSE,TRUE
+,tok-f6,room,office,Каб. b (из главного коридора),tok-f6-h,,tok,6,31.39,FALSE,TRUE
+,tok-f6,room,office,Каб. c (из главного коридора),tok-f6-i,,tok,6,41.85,FALSE,TRUE
+,tok-f6,room,tech_combined,Тех.помещение (из главного коридора),tok-f6-j,,tok,6,4.26,FALSE,TRUE
+,tok-f6,room,office,Каб. f (из главного коридора),tok-f6-k,,tok,6,17.28,FALSE,TRUE
+,tok-f6,room,corridor,Коридор (главный за дверью от лифтового холла),tok-f6-cor2,,tok,6,76.86,FALSE,TRUE
+,tok-f6,room,corridor,Коридор Лестничная клетка 1,tok-f6-cor3,,tok,6,5.62,FALSE,TRUE
+,tok-f6,room,restroom,WS/W,tok-f6-rr-f,,tok,6,4.76,TRUE,FALSE
+,tok-f6-rr-f,room,restroom,WS/W-1,tok-f6-rr-f-t1,,tok,6,1.58,TRUE,FALSE
+,tok-f6-rr-f,room,restroom,WS/W-2,tok-f6-rr-f-t2,,tok,6,1.58,TRUE,FALSE
+,tok-f6,room,restroom,WS/M,tok-f6-rr-m,,tok,6,3.89,TRUE,FALSE
+,tok-f6-rr-m,room,restroom,WS/M-1,tok-f6-rr-m-t1,,tok,6,1.41,TRUE,FALSE
+,tok-f6-rr-m,room,restroom,WS/M-2,tok-f6-rr-m-t2,,tok,6,1.41,TRUE,FALSE
+,tok-f7,stairwell,regular,Лестничная клетка 1,tok-f7-sw1,,tok,7,14.49,,
+,tok-f7,room,corridor,Коридор Лестничная клетка 1,tok-f7-cor1,,tok,7,20.01,FALSE,TRUE
+,tok-f7,room,office,Каб. a (из коридора),tok-f7-a,,tok,7,31.82,FALSE,TRUE
+,tok-f7,room,office,Каб. b (из коридора),tok-f7-b,,tok,7,20.55,FALSE,TRUE
+,tok-f7,room,office,Каб. b-1 (внутри кабинета - b),tok-f7-c,,tok,7,5.77,FALSE,TRUE
+,tok-f7,room,office,Каб. b-2 (внутри кабинета - b),tok-f7-l,,tok,7,2.54,FALSE,TRUE
+,tok-f7,room,office,Каб. c (из коридора),tok-f7-d,,tok,7,17.32,FALSE,TRUE
+,tok-f7,room,office,Каб. c-1 (внутри кабинета - c),tok-f7-e,,tok,7,4.34,FALSE,TRUE
+,tok-f7,room,office,Каб. c-2 (внутри кабинета - c),tok-f7-f,,tok,7,3.39,FALSE,TRUE
+,bos,floor,ground,1 Этаж,bos-f1,,bos,1,561.81,,
+,bos,floor,standard,2 Этаж,bos-f2,,bos,2,608.48,,
+,bos,floor,standard,3 Этаж,bos-f3,,bos,3,604.67,,
+,bos,floor,standard,4 Этаж,bos-f4,,bos,4,631.49,,
+,bos,floor,standard,5 Этаж (тех),bos-f5,,bos,5,64.26,,
+,bos,floor,standard,6 Этаж (тех),bos-f6,,bos,6,,,
+,bos,roof,operated,Крыша,bos-roof,,bos,,,,
+,bos-f1,stairwell,regular,Лестничная клетка 1,bos-f1-sw1,,bos,1,15.53,,
+,bos-f1,stairwell,regular,Лестничная клетка 2,bos-f1-sw2,,bos,1,14.78,,
+,bos-f1,shaft,elevator,Лифтовая шахта,bos-f1-sl1,,bos,1,3.89,,
+,bos-f1,room,vestibule,Входной Тамбур,bos-f1-ev,entrance vestibule,bos,1,12.34,TRUE,FALSE
+,bos-f1,room,lobby,Лобби,bos-f1-lb,lobby,bos,1,178.4,TRUE,FALSE
+,bos-f1,room,office,каб. 104,bos-f1-a,,bos,1,30.7,FALSE,TRUE
+,bos-f1-a,room,office,каб. 104/a,bos-f1-a1,,bos,1,2.1,FALSE,TRUE
+,bos-f1,room,tech_combined,Тех.помещение,bos-f1-b,,bos,1,10.42,FALSE,FALSE
+,bos-f1,room,tech_combined,Тепловой пункт,bos-f1-c,,bos,1,37.19,FALSE,FALSE
+,bos-f1-c,room,tech_combined,Тех.помещение,bos-f1-c1,,bos,1,1.53,FALSE,FALSE
+,bos-f1,room,office,каб. 103,bos-f1-d,,bos,1,34.9,FALSE,TRUE
+,bos-f1,room,office,каб. 102,bos-f1-e,,bos,1,83.3,FALSE,TRUE
+,bos-f1-e,room,office,каб. 102/а,bos-f1-e1,,bos,1,10.64,FALSE,TRUE
+,bos-f1,room,tech_combined,Тех.помещение,bos-f1-f,,bos,1,1.88,FALSE,FALSE
+,bos-f1,room,tech_combined,Тех.помещение,bos-f1-g,,bos,1,2.59,FALSE,FALSE
+,bos-f1,room,tech_combined,Склад,bos-f1-h,,bos,1,14,FALSE,FALSE
+,bos-f1,room,office,каб. 101,bos-f1-i,,bos,1,52.9,FALSE,TRUE
+,bos-f1,room,office,каб. 100,bos-f1-j,,bos,1,37.4,FALSE,TRUE
+,bos-f1,room,restroom,WS/W,bos-f1-rr-f,,bos,1,5.17,TRUE,FALSE
+,bos-f1-rr-f,room,restroom,WS/W-1,bos-f1-rr-f-t1,,bos,1,1.52,TRUE,FALSE
+,bos-f1-rr-f,room,restroom,WS/W-2,bos-f1-rr-f-t2,,bos,1,1.52,TRUE,FALSE
+,bos-f1,room,restroom,WS/M,bos-f1-rr-m,,bos,1,5.73,TRUE,FALSE
+,bos-f1-rr-m,room,restroom,WS/M-1,bos-f1-rr-m-t1,,bos,1,1.69,TRUE,FALSE
+,bos-f1-rr-m,room,restroom,WS/M-2,bos-f1-rr-m-t2,,bos,1,1.69,TRUE,FALSE
+,bos-f2,void,second_light,Второй свет 2эт,bos-f2-void,,bos,2,,,
+,bos-f2,room,corridor,Коридоры 2эт,bos-f2-cor,,bos,2,97.2,TRUE,FALSE
+,bos-f2,stairwell,regular,Лестничная клетка 1,bos-f2-sw1,,bos,2,14.89,,
+,bos-f2,stairwell,regular,Лестничная клетка 2,bos-f2-sw2,,bos,2,15.81,,
+,bos-f2,shaft,elevator,Лифтовая шахта,bos-f2-sl1,,bos,2,3.89,,
+,bos-f2,room,office,Каб. 205,bos-f2-a,,bos,2,41.9,FALSE,TRUE
+,bos-f2,room,office,Каб. 206,bos-f2-b,,bos,2,42.2,FALSE,TRUE
+,bos-f2-b,room,office,Каб. 206/a,bos-f2-b1,,bos,2,56.5,FALSE,TRUE
+,bos-f2,room,office,Каб. 208,bos-f2-c,,bos,2,65.9,FALSE,TRUE
+,bos-f2,room,tech_combined,Тех.помещение,bos-f2-d,,bos,2,4.91,FALSE,FALSE
+,bos-f2,room,office,Каб. 201,bos-f2-e,,bos,2,46.8,FALSE,TRUE
+,bos-f2,room,office,Каб. 202,bos-f2-f,,bos,2,28.81,FALSE,TRUE
+,bos-f2-f,room,office,Каб. 202/а,bos-f2-f1,,bos,2,80.46,FALSE,TRUE
+,bos-f2,room,office,Каб. 203,bos-f2-g,,bos,2,45,FALSE,TRUE
+,bos-f2,room,office,Каб. 204,bos-f2-h,,bos,2,50,FALSE,TRUE
+,bos-f2,room,restroom,WS/W,bos-f2-rr-f,,bos,2,4.88,TRUE,FALSE
+,bos-f2-rr-f,room,restroom,WS/W-1,bos-f2-rr-f-t1,,bos,2,0.89,TRUE,FALSE
+,bos-f2-rr-f,room,restroom,WS/W-2,bos-f2-rr-f-t2,,bos,2,0.89,TRUE,FALSE
+,bos-f2,room,restroom,WS/M,bos-f2-rr-m,,bos,2,5.53,TRUE,FALSE
+,bos-f2-rr-m,room,restroom,WS/M-1,bos-f2-rr-m-t1,,bos,2,1.01,TRUE,FALSE
+,bos-f2-rr-m,room,restroom,WS/M-2,bos-f2-rr-m-t2,,bos,2,1.01,TRUE,FALSE
+,bos-f3,void,second_light,Второй свет 3эт,bos-f3-void,,bos,3,,,
+,bos-f3,room,corridor,Корридоры 3эт,bos-f3-cor,,bos,3,99.7,TRUE,FALSE
+,bos-f3,stairwell,regular,Лестничная клетка 1,bos-f3-sw1,,bos,3,14.89,,
+,bos-f3,stairwell,regular,Лестничная клетка 2,bos-f3-sw2,,bos,3,15.81,,
+,bos-f3,shaft,elevator,Лифтовая шахта,bos-f3-sl1,,bos,3,3.89,,
+,bos-f3,room,office,Каб. 305,bos-f3-a,,bos,3,41.9,FALSE,TRUE
+,bos-f3,room,office,Каб. 306,bos-f3-b,,bos,3,41.2,FALSE,TRUE
+,bos-f3-b,room,office,Каб. 306/а,bos-f3-b1,,bos,3,56.2,FALSE,TRUE
+,bos-f3,room,office,Каб. 308,bos-f3-c,,bos,3,65.2,FALSE,TRUE
+,bos-f3,room,tech_combined,Тех.помещение,bos-f3-d,,bos,3,4.91,FALSE,FALSE
+,bos-f3,room,office,Каб. 301,bos-f3-e,,bos,3,45.6,FALSE,TRUE
+,bos-f3,room,office,Каб. 302,bos-f3-f,,bos,3,100.8,FALSE,TRUE
+,bos-f3,room,office,Каб. 303,bos-f3-g,,bos,3,45.1,FALSE,TRUE
+,bos-f3,room,office,Каб. 304,bos-f3-h,,bos,3,50.7,FALSE,TRUE
+,bos-f3,room,restroom,WS/W,bos-f3-rr-f,,bos,3,7.02,TRUE,FALSE
+,bos-f3-rr-f,room,restroom,WS/W-1,bos-f3-rr-f-t1,,bos,3,0.89,TRUE,FALSE
+,bos-f3-rr-f,room,restroom,WS/W-2,bos-f3-rr-f-t2,,bos,3,0.89,TRUE,FALSE
+,bos-f3,room,restroom,WS/M,bos-f3-rr-m,,bos,3,7.95,TRUE,FALSE
+,bos-f3-rr-m,room,restroom,WS/M-1,bos-f3-rr-m-t1,,bos,3,1.01,TRUE,FALSE
+,bos-f3-rr-m,room,restroom,WS/M-2,bos-f3-rr-m-t2,,bos,3,1.01,TRUE,FALSE
+,bos-f4,stairwell,regular,Лестничная клетка 1,bos-f4-sw1,,bos,4,19.71,,
+,bos-f4,stairwell,regular,Лестничная клетка 2,bos-f4-sw2,,bos,4,15.81,,
+,bos-f4,shaft,elevator,Лифтовая шахта,bos-f4-sl1,,bos,4,7.99,,
+,bos-f4,room,office,Опен-спейс 1 (из главного коридора),bos-f4-h,,bos,4,257,FALSE,TRUE
+,,,,Каб. 409,bos-f4-i,,bos,4,47.99,FALSE,TRUE
+,bos-f4,room,office,Каб. 401,bos-f4-a,,bos,4,38.33,FALSE,TRUE
+,bos-f4,room,office,Каб. 402,bos-f4-b,,bos,4,33.17,FALSE,TRUE
+,bos-f4-b,room,office,Каб. 403,bos-f4-b1,,bos,4,44.69,FALSE,TRUE
+,bos-f4,room,office,Коридор (за дверью Опен-спейс),bos-f4-cor,,bos,4,14.51,FALSE,TRUE
+,bos-f4,room,office,Каб. 404 (за коридором),bos-f4-c,,bos,4,11.2,FALSE,TRUE
+,bos-f4-c,room,office,Каб. 405,bos-f4-c1,,bos,4,4.67,FALSE,TRUE
+,bos-f4-c1,room,office,Каб. 405/а ,bos-f4-c1-1,,bos,4,4.36,FALSE,TRUE
+,bos-f4,room,office,склад арендатора,bos-f4-d,,bos,4,4.91,FALSE,TRUE
+,bos-f4,room,office,Каб. 406,bos-f4-e,,bos,4,36.65,FALSE,TRUE
+,bos-f4,room,office,Каб. 407,bos-f4-f,,bos,4,45.83,FALSE,TRUE
+,bos-f4,room,office,Каб. 408,bos-f4-g,,bos,4,73.89,FALSE,TRUE
+,bos-f4,room,restroom,WS/W,bos-f4-rr-f,,bos,4,7.02,TRUE,FALSE
+,bos-f4-rr-f,room,restroom,WS/W-1,bos-f4-rr-f-t1,,bos,4,0.89,TRUE,FALSE
+,bos-f4-rr-f,room,restroom,WS/W-2,bos-f4-rr-f-t2,,bos,4,0.89,TRUE,FALSE
+,bos-f4,room,restroom,WS/M,bos-f4-rr-m,,bos,4,7.95,TRUE,FALSE
+,bos-f4-rr-m,room,restroom,WS/M-1,bos-f4-rr-m-t1,,bos,4,1.01,TRUE,FALSE
+,bos-f4-rr-m,room,restroom,WS/M-2,bos-f4-rr-m-t2,,bos,4,1.01,TRUE,FALSE
+,bos-f5,stairwell,regular,Лестничная клетка,bos-f5-sw1,,bos,5,15.05,,
+,bos-f5,room,corridor,Коридор тех.этаж,bos-f5-cor,,bos,5,3.93,TRUE,FALSE
+,bos-f5,room,office,Каб. 501,bos-f5-a,,bos,5,34.86,FALSE,TRUE
+,bos-f5-a,room,restroom,Каб. 501/RESTROOM / WC,bos-f5-a-rr,,bos,5,6.47,TRUE,FALSE
+,bos-f5-a-rr,room,restroom,Каб. 501/RESTROOM / WC,bos-f5-a-rr1,,bos,5,3.95,TRUE,FALSE
+,bos-f6,stairwell,regular,Лестничная клетка 1,bos-f6-sw1,,bos,6,7.39,,
+,bos-f6,room,tech_combined,Тех.помещение,bos-f6-a,,bos,6,18.36,FALSE,FALSE
+,dub,floor,ground,1 Этаж,dub-f1,,dub,1,528.63,,
+,dub,floor,standard,2 Этаж,dub-f2,,dub,2,668.23,,
+,dub,floor,standard,3 Этаж,dub-f3,,dub,3,664.16,,
+,dub,floor,standard,4 Этаж,dub-f4,,dub,4,665.74,,
+,dub,floor,standard,5 Этаж ,dub-f5,,dub,5,661.46,,
+,dub,floor,standard,6 Этаж ,dub-f6,,dub,6,645.09,,
+,dub,floor,standard,7 Этаж ,dub-f7,,dub,7,49.06,,
+,dub,roof,operated,Крыша,dub-roof,,dub,,,,
+,dub-f1,stairwell,regular,Лестничная клетка 1,dub-f1-sw1,,dub,1,14.98,,
+,dub-f1,stairwell,regular,Лестничная клетка 2,dub-f1-sw2,,dub,1,15.51,,
+,dub-f1,shaft,elevator,Лифтовая шахта 1,dub-f1-sl1,,dub,1,6.12,,
+,dub-f1,shaft,elevator,Лифтовая шахта 2,dub-f1-sl2,,dub,1,6.12,,
+,dub-f1,room,vestibule,Входной Тамбур,dub-f1-ev,entrance vestibule,dub,1,7.87,TRUE,FALSE
+,dub-f1,room,lobby,Лобби,dub-f1-lb,lobby,dub,1,100.09,TRUE,FALSE
+,dub-f1,room,office,каб. 102,dub-f1-a,,dub,1,28.6,FALSE,TRUE
+,dub-f1,room,office,каб. 103,dub-f1-b,,dub,1,26.5,FALSE,TRUE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-c,,dub,1,12.18,FALSE,FALSE
+,dub-f1,room,tech_combined,Тепловой пункт,dub-f1-d,,dub,1,22.36,FALSE,FALSE
+,dub-f1,room,office,каб. 104,dub-f1-e,,dub,1,62.5,FALSE,TRUE
+,dub-f1-e,room,office,каб. 104/а,dub-f1-e1,,dub,1,10.2,FALSE,TRUE
+,dub-f1-e,room,office,каб. 104/b,dub-f1-e2,,dub,1,8,FALSE,TRUE
+,dub-f1-e,room,office,каб. 104/c,dub-f1-e3,,dub,1,23.6,FALSE,TRUE
+,dub-f1-e,room,office,каб. 104/d,dub-f1-e4,,dub,1,12.5,FALSE,TRUE
+,dub-f1-e,room,office,каб. 104/e,dub-f1-e5,,dub,1,25.4,FALSE,TRUE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-f,,dub,1,4.66,FALSE,FALSE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-g,,dub,1,11.48,FALSE,FALSE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-h,,dub,1,3.25,FALSE,FALSE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-i,,dub,1,8.11,FALSE,FALSE
+,dub-f1,room,office,каб. 101,dub-f1-j,,dub,1,72,FALSE,TRUE
+,dub-f1,room,office,каб. 105 (1a),dub-f1-k,,dub,1,12.6,FALSE,TRUE
+,dub-f1,room,office,каб. 106 (1b),dub-f1-l,,dub,1,14.3,FALSE,TRUE
+,dub-f1,room,tech_combined,Тех.помещение,dub-f1-m,,dub,1,8.82,FALSE,FALSE
+,dub-f1,room,restroom,WS/W,dub-f1-rr-f,,dub,1,5.56,TRUE,FALSE
+,dub-f1-rr-f,room,restroom,WS/W-1,dub-f1-rr-f-t1,,dub,1,1.09,TRUE,FALSE
+,dub-f1-rr-f,room,restroom,WS/W-2,dub-f1-rr-f-t2,,dub,1,1.1,TRUE,FALSE
+,dub-f1,room,restroom,WS/M,dub-f1-rr-m,,dub,1,9.83,TRUE,FALSE
+,dub-f1-rr-m,room,restroom,WS/M-1,dub-f1-rr-m-t1,,dub,1,1.06,TRUE,FALSE
+,dub-f1-rr-m,room,restroom,WS/M-2,dub-f1-rr-m-t2,,dub,1,1.06,TRUE,FALSE
+,dub-f2,stairwell,regular,Лестничная клетка 1,dub-f2-sw1,,dub,2,15.08,,
+,dub-f2,stairwell,regular,Лестничная клетка 2,dub-f2-sw2,,dub,2,15.51,,
+,dub-f2,shaft,elevator,Лифтовая шахта 1,dub-f2-sl1,,dub,2,6.86,,
+,dub-f2,shaft,elevator,Лифтовая шахта 2,dub-f2-sl2,,dub,2,6.86,,
+,dub-f2,room,corridor,Лифтовый холл,dub-f2-cor1,,dub,2,29.89,TRUE,FALSE
+,dub-f2,room,office,Опен-спейс 1 (из лифтового холла),dub-f2-a,,dub,2,131.58,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A1,dub-f2-a1,,dub,2,27.08,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A2,dub-f2-a2,,dub,2,10.7,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A3,dub-f2-a3,,dub,2,9.96,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A4,dub-f2-a4,,dub,2,36.49,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A5,dub-f2-a5,,dub,2,53.19,FALSE,TRUE
+,dub-f2-a5,room,office,Каб. A5-1,dub-f2-a5-1,,dub,2,12.82,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A6,dub-f2-a6,,dub,2,34.31,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A7,dub-f2-a7,,dub,2,22.94,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A8,dub-f2-a8,,dub,2,63.71,FALSE,TRUE
+,dub-f2-a,room,office,Каб. A9,dub-f2-a9,,dub,2,5.73,FALSE,TRUE
+,dub-f2,room,office,Опен-спейс 2 (из лифтового холла),dub-f2-b,,dub,2,91.95,FALSE,TRUE
+,dub-f2-b,room,office,Каб. B1,dub-f2-b1,,dub,2,10.64,FALSE,TRUE
+,dub-f2-b,room,office,Каб. B1-1,dub-f2-b1-1,,dub,2,13.84,FALSE,TRUE
+,dub-f2-b,room,office,Каб. B2,dub-f2-b2,,dub,2,21.76,FALSE,TRUE
+,dub-f2-b,room,office,Каб. B3,dub-f2-b3,,dub,2,25.6,FALSE,TRUE
+,dub-f2-b,room,office,Каб. B4,dub-f2-b4,,dub,2,3.56,FALSE,TRUE
+,dub-f2,room,tech_combined,Тех.помещение,dub-f2-c,,dub,2,1.24,FALSE,FALSE
+,dub-f2,room,restroom,WS/W,dub-f2-rr-f,,dub,2,5.56,TRUE,FALSE
+,dub-f2-rr-f,room,restroom,WS/W-1,dub-f2-rr-f-t1,,dub,2,1.09,TRUE,FALSE
+,dub-f2-rr-f,room,restroom,WS/W-2,dub-f2-rr-f-t2,,dub,2,1.1,TRUE,FALSE
+,dub-f2,room,restroom,WS/M,dub-f2-rr-m,,dub,2,8.3,TRUE,FALSE
+,dub-f2-rr-m,room,restroom,WS/M-1,dub-f2-rr-m-t1,,dub,2,1.06,TRUE,FALSE
+,dub-f2-rr-m,room,restroom,WS/M-2,dub-f2-rr-m-t2,,dub,2,1.06,TRUE,FALSE
+,dub-f3,stairwell,regular,Лестничная клетка 1,dub-f3-sw1,,dub,3,15.49,,
+,dub-f3,stairwell,regular,Лестничная клетка 2,dub-f3-sw2,,dub,3,15.51,,
+,dub-f3,shaft,elevator,Лифтовая шахта 1,dub-f3-sl1,,dub,3,6.86,,
+,dub-f3,shaft,elevator,Лифтовая шахта 2,dub-f3-sl2,,dub,3,6.86,,
+,dub-f3,room,corridor,Лифтовый холл,dub-f3-cor1,,dub,3,29.89,TRUE,FALSE
+,dub-f3,room,office,Опен-спейс (из лифтового холла),dub-f3-a,,dub,3,483.47,FALSE,TRUE
+,dub-f3,room,office,Каб. A1,dub-f3-b,,dub,3,43.23,FALSE,TRUE
+,dub-f3,room,office,Каб. A2,dub-f3-c,,dub,3,9.18,FALSE,TRUE
+,dub-f3,room,office,Каб. A3,dub-f3-d,,dub,3,10.72,FALSE,TRUE
+,dub-f3,room,office,Каб. A4,dub-f3-e,,dub,3,8.69,FALSE,TRUE
+,dub-f3,room,office,Каб. A5,dub-f3-f,,dub,3,10.15,FALSE,TRUE
+,dub-f3,room,office,Каб. A6,dub-f3-g,,dub,3,4.7,FALSE,TRUE
+,dub-f3,room,tech_combined,Тех.помещение,dub-f3-h,,dub,3,1.24,FALSE,FALSE
+,dub-f3,room,restroom,WS/W,dub-f3-rr-f,,dub,3,5.56,TRUE,FALSE
+,dub-f3-rr-f,room,restroom,WS/W-1,dub-f3-rr-f-t1,,dub,3,1.09,TRUE,FALSE
+,dub-f3-rr-f,room,restroom,WS/W-2,dub-f3-rr-f-t2,,dub,3,1.1,TRUE,FALSE
+,dub-f3,room,restroom,WS/M,dub-f3-rr-m,,dub,3,8.3,TRUE,FALSE
+,dub-f3-rr-m,room,restroom,WS/M-1,dub-f3-rr-m-t1,,dub,3,1.06,TRUE,FALSE
+,dub-f3-rr-m,room,restroom,WS/M-2,dub-f3-rr-m-t2,,dub,3,1.06,TRUE,FALSE
+,dub-f4,stairwell,regular,Лестничная клетка 1,dub-f4-sw1,,dub,4,15.49,,
+,dub-f4,stairwell,regular,Лестничная клетка 2,dub-f4-sw2,,dub,4,15.51,,
+,dub-f4,shaft,elevator,Лифтовая шахта 1,dub-f4-sl1,,dub,4,6.86,,
+,dub-f4,shaft,elevator,Лифтовая шахта 2,dub-f4-sl2,,dub,4,6.86,,
+,dub-f4,room,corridor,Лифтовый холл,dub-f4-cor1,,dub,4,25.22,TRUE,FALSE
+,dub-f4,room,corridor,Главный коридор (за дверью от лифтового холла),dub-f4-cor2,,dub,4,15.64,FALSE,TRUE
+,dub-f4,room,office,Опен-спейс 1 (из главного коридора за дверью лифтового холла),dub-f4-a,,dub,4,114.74,FALSE,TRUE
+,dub-f4-a,room,office,Каб. А1,dub-f4-a1,,dub,4,38,FALSE,TRUE
+,dub-f4-a1,room,office,Каб. A1-1,dub-f4-a1-1,,dub,4,11.91,FALSE,TRUE
+,dub-f4-a1-1,room,office,Каб. A1-1a,dub-f4-a1-1-a,,dub,4,5.16,FALSE,TRUE
+,dub-f4,room,corridor,Коридор (за дверью из главного коридора),dub-f4-cor3,,dub,4,15.85,FALSE,TRUE
+,dub-f4,room,office,Каб. A2 (за дверью из коридора),dub-f4-b,,dub,4,20.12,FALSE,TRUE
+,dub-f4,room,office,Каб. A3 (за дверью из коридора),dub-f4-c,,dub,4,66.45,FALSE,TRUE
+,dub-f4,room,office,Каб. A4 (за дверью из коридора),dub-f4-d,,dub,4,55.05,FALSE,TRUE
+,dub-f4,room,office,Каб. A5 (за дверью из коридора),dub-f4-e,,dub,4,27.84,FALSE,TRUE
+,dub-f4,room,office,Опен-спейс 2 (из главного коридора за дверью лифтового холла),dub-f4-f,,dub,4,205.63,FALSE,TRUE
+,dub-f4,room,tech_combined,Тех.помещение,dub-f4-g,,dub,4,1.24,FALSE,FALSE
+,dub-f4,room,restroom,WS/W,dub-f4-rr-f,,dub,4,5.56,TRUE,FALSE
+,dub-f4-rr-f,room,restroom,WS/W-1,dub-f4-rr-f-t1,,dub,4,1.09,TRUE,FALSE
+,dub-f4-rr-f,room,restroom,WS/W-2,dub-f4-rr-f-t2,,dub,4,1.1,TRUE,FALSE
+,dub-f4,room,restroom,WS/M,dub-f4-rr-m,,dub,4,8.3,TRUE,FALSE
+,dub-f4-rr-m,room,restroom,WS/M-1,dub-f4-rr-m-t1,,dub,4,1.06,TRUE,FALSE
+,dub-f4-rr-m,room,restroom,WS/M-2,dub-f4-rr-m-t2,,dub,4,1.06,TRUE,FALSE
+,dub-f5,stairwell,regular,Лестничная клетка 1,dub-f5-sw1,,dub,5,15.49,,
+,dub-f5,stairwell,regular,Лестничная клетка 2,dub-f5-sw2,,dub,5,15.51,,
+,dub-f5,shaft,elevator,Лифтовая шахта 1,dub-f5-sl1,,dub,5,6.86,,
+,dub-f5,shaft,elevator,Лифтовая шахта 2,dub-f5-sl2,,dub,5,6.86,,
+,dub-f5,room,corridor,Лифтовый холл,dub-f5-cor1,,dub,5,57.18,FALSE,TRUE
+,dub-f5,room,office,Опен-спейс 1 (за дверью лифтового холла),dub-f5-a,,dub,5,136.53,FALSE,TRUE
+,dub-f5-a,room,office,Каб. А1,dub-f5-a1,,dub,5,13.99,FALSE,TRUE
+,dub-f5-a,room,office,Каб. А2,dub-f5-a2,,dub,5,13.9,FALSE,TRUE
+,dub-f5-a,room,office,Каб. А3,dub-f5-a3,,dub,5,29.38,FALSE,TRUE
+,dub-f5-a,room,office,Каб. А4,dub-f5-a4,,dub,5,7.52,FALSE,TRUE
+,dub-f5,room,office,Опен-спейс 2 (за дверью лифтового холла),dub-f5-b,,dub,5,124.67,FALSE,TRUE
+,dub-f5-b,room,office,Каб. B1,dub-f5-b1,,dub,5,22.33,FALSE,TRUE
+,dub-f5-b,room,office,Каб. B2,dub-f5-b2,,dub,5,3.69,FALSE,TRUE
+,dub-f5-b,room,office,Каб. B3,dub-f5-b3,,dub,5,23.02,FALSE,TRUE
+,dub-f5,room,office,Опен-спейс 3 (за дверью лифтового холла),dub-f5-c,,dub,5,56.62,FALSE,TRUE
+,dub-f5-c,room,office,Каб. C1,dub-f5-c1,,dub,5,10.93,FALSE,TRUE
+,dub-f5-c,room,office,Каб. C2,dub-f5-c2,,dub,5,17.96,FALSE,TRUE
+,dub-f5-c,room,office,Каб. C3,dub-f5-c3,,dub,5,79.61,FALSE,TRUE
+,dub-f5,room,tech_combined,Тех.помещение,dub-f5-d,,dub,5,1.24,FALSE,FALSE
+,dub-f5,room,restroom,WS/W,dub-f5-rr-f,,dub,5,5.56,TRUE,FALSE
+,dub-f5-rr-f,room,restroom,WS/W-1,dub-f5-rr-f-t1,,dub,5,1.09,TRUE,FALSE
+,dub-f5-rr-f,room,restroom,WS/W-2,dub-f5-rr-f-t2,,dub,5,1.1,TRUE,FALSE
+,dub-f5,room,restroom,WS/M,dub-f5-rr-m,,dub,5,8.3,TRUE,FALSE
+,dub-f5-rr-m,room,restroom,WS/M-1,dub-f5-rr-m-t1,,dub,5,1.06,TRUE,FALSE
+,dub-f5-rr-m,room,restroom,WS/M-2,dub-f5-rr-m-t2,,dub,5,1.06,TRUE,FALSE
+,dub-f6,stairwell,regular,Лестничная клетка 1,dub-f6-sw1,,dub,6,18.29,,
+,dub-f6,stairwell,regular,Лестничная клетка 2,dub-f6-sw2,,dub,6,13.86,,
+,dub-f6,shaft,elevator,Лифтовая шахта 1,dub-f6-sl1,,dub,6,6.24,,
+,dub-f6,shaft,elevator,Лифтовая шахта 2,dub-f6-sl2,,dub,6,6.34,,
+,dub-f6,room,corridor,Лифтовый холл,dub-f6-cor1,,dub,6,25.04,TRUE,FALSE
+,dub-f6,room,office,Опен-спейс 1 (за дверью лифтового холла),dub-f6-a,,dub,6,254.26,FALSE,TRUE
+,dub-f6,room,office,Каб. А1,dub-f6-a1,,dub,6,10.55,FALSE,TRUE
+,dub-f6,room,office,Каб. А2,dub-f6-a2,,dub,6,13.13,FALSE,TRUE
+,dub-f6,room,office,Коридор (за дверью лифтового хола),dub-f6-cor2,,dub,6,66.57,FALSE,TRUE
+,dub-f6,room,office,Каб. B1,dub-f6-b,,dub,6,18.23,FALSE,TRUE
+,dub-f6,room,office,Каб. B2,dub-f6-c,,dub,6,37.62,FALSE,TRUE
+,dub-f6,room,office,Каб. B3,dub-f6-d,,dub,6,15.17,FALSE,TRUE
+,dub-f6-d,room,office,Каб. B3/а,dub-f6-d1,,dub,6,4.94,FALSE,TRUE
+,dub-f6,room,office,Каб. B4,dub-f6-e,,dub,6,29.37,FALSE,TRUE
+,dub-f6,room,office,Каб. B5,dub-f6-f,,dub,6,19.03,FALSE,TRUE
+,dub-f6,room,office,Каб. B6,dub-f6-g,,dub,6,20.46,FALSE,TRUE
+,dub-f6,room,office,Каб. B7,dub-f6-h,,dub,6,45.67,FALSE,TRUE
+,dub-f6,room,office,Каб. B8,dub-f6-i,,dub,6,24.88,FALSE,TRUE
+,dub-f6,room,tech_combined,Тех.помещение,dub-f6-j,,dub,6,1,FALSE,FALSE
+,dub-f6,room,restroom,WS/W,dub-f6-rr-f,,dub,6,4.51,TRUE,FALSE
+,dub-f6-rr-f,room,restroom,WS/W-1,dub-f6-rr-f-t1,,dub,6,0.65,TRUE,FALSE
+,dub-f6-rr-f,room,restroom,WS/W-2,dub-f6-rr-f-t2,,dub,6,0.65,TRUE,FALSE
+,dub-f6,room,restroom,WS/M,dub-f6-rr-m,,dub,6,6.51,TRUE,FALSE
+,dub-f6-rr-m,room,restroom,WS/M-1,dub-f6-rr-m-t1,,dub,6,1.06,TRUE,FALSE
+,dub-f6-rr-m,room,restroom,WS/M-2,dub-f6-rr-m-t2,,dub,6,1.06,TRUE,FALSE
+,dub-f7,stairwell,regular,Лестничная клетка 1,dub-f7-sw1,,dub,7,11.82,,
+,dub-f7,room,office,Каб. a (за дверью лестничной клетки),dub-f7-a,,dub,7,37.24,FALSE,FALSE
+,gen,floor,ground,1 Этаж,gen-f1,,gen,1,564.97,,
+,gen,floor,standard,2 Этаж,gen-f2,,gen,2,706.72,,
+,gen,floor,standard,3 Этаж,gen-f3,,gen,3,706.92,,
+,gen,floor,standard,4 Этаж,gen-f4,,gen,4,697.07,,
+,gen,floor,standard,5 Этаж,gen-f5,,gen,5,710.69,,
+,gen,floor,standard,6 Этаж,gen-f6,,gen,6,691.82,,
+,gen,floor,standard,Мезанин на 6 этаже,gen-f7,,gen,7,258.51,,
+,gen,floor,standard,7 Этаж,gen-f8,,gen,8,560.41,,
+,gen,roof,operated,Крыша,gen-roof,,gen,,,,
+,gen-f1,stairwell,regular,Лестничная клетка 1,gen-f1-sw1,,gen,1,15.95,,
+,gen-f1,stairwell,regular,Лестничная клетка 2,gen-f1-sw2,,gen,1,15.91,,
+,gen-f1,shaft,elevator,Лифтовая шахта,gen-f1-sl1,,gen,1,5.8,,
+,gen-f1,shaft,elevator,Лифтовая шахта,gen-f1-sl2,,gen,1,5.8,,
+,gen-f1,room,vestibule,Входной Тамбур,gen-f1-ev,entrance vestibule,gen,1,11.1,TRUE,FALSE
+,gen-f1,room,lobby,Лобби,gen-f1-lb,lobby,gen,1,120.99,TRUE,FALSE
+,gen-f1,room,office,Фудкорд,gen-f1-a,,gen,1,120.74,FALSE,TRUE
+,gen-f1,room,office,Бар / Кофейня,gen-f1-b,,gen,1,21.5,FALSE,TRUE
+,gen-f1,room,tech_combined,Тепловой пункт (за дверью Общепита),gen-f1-c,,gen,1,24.56,FALSE,FALSE
+,gen-f1,room,office,Коридор 1 (за дверью Общепита),gen-f1-cor1,,gen,1,8.55,FALSE,TRUE
+,gen-f1,room,office,Кухня 1,gen-f1-d,,gen,1,27.36,FALSE,TRUE
+,gen-f1,room,office,Коридор 2 (за дверью Кухни 1),gen-f1-cor2,,gen,1,10.24,FALSE,TRUE
+,gen-f1,room,tech_combined,Тех.помещение 2 (за дверью коридора 2),gen-f1-e,,gen,1,7.95,FALSE,FALSE
+,gen-f1,room,office,Склад Кухни (за дверью тех.помещения 2),gen-f1-f,,gen,1,5.42,FALSE,TRUE
+,gen-f1,room,office,Кухня 2 (из Фудкорда),gen-f1-g,,gen,1,14.6,FALSE,TRUE
+,gen-f1-g,room,office,Кухня 3 (за дверью кухни 2),gen-f1-g1,,gen,1,14.97,FALSE,TRUE
+,gen-f1-g,room,office,Склад Кухни 3 (за дверью кухни 3),gen-f1-g2,,gen,1,7.77,FALSE,TRUE
+,gen-f1-g,room,office,Склад Кухни 3 (за дверью кухни 3),gen-f1-g3,,gen,1,4.56,FALSE,TRUE
+,gen-f1-g,room,office,Кухня 4 (за дверью кухни 3),gen-f1-g4,,gen,1,6.83,FALSE,TRUE
+,gen-f1,room,tech_combined,Серверная,gen-f1-h,,gen,1,5.79,FALSE,FALSE
+,gen-f1,room,tech_combined,Тех.помещение,gen-f1-i,,gen,1,5.81,FALSE,FALSE
+,gen-f1,room,tech_combined,Тех.помещение,gen-f1-j,,gen,1,5.37,FALSE,FALSE
+,gen-f1,room,office,Каб.102,gen-f1-k,,gen,1,42.63,FALSE,TRUE
+,gen-f1,room,office,Каб.103,gen-f1-l,,gen,1,34.08,FALSE,TRUE
+,gen-f1,room,restroom,WS/W,gen-f1-rr-f,,gen,1,5.96,TRUE,FALSE
+,gen-f1-rr-f,room,restroom,WS/W-1,gen-f1-rr-f-t1,,gen,1,1.27,TRUE,FALSE
+,gen-f1-rr-f,room,restroom,WS/W-2,gen-f1-rr-f-t2,,gen,1,1.27,TRUE,FALSE
+,gen-f1,room,restroom,WS/M,gen-f1-rr-m,,gen,1,10.21,TRUE,FALSE
+,gen-f1-rr-m,room,restroom,WS/M-1,gen-f1-rr-m-t1,,gen,1,0.99,TRUE,FALSE
+,gen-f1-rr-m,room,restroom,WS/M-2,gen-f1-rr-m-t2,,gen,1,0.99,TRUE,FALSE
+,gen-f1,room,office,Касса (из Лобби),gen-f1-m,,gen,1,5.63,FALSE,TRUE
+,gen-f2,stairwell,regular,Лестничная клетка 1,gen-f2-sw1,,gen,2,15.89,,
+,gen-f2,stairwell,regular,Лестничная клетка 2,gen-f2-sw2,,gen,2,15.91,,
+,gen-f2,shaft,elevator,Лифтовая шахта,gen-f2-sl1,,gen,2,5.8,,
+,gen-f2,shaft,elevator,Лифтовая шахта,gen-f2-sl2,,gen,2,5.8,,
+,gen-f2,room,corridor,Лифтовый холл,gen-f2-cor1,,gen,2,21.19,TRUE,FALSE
+,gen-f2,room,corridor,Главный коридор (за дверью Лифтового холла),gen-f2-cor2,,gen,2,45.12,FALSE,TRUE
+,gen-f2,room,office,Каб. 201,gen-f2-a,,gen,2,65.15,FALSE,TRUE
+,gen-f2,room,office,Опен-спейс (за дверью главного коридора),gen-f2-b,,gen,2,360.46,FALSE,TRUE
+,gen-f2,room,office,Каб. 202,gen-f2-c,,gen,2,10.34,FALSE,TRUE
+,gen-f2-b,room,office,Каб. А (за дверью Опен-спейс),gen-f2-b1,,gen,2,2.53,FALSE,TRUE
+,gen-f2-b,room,office,Каб. B (за дверью Опен-спейс),gen-f2-b2,,gen,2,14.95,FALSE,TRUE
+,gen-f2-b,room,office,Каб. C (за дверью Опен-спейс),gen-f2-b3,,gen,2,7.96,FALSE,TRUE
+,gen-f2-b,room,office,Каб. D (за дверью Опен-спейс),gen-f2-b4,,gen,2,10.49,FALSE,TRUE
+,gen-f2-b,room,office,Каб. E (за дверью Опен-спейс),gen-f2-b5,,gen,2,10.06,FALSE,TRUE
+,gen-f2-b,room,office,Каб. F (за дверью Опен-спейс),gen-f2-b6,,gen,2,11.01,FALSE,TRUE
+,gen-f2,room,corridor,Коридор (за дверью Лифтового холла),gen-f2-cor3,,gen,2,5.8,FALSE,TRUE
+,gen-f2,room,office,Каб. 203,gen-f2-d,,gen,2,64.05,FALSE,TRUE
+,gen-f2-d,room,office,Каб. 203/а,gen-f2-d1,,gen,2,10.37,FALSE,TRUE
+,gen-f2,room,tech_combined,Тех.помещение (за дверью лестничной клетки 1),gen-f2-e,,gen,2,3.48,FALSE,FALSE
+,gen-f2,room,tech_combined,Тех.помещение (за дверью лифтового холла),gen-f2-f,,gen,2,1.49,FALSE,FALSE
+,gen-f2,room,restroom,WS/W,gen-f2-rr-f,,gen,2,6.08,TRUE,FALSE
+,gen-f2-rr-f,room,restroom,WS/W-1,gen-f2-rr-f-t1,,gen,2,1.27,TRUE,FALSE
+,gen-f2-rr-f,room,restroom,WS/W-2,gen-f2-rr-f-t2,,gen,2,1.27,TRUE,FALSE
+,gen-f2,room,restroom,WS/M,gen-f2-rr-m,,gen,2,8.27,TRUE,FALSE
+,gen-f2-rr-m,room,restroom,WS/M-1,gen-f2-rr-m-t1,,gen,2,0.99,TRUE,FALSE
+,gen-f2-rr-m,room,restroom,WS/M-2,gen-f2-rr-m-t2,,gen,2,0.99,TRUE,FALSE
+,gen-f3,stairwell,regular,Лестничная клетка 1,gen-f3-sw1,,gen,3,15.8,,
+,gen-f3,stairwell,regular,Лестничная клетка 2,gen-f3-sw2,,gen,3,15.88,,
+,gen-f3,shaft,elevator,Лифтовая шахта,gen-f3-sl1,,gen,3,5.8,,
+,gen-f3,shaft,elevator,Лифтовая шахта,gen-f3-sl2,,gen,3,5.8,,
+,gen-f3,room,corridor,Лифтовый холл,gen-f3-cor1,,gen,3,26.14,TRUE,FALSE
+,gen-f3,room,corridor,Главный коридор (за дверью Лифтового холла),gen-f3-cor2,,gen,3,22.93,FALSE,TRUE
+,gen-f3,room,office,Опен-спейс (за дверью главного коридора),gen-f3-a,,gen,3,226.37,FALSE,TRUE
+,gen-f3-a,room,office,Каб. A (за дверью Опен-спейс),gen-f3-a1,,gen,3,105.95,FALSE,TRUE
+,gen-f3-a,room,office,Каб. B (за дверью Опен-спейс),gen-f3-a2,,gen,3,66.88,FALSE,TRUE
+,gen-f3-a,room,office,Каб. C (за дверью Опен-спейс),gen-f3-a3,,gen,3,7.21,FALSE,TRUE
+,gen-f3-a,room,office,Каб. D (за дверью Опен-спейс),gen-f3-a4,,gen,3,88.61,FALSE,TRUE
+,gen-f3-a4,room,corridor,Каб. D-1 (за дверью кабинета D),gen-f3-a5,,gen,3,25.09,FALSE,TRUE
+,gen-f3,room,office,Каб. E (за дверью главного коридора),gen-f3-b,,gen,3,5.64,FALSE,TRUE
+,gen-f3,room,corridor,Коридор (за дверью Главного коридора),gen-f3-cor3,,gen,3,11.43,FALSE,TRUE
+,gen-f3,room,office,Каб. F (за дверью коридора),gen-f3-c,,gen,3,53.55,FALSE,TRUE
+,gen-f3,room,tech_combined,Тех.помещение (за дверью Лифтового холла),gen-f3-d,,gen,3,1.49,FALSE,FALSE
+,gen-f3,room,tech_combined,Тех.помещение (за дверью лестничной клетки 1),gen-f3-e,,gen,3,3.48,FALSE,FALSE
+,gen-f3,room,restroom,WS/W,gen-f3-rr-f,,gen,3,6.08,TRUE,FALSE
+,gen-f3-rr-f,room,restroom,WS/W-1,gen-f3-rr-f-t1,,gen,3,1.27,TRUE,FALSE
+,gen-f3-rr-f,room,restroom,WS/W-2,gen-f3-rr-f-t2,,gen,3,1.27,TRUE,FALSE
+,gen-f3,room,restroom,WS/M,gen-f3-rr-m,,gen,3,8.27,TRUE,FALSE
+,gen-f3-rr-m,room,restroom,WS/M-1,gen-f3-rr-m-t1,,gen,3,0.99,TRUE,FALSE
+,gen-f3-rr-m,room,restroom,WS/M-2,gen-f3-rr-m-t2,,gen,3,0.99,TRUE,FALSE
+,gen-f4,stairwell,regular,Лестничная клетка 1,gen-f4-sw1,,gen,4,15.69,,
+,gen-f4,stairwell,regular,Лестничная клетка 2,gen-f4-sw2,,gen,4,15.97,,
+,gen-f4,shaft,elevator,Лифтовая шахта,gen-f4-sl1,,gen,4,5.8,,
+,gen-f4,shaft,elevator,Лифтовая шахта,gen-f4-sl2,,gen,4,5.8,,
+,gen-f4,room,corridor,Лифтовый холл,gen-f4-cor1,,gen,4,46.61,TRUE,FALSE
+,gen-f4,room,office,Опен-спейс 1 (за дверью лифтового холла),gen-f4-a,,gen,4,77.85,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А1 (внутри Опен-спейс),gen-f4-a1,,gen,4,28.34,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А2 (внутри Опен-спейс),gen-f4-a2,,gen,4,20.32,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А3 (внутри Опен-спейс),gen-f4-a3,,gen,4,34.3,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А4 (внутри Опен-спейс),gen-f4-a4,,gen,4,30.29,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А4-1 (внутри Опен-спейс),gen-f4-a5,,gen,4,5.68,FALSE,TRUE
+,gen-f4-a,room,office,Каб. А5 (внутри Опен-спейс),gen-f4-a6,,gen,4,63.53,FALSE,TRUE
+,gen-f4,room,corridor,Коридор 2 (за дверью лифтового холла),gen-f4-cor2,,gen,4,11.74,FALSE,TRUE
+,gen-f4,room,office,Каб. B (за дверью коридора 2),gen-f4-b,,gen,4,25.41,FALSE,TRUE
+,gen-f4-b,room,office,Каб. B1 (за дверью каб.В),gen-f4-b1,,gen,4,37.46,FALSE,TRUE
+,gen-f4-b,room,office,Каб. B2 (за дверью каб.В),gen-f4-b2,,gen,4,34.46,FALSE,TRUE
+,gen-f4-b,room,office,Каб. B2-a (за дверью каб.В2),gen-f4-b3,,gen,4,14.66,FALSE,TRUE
+,gen-f4-b,room,office,Каб. B2-b (за дверью каб.В2-а),gen-f4-b4,,gen,4,3.99,FALSE,TRUE
+,gen-f4,room,corridor,Коридор 3 (за дверью лифтового холла),gen-f4-cor3,,gen,4,67.26,FALSE,TRUE
+,gen-f4,room,office,Каб. C (внутри Опен-спейс),gen-f4-c,,gen,4,40.65,FALSE,TRUE
+,gen-f4,room,office,Каб. D (внутри Опен-спейс),gen-f4-d,,gen,4,17.05,FALSE,TRUE
+,gen-f4,room,office,Каб. E (внутри Опен-спейс),gen-f4-e,,gen,4,37.82,FALSE,TRUE
+,gen-f4,room,office,Каб. F (внутри Опен-спейс),gen-f4-f,,gen,4,32.55,FALSE,TRUE
+,gen-f4,room,tech_combined,Тех.помещение (за дверью лестничной клетки 1),gen-f4-g,,gen,4,3.48,FALSE,FALSE
+,gen-f4,room,tech_combined,Тех.помещение (за дверью лифтового холла),gen-f4-k,,gen,4,1.49,FALSE,FALSE
+,gen-f4,room,restroom,WS/W,gen-f4-rr-f,,gen,4,6.08,TRUE,FALSE
+,gen-f4-rr-f,room,restroom,WS/W-1,gen-f4-rr-f-t1,,gen,4,1.27,TRUE,FALSE
+,gen-f4-rr-f,room,restroom,WS/W-2,gen-f4-rr-f-t2,,gen,4,1.27,TRUE,FALSE
+,gen-f4,room,restroom,WS/M,gen-f4-rr-m,,gen,4,8.27,TRUE,FALSE
+,gen-f4-rr-m,room,restroom,WS/M-1,gen-f4-rr-m-t1,,gen,4,0.99,TRUE,FALSE
+,gen-f4-rr-m,room,restroom,WS/M-2,gen-f4-rr-m-t2,,gen,4,0.99,TRUE,FALSE
+,gen-f5,stairwell,regular,Лестничная клетка 1,gen-f5-sw1,,gen,5,15.79,,
+,gen-f5,stairwell,regular,Лестничная клетка 2,gen-f5-sw2,,gen,5,15.9,,
+,gen-f5,shaft,elevator,Лифтовая шахта,gen-f5-sl1,,gen,5,5.8,,
+,gen-f5,shaft,elevator,Лифтовая шахта,gen-f5-sl2,,gen,5,5.8,,
+,gen-f5,room,corridor,Лифтовый холл,gen-f5-cor1,,gen,5,26.07,TRUE,FALSE
+,gen-f5,room,office,Опен-спейс 1 (за дверью лифтового холла),gen-f5-a,,gen,5,438.59,FALSE,TRUE
+,gen-f5-a,room,office,Каб. A (внутри Опен-спейс),gen-f5-a1,,gen,5,82.55,FALSE,TRUE
+,gen-f5-a,room,office,Каб. B (внутри Опен-спейс),gen-f5-a2,,gen,5,5.64,FALSE,TRUE
+,gen-f5-a,room,office,Каб. C (внутри Опен-спейс),gen-f5-a3,,gen,5,47.37,FALSE,TRUE
+,gen-f5-a,room,office,Каб. D (внутри Опен-спейс),gen-f5-a4,,gen,5,11.13,FALSE,TRUE
+,gen-f5-a,room,office,Каб. E (внутри Опен-спейс),gen-f5-a5,,gen,5,11.45,FALSE,TRUE
+,gen-f5-a,room,office,Каб. F (внутри Опен-спейс),gen-f5-a6,,gen,5,12.74,FALSE,TRUE
+,gen-f5-a,room,office,Каб. G (внутри Опен-спейс),gen-f5-a7,,gen,5,8.11,FALSE,TRUE
+,gen-f5,room,tech_combined,Тех.помещение (за дверью лестничной клетки 1),gen-f5-b,,gen,5,3.48,FALSE,FALSE
+,gen-f5,room,tech_combined,Склад технический (Оралбек)(за дверью лифтового холла),gen-f5-c,,gen,5,1.49,FALSE,FALSE
+,gen-f5,room,restroom,WS/W,gen-f5-rr-f,,gen,5,6.08,TRUE,FALSE
+,gen-f5-rr-f,room,restroom,WS/W-1,gen-f5-rr-f-t1,,gen,5,1.27,TRUE,FALSE
+,gen-f5-rr-f,room,restroom,WS/W-2,gen-f5-rr-f-t2,,gen,5,1.27,TRUE,FALSE
+,gen-f5,room,restroom,WS/M,gen-f5-rr-m,,gen,5,8.27,TRUE,FALSE
+,gen-f5-rr-m,room,restroom,WS/M-1,gen-f5-rr-m-t1,,gen,5,0.9,TRUE,FALSE
+,gen-f5-rr-m,room,restroom,WS/M-2,gen-f5-rr-m-t2,,gen,5,0.99,TRUE,FALSE
+,gen-f6,stairwell,regular,Лестничная клетка 1,gen-f6-sw1,,gen,6,15.7,,
+,gen-f6,stairwell,regular,Лестничная клетка 2,gen-f6-sw2,,gen,6,15.89,,
+,gen-f6,shaft,elevator,Лифтовая шахта,gen-f6-sl1,,gen,6,5.8,,
+,gen-f6,shaft,elevator,Лифтовая шахта,gen-f6-sl2,,gen,6,5.8,,
+,gen-f6,room,corridor,Лифтовый холл,gen-f6-cor1,,gen,6,29.32,TRUE,FALSE
+,gen-f6,room,office,Опен-спейс 1 (за дверью лифтового холла),gen-f6-a,,gen,6,400.65,FALSE,TRUE
+,gen-f6-a,room,office,Каб. A (внутри Опен-спейс),gen-f6-a1,,gen,6,17.8,FALSE,TRUE
+,gen-f6-a,room,office,Каб. B (внутри Опен-спейс),gen-f6-a2,,gen,6,26.53,FALSE,TRUE
+,gen-f6-a,room,office,Каб. C (внутри Опен-спейс),gen-f6-a3,,gen,6,36.08,FALSE,TRUE
+,gen-f6-a,room,office,Каб. D (внутри Опен-спейс),gen-f6-a4,,gen,6,18.62,FALSE,TRUE
+,gen-f6-a,room,office,Каб. E (внутри Опен-спейс),gen-f6-a5,,gen,6,41.41,FALSE,TRUE
+,gen-f6-a,room,office,Каб. F (внутри Опен-спейс),gen-f6-a6,,gen,6,33.13,FALSE,TRUE
+,gen-f6-a,room,office,Каб. G (внутри Опен-спейс),gen-f6-a7,,gen,6,21.25,FALSE,TRUE
+,gen-f6,room,tech_combined,Тех.помещение (за дверью лестничной клетки 1),gen-f6-b,,gen,6,3.48,FALSE,FALSE
+,gen-f6,room,tech_combined,Тех.помещение (за дверью лифтового холла),gen-f6-c,,gen,6,1.49,FALSE,FALSE
+,gen-f6,room,restroom,WS/W,gen-f6-rr-f,,gen,6,6.08,TRUE,FALSE
+,gen-f6-rr-f,room,restroom,WS/W-1,gen-f6-rr-f-t1,,gen,6,1.27,TRUE,FALSE
+,gen-f6-rr-f,room,restroom,WS/W-2,gen-f6-rr-f-t2,,gen,6,1.27,TRUE,FALSE
+,gen-f6,room,restroom,WS/M,gen-f6-rr-m,,gen,6,8.27,TRUE,FALSE
+,gen-f6-rr-m,room,restroom,WS/M-1,gen-f6-rr-m-t1,,gen,6,0.99,TRUE,FALSE
+,gen-f6-rr-m,room,restroom,WS/M-2,gen-f6-rr-m-t2,,gen,6,0.99,TRUE,FALSE
+,gen-f7,stairwell,regular,Лестничная клетка 1,gen-f7-sw1,,gen,7,15.9,,
+,gen-f7,stairwell,regular,Лестничная шахта,gen-f7-sw2,,gen,7,,,
+,gen-f7,void,second_light,Второй свет 6эт,gen-f7-void1,,gen,7,,,
+,gen-f7,void,second_light,Второй свет 6эт ,gen-f7-void2,,gen,7,,,
+,gen-f7,room,office,Опен-спейс 1 (с лестницы 6 этажа),gen-f7-a,,gen,7,120.95,FALSE,TRUE
+,gen-f7-a,room,office,Каб. A (внутри Опен-спейс),gen-f7-a1,,gen,7,20.64,FALSE,TRUE
+,gen-f7-a,room,office,Серверная (внутри Опен-спейс),gen-f7-a2,,gen,7,15.64,FALSE,TRUE
+,gen-f7-a,room,office,Каб. A (внутри Опен-спейс),gen-f7-a3,,gen,7,39.29,FALSE,TRUE
+,gen-f7-a3,room,office,Офисная кухня (за дверью каб.А),gen-f7-a3-1,,gen,7,46.09,FALSE,TRUE
+,gen-f8,stairwell,regular,Лестничная клетка 1,gen-f8-sw1,,gen,8,13.77,,
+,gen-f8,shaft,elevator,Лифтовая шахта,gen-f8-sl1,,gen,8,5.8,,
+,gen-f8,shaft,elevator,Лифтовая шахта,gen-f8-sl2,,gen,8,5.8,,
+,gen-f8,room,corridor,Лифтовый холл,gen-f8-cor1,,gen,8,21.28,TRUE,FALSE
+,gen-f8,room,corridor,Главный коридор (за дверью от лифтового холла),gen-f8-cor2,,gen,8,81.26,TRUE,FALSE
+,gen-f8,room,office,Каб. 700,gen-f8-a,,gen,8,30.98,FALSE,TRUE
+,gen-f8,room,office,Каб. 701,gen-f8-b,,gen,8,41.66,FALSE,TRUE
+,gen-f8,room,corridor,Коридор (внутри Главного коридора),gen-f8-cor3,,gen,8,17.82,TRUE,FALSE
+,gen-f8,room,office,Каб. 702,gen-f8-c,,gen,8,26.42,FALSE,TRUE
+,gen-f8,room,office,Каб. 703,gen-f8-d,,gen,8,28.86,FALSE,TRUE
+,gen-f8,room,corridor,Коридор (внутри Главного коридора),gen-f8-cor4,,gen,8,15.83,TRUE,FALSE
+,gen-f8,room,office,Каб. 704,gen-f8-e,,gen,8,33.4,FALSE,TRUE
+,gen-f8,room,office,Каб. 705 (за дверью от лифтового холла),gen-f8-f,,gen,8,29.17,FALSE,TRUE
+,gen-f8-f,room,office,Каб.705/а (внутри кабинета 705),gen-f8-f1,,gen,8,5.1,FALSE,TRUE
+,gen-f8,room,office,Каб. Конференц-зал,gen-f8-g,,gen,8,115.95,FALSE,TRUE
+,gen-f8,room,restroom,WS/W,gen-f8-rr-f,,gen,8,4.7,TRUE,FALSE
+,gen-f8-rr-f,room,restroom,WS/W-1,gen-f8-rr-f-t1,,gen,8,1.19,TRUE,FALSE
+,gen-f8-rr-f,room,restroom,WS/W-2,gen-f8-rr-f-t2,,gen,8,1.19,TRUE,FALSE
+,gen-f8,room,restroom,WS/M,gen-f8-rr-m,,gen,8,4.84,TRUE,FALSE
+,gen-f8-rr-m,room,restroom,WS/M-1,gen-f8-rr-m-t1,,gen,8,1.26,TRUE,FALSE
+,gen-f8-rr-m,room,restroom,WS/M-2,gen-f8-rr-m-t2,,gen,8,1.26,TRUE,FALSE
+,gen-f8,room,corridor,Терраса,gen-f8-cor5,,gen,8,72.87,TRUE,FALSE
