@@ -175,7 +175,7 @@
    margins. `--plan-ratio` is the same ratio as `aspect-ratio` in the markup, only it takes
    part in the arithmetic. */
 .floor-plan {
-  --floor-plan-height: min(58vh, 30rem);
+  --floor-plan-height: 90vh;
   position: relative;
   width: 100%;
   max-width: calc(var(--floor-plan-height) * (var(--plan-ratio)));
