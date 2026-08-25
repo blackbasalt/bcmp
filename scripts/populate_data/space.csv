@@ -357,7 +357,7 @@ id,parent,type,subtype,name,code,description,building,floor_number,area_m2,is_co
 ,bos-f4,stairwell,regular,Лестничная клетка 2,bos-f4-sw2,,bos,4,15.81,,
 ,bos-f4,shaft,elevator,Лифтовая шахта,bos-f4-sl1,,bos,4,7.99,,
 ,bos-f4,room,office,Опен-спейс 1 (из главного коридора),bos-f4-h,,bos,4,257,FALSE,TRUE
-,,,,Каб. 409,bos-f4-i,,bos,4,47.99,FALSE,TRUE
+,bos-f4,room,office,Каб. 409,bos-f4-i,,bos,4,47.99,FALSE,TRUE
 ,bos-f4,room,office,Каб. 401,bos-f4-a,,bos,4,38.33,FALSE,TRUE
 ,bos-f4,room,office,Каб. 402,bos-f4-b,,bos,4,33.17,FALSE,TRUE
 ,bos-f4-b,room,office,Каб. 403,bos-f4-b1,,bos,4,44.69,FALSE,TRUE

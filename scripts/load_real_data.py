@@ -22,6 +22,10 @@ def run():
                     name=row[2],
                     bin_iin=row[4],
                     )
+        dt = Party.objects.get(bin_iin="180540035878")
+        o,_ = Org.objects.get_or_create(
+            party = dt,
+                )
 
     with open('scripts/populate_data/user.csv') as file:
         reader = csv.reader(file)
@@ -54,6 +58,9 @@ def run():
 
         Space.objects.all().delete()
 
+        dtp = Party.objects.get(bin_iin="180540035878")
+        dto = Org.objects.get(party = dt)
+
         for row in reader:
             par = None
             subt=None
@@ -84,6 +91,7 @@ def run():
                     is_leasable=False
 
             c, _ = Space.objects.get_or_create(
+                    org=dto,
                     parent=par,
                     name=row[4],
                     type=row[2],
