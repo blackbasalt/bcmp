@@ -5,7 +5,7 @@ tooltip line — and it is computed on the server. Otherwise the rule drifts apa
 browser would know which colour to paint with, while the legend next to the plan would
 explain the colours from a list of its own, and nothing would stop the two diverging.
 
-One layer is defined here — the type of the space. Tenant arrears, lease terms and
+One layer is defined here — the вид of the помещение. Tenant arrears, lease terms and
 faults in the engineering systems arrive later as new layers on the same plan, not as
 new screens: the screen draws what the layer handed it (`Painting`) and knows nothing
 about the rule itself. A plan shows one layer at a time.
@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from dictionary.models import DictSpaceType
+
+from . import space_kind
 
 if TYPE_CHECKING:
     from .models import Contour, Space
@@ -44,19 +46,19 @@ class Paint:
 
 
 LEASABLE = Paint(
-    key="leasable",
+    key=space_kind.LEASABLE,
     label="Арендопригодные",
     note="арендопригодное помещение",
     colour="var(--plan-leasable)",
 )
 COMMON = Paint(
-    key="common",
+    key=space_kind.COMMON,
     label="МОП",
     note="место общего пользования",
     colour="var(--plan-common)",
 )
 TECHNICAL = Paint(
-    key="technical",
+    key=space_kind.TECHNICAL,
     label="Технические",
     note="техническое помещение",
     colour="var(--plan-technical)",
@@ -92,35 +94,49 @@ class Painting:
     legend: tuple[Paint, ...]
 
 
-class SpaceTypeLayer:
-    """The "space type" layer: a space is leasable, common, or serves the building.
+#: Which вид is drawn with which colour. The keys are `space_kind`'s, so a colour cannot
+#: quietly come to mean something the rule does not say.
+COLOUR_OF = {
+    space_kind.LEASABLE: LEASABLE,
+    space_kind.COMMON: COMMON,
+    space_kind.TECHNICAL: TECHNICAL,
+}
+
+
+class SpaceKindLayer:
+    """The "вид помещения" layer: a space is leasable, common, or serves the building.
 
     The only layer computed from data recorded on every space — with it an employee of
     the management company judges the leasable area of a floor, and an engineer finds
     the heating substation, the air handling room and the switchboard room without
     reading a single caption.
 
-    The type of a space is derived from two flags rather than stored in a third field: a
-    technical space is exactly the one that is neither leasable nor common. An unset
-    flag means "no": an "unknown" as a fourth colour would talk about the completeness
-    of the data rather than about the building. A space marked both leasable and common
-    is drawn as leasable: what is let to a tenant is never common.
+    Which вид a space is, is not decided here: that rule is `space_kind`'s, and the полка
+    помещений narrows by the same one. What is decided here is what the план does with it
+    — the colour, the legend caption and the order of the legend, which belong to the
+    drawing and are of no use to a table.
+
+    It is called вид and not тип, because тип is what tells a помещение from an этаж and a
+    здание, while вид divides помещения among themselves. Two axes shared one word until
+    the полка had to put three of them side by side.
     """
 
-    title = "Тип помещения"
-    #: The order of the legend. It is also the order of the kinds — the legend must not
+    title = "Вид помещения"
+    #: The order of the legend. It is also the order of the виды — the legend must not
     #: be rearranged by whatever happened to be drawn first in the file.
-    palette = (LEASABLE, COMMON, TECHNICAL)
+    palette = tuple(COLOUR_OF[kind] for kind in space_kind.KINDS)
 
     def paint_of(self, space: "Space") -> Paint | None:
-        """What a space is filled with, or `None` if it falls outside the layer."""
+        """What a space is filled with, or `None` if it falls outside the layer.
+
+        Outside the layer are the things that are not помещения at all — a stairwell, a
+        shaft, a double-height void. They have to be drawn, or the drawing is left with
+        unexplained gaps, but there is no вид to give them: `space_kind` answers about a
+        помещение, and these are not one.
+        """
         if space.type in OUTSIDE_THE_TYPES:
             return None
-        if space.is_leasable:
-            return LEASABLE
-        if space.is_common:
-            return COMMON
-        return TECHNICAL
+        return COLOUR_OF[space_kind.kind_of(space)]
 
     def apply(self, contours: Iterable["Contour"]) -> Painting:
         """Apply the layer to the contours of a plan.
@@ -142,4 +158,4 @@ class SpaceTypeLayer:
         )
 
 
-SPACE_TYPE = SpaceTypeLayer()
+SPACE_KIND = SpaceKindLayer()

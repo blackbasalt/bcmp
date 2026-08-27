@@ -39,14 +39,16 @@ def sidebar(client, url):
     return {item["section"]: item.group() for item in ITEM.finditer(page)}
 
 
-def test_both_sections_are_offered_without_going_through_a_building(client, member):
-    """Documents is the first screen in the project reached without opening a building."""
+def test_every_section_is_offered_without_going_through_a_building(client, member):
+    """Документы and Помещения are both reached without opening a building: one holds
+    papers attached to no БЦ at all, the other spans every БЦ at once."""
     client.force_login(member)
 
     items = sidebar(client, reverse("building_passport:bc_list"))
 
     assert reverse("building_passport:bc_list") in items["building_passport"]
     assert reverse("documents:document_list") in items["documents"]
+    assert reverse("rooms:room_list") in items["rooms"]
 
 
 def test_the_documents_item_is_highlighted_inside_the_section(client, member):
@@ -57,6 +59,20 @@ def test_the_documents_item_is_highlighted_inside_the_section(client, member):
 
     assert 'aria-current="page"' in items["documents"]
     assert "aria-current" not in items["building_passport"]
+    assert "aria-current" not in items["rooms"]
+
+
+def test_the_rooms_item_is_highlighted_on_the_shelf_of_rooms(client, member):
+    """The menu names one open раздел, not two. Whoever moves the полка back inside
+    `building_passport` "for tidiness" lights «Бизнес-центры» here instead and breaks not
+    one test about the полка itself — this is where it is caught (ADR 0016)."""
+    client.force_login(member)
+
+    items = sidebar(client, reverse("rooms:room_list"))
+
+    assert 'aria-current="page"' in items["rooms"]
+    assert "aria-current" not in items["building_passport"]
+    assert "aria-current" not in items["documents"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, manhattan):
@@ -67,6 +83,7 @@ def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, 
 
     assert 'aria-current="page"' in items["building_passport"]
     assert "aria-current" not in items["documents"]
+    assert "aria-current" not in items["rooms"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_floor(client, member, first_floor):

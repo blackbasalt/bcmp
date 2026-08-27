@@ -43,6 +43,21 @@ def member(django_user_model, downtown):
 
 
 @pytest.fixture
+def both_clients(django_user_model, downtown, central):
+    """An employee handling two clients at once — the reader the «Организация» column exists
+    for.
+
+    It lives here rather than beside either полка: both the полка документов and the полка
+    помещений label their rows on the same condition, and a second definition of the same
+    manager would let the two screens be checked against different readers.
+    """
+    user = django_user_model.objects.create_user("manager")
+    OrgMembership.objects.create(user=user, org=downtown)
+    OrgMembership.objects.create(user=user, org=central)
+    return user
+
+
+@pytest.fixture
 def administrator(django_user_model, downtown):
     """An organisation administrator: the same employee, with the right to maintain data.
 
@@ -91,9 +106,25 @@ def make_floor(db):
 
 @pytest.fixture
 def make_space(db):
-    """A space under another space. The type is given: a contour carries more than `room`."""
+    """A space under another space. The type is given: a contour carries more than `room`.
 
-    def _make_space(parent, code, name, type="room"):
+    Everything else about a помещение — the площадь, the two flags вид is read off, the
+    назначение — is passed through as it is written on the model. The полка помещений puts
+    a condition on each of them, and a fixture that took them one by one would grow a
+    keyword per condition; what does not need staging keeps the model's own default, which
+    is what a помещение loaded from a паспорт looks like anyway.
+
+    The floor a помещение lies on is inherited unless it is given: a вложенное помещение is
+    on its parent's floor, so no test should have to repeat the number — but the полка has a
+    condition on that number, and a test about a помещение whose номер этажа matches no этаж
+    has to be able to stage one.
+    """
+
+    def _make_space(parent, code, name, type="room", **fields):
+        # Inherited rather than fixed: a space staged on a floor it does not lie on is a
+        # building that cannot exist, but a test that means to stage exactly that — a
+        # помещение whose номер этажа matches no этаж — must still be able to say so.
+        fields.setdefault("floor_number", parent.floor_number)
         return Space.objects.create(
             org=parent.org,
             type=type,
@@ -101,6 +132,7 @@ def make_space(db):
             building=parent.building,
             code=code,
             name=name,
+            **fields,
         )
 
     return _make_space

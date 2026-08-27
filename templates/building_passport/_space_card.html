@@ -19,9 +19,20 @@
   <dd>{{ space.code|or_missing }}</dd>
   <dt class="opacity-60">Наименование</dt>
   <dd>{{ space.name|or_missing }}</dd>
-  <dt class="opacity-60">Подтип</dt>
+  {% comment %}
+    «Назначение» and not «Подтип»: `subtype` is what the column is called in the storage,
+    and a storage word put in front of a reader tells them what the table looks like rather
+    than what the помещение is for. The полка помещений names the same field the same way —
+    a reader who found a санузел by that word must meet it again on the card.
+
+    «Тип» and not «Тип помещения»: this row prints `Space.type` and reads «Тип помещения:
+    Помещение» today. Тип tells a помещение from an этаж and a здание; вид divides
+    помещения among themselves, and it is вид that the план shows in colour right beside
+    this card. Two axes must not share one word on one screen.
+  {% endcomment %}
+  <dt class="opacity-60">Назначение</dt>
   <dd>{{ space.subtype|or_missing }}</dd>
-  <dt class="opacity-60">Тип помещения</dt>
+  <dt class="opacity-60">Тип</dt>
   <dd>{{ space.get_type_display }}</dd>
   <dt class="opacity-60">Площадь</dt>
   <dd>{{ space.area_m2|area|or_missing }}</dd>

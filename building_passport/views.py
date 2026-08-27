@@ -131,13 +131,25 @@ class FloorView(LoginRequiredMixin, DetailView):
         # here rather than being a set of classes in the markup: the next layer will
         # take this same place, and the screen will need nothing new for it. There is
         # one layer on the plan at a time, and so far only one has been defined.
-        context["painting"] = plan_layer.SPACE_TYPE.apply(contours)
+        context["painting"] = plan_layer.SPACE_KIND.apply(contours)
         # The whole interior of the building in one query: the tree nests to an
         # arbitrary depth, and walking it node by node would cost a query per space.
         # The tree itself cuts off what does not belong: only what is linked to the
         # floor through `parent` ends up under it.
         inside = visible.filter(building=building).order_by("code", "name")
+        under = spaces_under(self.object, inside)
         context["tree"] = tree_under(self.object, inside)
+        # A помещение named in the address, so that the полка помещений can lead to the
+        # экран этажа with that помещение's card already open: the полка answers «которое»,
+        # this screen answers «где». Nothing else about the screen changes — arriving from
+        # the полка and arriving from the tree must land on the same place.
+        #
+        # It is looked for among the spaces of this этаж and not fetched by its own pk: a
+        # помещение of another client, one that does not exist and one lying on a different
+        # этаж are then all the same answer — the screen renders as though nothing were
+        # named. An address must not become a way to ask about other clients' data, and an
+        # answer that told the three apart would be exactly that.
+        context["opened"] = self.named_in_the_address(under)
         # Completeness: how many spaces of the floor are drawn, which are left without
         # a contour and which paths of the drawing found no space. One count for the
         # whole screen — the same one marks the tree nodes, because the mark in the
@@ -148,7 +160,7 @@ class FloorView(LoginRequiredMixin, DetailView):
         # all, and "0 of 82" with a mark on every node would say exactly what the empty
         # middle of the screen already says.
         context["completeness"] = plan_completeness.completeness_of(
-            spaces_under(self.object, inside) if plan else (),
+            under if plan else (),
             contours,
             plan.unmatched_ids if plan else (),
         )
@@ -181,6 +193,18 @@ class FloorView(LoginRequiredMixin, DetailView):
         plan = form.save()
         messages.success(request, self.upload_report(plan))
         return redirect("building_passport:floor", self.object.building_id, self.object.pk)
+
+    def named_in_the_address(self, under):
+        """The space `?space=` names, if it is one of this floor's — otherwise nothing.
+
+        A `?space=` that is not a uuid at all is the same answer again: the address is
+        typed and pasted by people, and a malformed one is not worth a different screen
+        from a mistaken one.
+        """
+        wanted = self.request.GET.get("space")
+        if not wanted:
+            return None
+        return next((space for space in under if str(space.pk) == wanted), None)
 
     @cached_property
     def administers_the_floor(self):

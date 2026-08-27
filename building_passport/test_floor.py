@@ -81,6 +81,18 @@ def selecting(page):
     return parser.found
 
 
+def rail_opens(page):
+    """The card address the rail asks for on load, or `None` when it asks for nothing.
+
+    The screen's contract for arriving from the полка помещений: the card is fetched by the
+    same address and into the same target a click fetches it into, so there is one way a
+    card gets into this rail and not two.
+    """
+    rail = re.search(r'<div id="space-card"[^>]*>', page).group()
+    found = re.search(r'hx-get="([^"]+)"', rail)
+    return found.group(1) if found else None
+
+
 def rail_content(page):
     """What lies in the right-hand rail: `#space-card` is the target the card is put into.
 
@@ -243,11 +255,100 @@ def test_the_screen_opens_with_nothing_in_the_rail(floor_page):
     empty.
     """
     assert rail_content(floor_page) == ""
+    assert rail_opens(floor_page) is None
 
 
 def test_a_floor_without_a_plan_says_there_is_no_plan_in_force(floor_page):
     """The absence of a plan reads as a state of the data, not as a broken screen."""
     assert "нет действующего поэтажного плана" in floor_page
+
+
+# Arriving from the полка помещений
+
+
+def test_a_space_named_in_the_address_opens_with_its_card_already_showing(
+    client, member, first_floor
+):
+    """The полка помещений answers «которое» and sends the reader here for «где».
+
+    The card is asked for at the same address a click asks for it at: a second way of
+    filling the rail would be a second thing to keep in step with the first.
+    """
+    space = Space.objects.get(code="man-f1-a1")
+    client.force_login(member)
+
+    response = client.get(f"{floor_url(first_floor)}?space={space.pk}")
+
+    assert rail_opens(response.content.decode()) == card_url(space)
+
+
+def test_the_screen_is_otherwise_unchanged_by_the_space_in_the_address(
+    client, member, first_floor
+):
+    """Arriving from the полка and arriving from the tree land on the same screen: the
+    tree, the план and the switcher render as they always do."""
+    space = Space.objects.get(code="man-f1-a1")
+    client.force_login(member)
+
+    arrived = client.get(f"{floor_url(first_floor)}?space={space.pk}").content.decode()
+    _, plain = open_floor(client, first_floor)
+
+    assert nesting(arrived) == nesting(plain)
+    assert selecting(arrived).keys() == selecting(plain).keys()
+    assert "нет действующего поэтажного плана" in arrived
+
+
+def test_a_space_of_another_organisation_in_the_address_opens_nothing(
+    client, member, central, first_floor, make_building, make_floor, make_space
+):
+    """An address must not become a way to ask about other clients' data: it answers as if
+    no помещение were named at all."""
+    theirs = make_space(make_floor(make_building(central, "ctr", "Central City"), 1),
+                        "ctr-f1-a", "Чужая серверная")
+    client.force_login(member)
+
+    page = client.get(f"{floor_url(first_floor)}?space={theirs.pk}").content.decode()
+
+    assert rail_opens(page) is None
+    assert "Чужая серверная" not in page
+
+
+def test_a_space_that_does_not_exist_in_the_address_opens_nothing(
+    client, member, first_floor
+):
+    """The same answer as for another client's — telling the two apart would tell this
+    reader what the other one has (ADR 0006)."""
+    client.force_login(member)
+
+    page = client.get(
+        f"{floor_url(first_floor)}?space=00000000-0000-0000-0000-000000000000"
+    ).content.decode()
+
+    assert rail_opens(page) is None
+
+
+def test_a_space_of_another_floor_in_the_address_opens_nothing(
+    client, member, manhattan, first_floor, make_floor, make_space
+):
+    """The card belongs to the этаж the address names; a помещение from elsewhere in the
+    building is not on this screen and must not appear in its rail."""
+    upstairs = make_space(make_floor(manhattan, 2), "man-f2-a", "каб201")
+    client.force_login(member)
+
+    page = client.get(f"{floor_url(first_floor)}?space={upstairs.pk}").content.decode()
+
+    assert rail_opens(page) is None
+
+
+def test_a_space_that_is_not_a_uuid_at_all_opens_nothing(client, member, first_floor):
+    """Addresses are typed and pasted by people, and a malformed one is not worth a
+    different screen from a mistaken one."""
+    client.force_login(member)
+
+    response = client.get(f"{floor_url(first_floor)}?space=не-uuid")
+
+    assert response.status_code == 200
+    assert rail_opens(response.content.decode()) is None
 
 
 # Moving on from the floor screen

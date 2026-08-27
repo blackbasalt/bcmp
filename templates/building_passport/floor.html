@@ -64,7 +64,7 @@
     would linger in it — and a panel showing someone else's area lies exactly as much as
     blank space in place of a dash.
   {% endcomment %}
-  <div x-data="{ selected: null }" class="floor-layout"
+  <div x-data="{ selected: {% if opened %}'{{ opened.pk }}'{% else %}null{% endif %} }" class="floor-layout"
        :class="selected && 'rail-open'"
        hx-on::before-request="document.getElementById('space-card').innerHTML = ''">
 
@@ -247,7 +247,18 @@
           <button type="button" class="btn btn-sm btn-ghost" x-on:click="selected = null"
                   aria-label="Закрыть карточку помещения">✕</button>
         </div>
-        <div id="space-card" class="flex flex-col gap-3"></div>
+        {% comment %}
+          A помещение named in the address opens its card at once: whoever arrived from the
+          полка помещений has already answered «которое» and came here for «где». The card
+          is fetched exactly as a click fetches it — the same address, the same target — so
+          there is one way a card gets into this rail and not two.
+
+          Nothing else on the screen moves: the tree, the план and the switcher render as
+          they always do. An address naming a помещение that is not visible, does not exist
+          or lies on another этаж carries no `opened`, and the rail stays empty.
+        {% endcomment %}
+        <div id="space-card" class="flex flex-col gap-3"
+             {% if opened %}hx-get="{% url 'building_passport:space_card' opened.pk %}" hx-trigger="load"{% endif %}></div>
       </div>
     </section>
   </div>

@@ -1,0 +1,151 @@
+{% extends "shell.html" %}
+{% load rooms passport %}
+
+{% block title %}Помещения — BCMP{% endblock %}
+{% block page_title %}Помещения{% endblock %}
+{% block breadcrumbs %}<li>Помещения</li>{% endblock %}
+
+{% block content %}
+  {% comment %}
+    The question stands above the table: it is asked of what is below it and answered by
+    it. On a полка with no помещения at all there is nothing to narrow, and the bar is not
+    shown — but it stays on a полка that a question emptied, because that is where the
+    question has to be corrected.
+
+    Which of the two it is follows from the size of the полка and not from what came back:
+    an empty полка can be questioned exactly as a full one can, and a bar shown on the
+    strength of the address alone would offer to narrow a nothing.
+  {% endcomment %}
+  {% if whole %}{% include "rooms/_room_search.html" %}{% endif %}
+
+  {% comment %}
+    A table, not cards: there are hundreds of помещения, and what tells them apart — the
+    код, the БЦ, the этаж, the вид, the назначение, the площадь — reads as columns, whereas
+    as cards they would sprawl across a dozen screens.
+
+    The whole полка is rendered at once, with no pagination: the browser's own find then
+    works across every row, and a link sent to a colleague loses nothing. The same as the
+    полка документов, which sets no `paginate_by` either.
+  {% endcomment %}
+  {% if rooms %}
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <div class="overflow-x-auto">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                {% if organisation_named %}<th>Организация</th>{% endif %}
+                <th>Код</th>
+                <th>Название</th>
+                <th>БЦ</th>
+                <th>Этаж</th>
+                {% comment %}
+                  «Внутри» is how a flat table admits it unwove a tree: without it a кабина
+                  inside a уборная and a кабинет on the этаж read as the same kind of row.
+                {% endcomment %}
+                <th>Внутри</th>
+                {% comment %}
+                  «Вид» and not «Тип»: тип tells a помещение from an этаж and a здание, вид
+                  divides помещения among themselves. The план's legend beside the drawing
+                  now names the same thing the same way.
+                {% endcomment %}
+                <th>Вид</th>
+                <th>Назначение</th>
+                <th>Площадь</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for room in rooms %}
+                {# `data-room` is the screen's contract: it shows what is displayed and in what order. #}
+                <tr data-room="{{ room.pk }}">
+                  {% if organisation_named %}<td class="opacity-60">{{ room.org.name }}</td>{% endif %}
+                  <td class="whitespace-nowrap">{{ room.code|or_missing }}</td>
+                  {% comment %}
+                    The название leads to the экран этажа with this помещение's card already
+                    open: the полка answers «которое», the экран этажа answers «где». The
+                    card gets no second home here — it is the rail of that screen, and its
+                    worth is the план beside it.
+
+                    It is named by the project's one rule for naming a space — the код
+                    stands in where there is no название — so that the link always has
+                    something to read and the помещение is called here what it is called in
+                    the tree and on the план. A помещение whose этаж cannot be told from its
+                    номер этажа leads nowhere and stays plain text: a link that opens the
+                    wrong этаж is worse than none.
+                  {% endcomment %}
+                  <td>
+                    {% if room.leads_to_floor %}
+                      <a class="link"
+                         href="{% url 'building_passport:floor' room.building_id room.leads_to_floor %}?space={{ room.pk }}">{{ room|space_label }}</a>
+                    {% else %}
+                      {{ room|space_label }}
+                    {% endif %}
+                  </td>
+                  <td>{{ room.building|space_label }}</td>
+                  <td class="whitespace-nowrap">{{ room.floor_number|or_missing }}</td>
+                  {% comment %}
+                    Empty for a помещение lying straight on the этаж, and not a dash: that
+                    is the ordinary case, not a gap in the data.
+                  {% endcomment %}
+                  <td>{{ room|inside }}</td>
+                  <td class="whitespace-nowrap">{{ room|kind }}</td>
+                  <td>{{ room.subtype|or_missing }}</td>
+                  {% comment %}
+                    A dash and not a zero for a помещение with no площадь: «не заведено» must
+                    not be read as «нулевая площадь». There is no итог under this column —
+                    вложенные помещения would be counted twice and by an unknown amount
+                    (ADR 0015). What stands instead is the second figure in the count line.
+                  {% endcomment %}
+                  <td class="whitespace-nowrap">{{ room.area_m2|area|or_missing }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %}
+          The count beneath the table. The first half is a phrase assembled in Python, where
+          the agreement with the numeral belongs; the second half has none to work out — «у
+          5» reads the same at any number — and it stands here because the number itself is
+          a link, and a link cannot be built inside a sentence handed over as a string.
+
+          It is said only when there is something to say: «площадь не заведена у 0» is a
+          line about nothing, and a полка with no gaps should read as one.
+        {% endcomment %}
+        {# `data-count` is the screen's contract: the line that says how much of the полка is on screen. #}
+        <p class="text-sm opacity-70" data-count="rooms">
+          {{ shown }}{% if without_area %} · площадь не заведена у <a class="link" href="{{ without_area_url }}">{{ without_area }}</a>{% endif %}
+        </p>
+      </div>
+    </div>
+  {% elif whole %}
+    {% comment %}
+      A question that matched nothing, said as such: «ничего не нашлось» sends the reader to
+      change the question, «помещения не заведены» sends them to whoever loads them, and one
+      screen for both would send them to the wrong one half the time.
+
+      Which of the two is decided by whether the полка has anything on it, not by whether
+      anything was asked. A reader whose организация has no помещения at all and a condition
+      left in the address would otherwise be sent to fix a question that was never the
+      problem.
+
+      The count line stands here too, and only its second figure is worth reading: «Показано
+      0 из 583 помещений» is what says the полка is full and the отбор is empty. Without it
+      the reader has «ничего не нашлось» and no idea whether there was ever anything to
+      find.
+    {% endcomment %}
+    <div class="alert alert-warning">
+      <span>По этому отбору ничего не нашлось. Измените условия или сбросьте отбор.</span>
+    </div>
+    <p class="mt-3 text-sm opacity-70" data-count="rooms">{{ shown }}</p>
+  {% else %}
+    {% comment %}
+      An empty section says its emptiness out loud, and names who acts: помещения are loaded
+      by the platform administrator, not from this screen, so the reader is told whom to ask
+      rather than handed a link they cannot use.
+    {% endcomment %}
+    <div class="alert alert-info">
+      <span>Помещения не заведены — их заводит администратор платформы.</span>
+    </div>
+  {% endif %}
+{% endblock %}

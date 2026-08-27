@@ -18,7 +18,6 @@ import pytest
 from django.urls import reverse
 
 from documents.models import Document
-from parties.models import OrgMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -54,14 +53,6 @@ def make_document(org, title, **fields):
     fields.setdefault("kind", Document.Kind.ACT)
     return Document.objects.create(org=org, title=title, **fields)
 
-
-@pytest.fixture
-def both_clients(django_user_model, downtown, central):
-    """An employee handling two clients at once: their documents must not get mixed up."""
-    user = django_user_model.objects.create_user("manager")
-    OrgMembership.objects.create(user=user, org=downtown)
-    OrgMembership.objects.create(user=user, org=central)
-    return user
 
 
 # Access and isolation

@@ -84,7 +84,11 @@ class DocumentListView(LoginRequiredMixin, ListView):
         # This is asked about the reader, not about what is shown: a column depending on
         # the data would disappear exactly when the second client has no documents yet —
         # and that is precisely the case where the organisation does need naming.
-        context["organisation_named"] = self.organisations_of_the_reader > 1
+        #
+        # Asked of the organisations themselves and not counted here: the полка помещений
+        # labels its rows on this same condition, and two places working out "does this
+        # reader handle more than one client" would be two answers to one question.
+        context["organisation_named"] = Org.objects.handled_by(self.request.user).count() > 1
         # The form goes only to whoever may upload: an action an employee cannot perform is
         # not offered to them either. A rejection brings its own already filled-in form, so
         # the empty one is only put in its place.
@@ -134,21 +138,6 @@ class DocumentListView(LoginRequiredMixin, ListView):
         by the building it names — and this is only about whether there is a form at all.
         """
         return Org.objects.administered_by(self.request.user).exists()
-
-    @cached_property
-    def organisations_of_the_reader(self):
-        """How many clients the reader handles — a question about them, not about their
-        documents.
-
-        It disposes of no permissions and selects no rows: whose documents to show is
-        decided by the single chokepoint (ADR 0006), while what is worked out here is
-        whether they need labelling. A superuser reads on everyone's behalf, so all the
-        organisations are theirs.
-        """
-        user = self.request.user
-        if user.is_superuser:
-            return Org.objects.count()
-        return user.memberships.count()
 
 
 class DocumentDetailView(LoginRequiredMixin, DetailView):

@@ -73,6 +73,26 @@ def test_a_space_without_an_area_says_so_rather_than_leaving_a_blank(
     assert "— нет данных" in page
 
 
+def test_the_card_names_the_subtype_by_what_it_is_for(card):
+    """«Назначение» and not «Подтип»: a storage word in front of a reader tells them what
+    the table looks like rather than what the помещение is for. The полка помещений names
+    the same field the same way, and a reader who found a санузел by that word must meet it
+    again here."""
+    assert "Назначение" in card
+    assert "Подтип" not in card
+
+
+def test_the_card_calls_the_type_a_type_and_nothing_more(card):
+    """This row prints `Space.type` and read «Тип помещения: Помещение» before.
+
+    Тип tells a помещение from an этаж and a здание; вид divides помещения among
+    themselves, and it is вид the план shows in colour right beside this card. Two axes
+    must not share one word on one screen.
+    """
+    assert "Тип помещения" not in card
+    assert "Тип" in card
+
+
 # Its place in the tree
 
 

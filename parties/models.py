@@ -52,6 +52,27 @@ class OrgQuerySet(models.QuerySet):
             return self
         return self.filter(pk__in=user.memberships.filter(is_admin=True).values("org_id"))
 
+    def handled_by(self, user):
+        """The organisations the reader handles — a question about them, not about data.
+
+        It disposes of no permissions and selects no rows: whose data to show is decided by
+        the chokepoints (ADR 0001, ADR 0006), and what is worked out here is only whether a
+        screen needs an «Организация» column at all. One employee handling two clients asks
+        "whose is this" of every row; one handling a single client would get a column
+        repeating one word down the whole table.
+
+        It is asked about the reader and not about what is shown, so the column holds on
+        even when the second client has nothing loaded yet — which is exactly when whoever
+        handles two of them most needs to know whose shelf they are looking at.
+
+        A superuser reads on everyone's behalf, so all the organisations are theirs.
+        """
+        if not user.is_authenticated:
+            return self.none()
+        if user.is_superuser:
+            return self
+        return self.filter(pk__in=user.memberships.values("org_id"))
+
 
 class Org(CommonModel):
     """A tenant of the platform. A thin layer over Party, not a duplicate."""
