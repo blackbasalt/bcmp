@@ -124,7 +124,6 @@ class PartyRole(CommonModel):
         OWNER = "owner", "Собственник"
         OPERATOR = "operator", "Управляющая компания"
         CONTRACTOR = "contractor", "Подрядчик"
-        TENANT = "tenant", "Арендатор"
         SUPPLIER = "supplier", "Поставщик"
         EXPERT = "expert", "Эксперт"
         DESIGNER = "designer", "Проектировщик"

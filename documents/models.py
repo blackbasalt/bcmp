@@ -323,6 +323,7 @@ class DocumentLink(models.Model):
         SURVEY = "element_survey", "Обследование"
         REPAIR = "element_repair", "Ремонт"
         PARTY = "party", "Контрагент"
+        LEASE = "lease", "Аренда"
 
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="links")
     entity_type = models.CharField(max_length=32, choices=EntityType.choices)

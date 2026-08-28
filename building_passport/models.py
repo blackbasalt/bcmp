@@ -12,6 +12,7 @@ from dictionary.models import *
 from parties.models import *
 
 from .floor_plan_svg import PlanUnreadable, read_plan
+from .period import refuse_a_period_that_ends_before_it_begins
 from .space_tree import spaces_under
 
 # Create your models here.
@@ -283,8 +284,7 @@ class FloorPlan(CommonModel):
         """
         if self.valid_from is None or self.floor_id is None:
             return
-        if self.valid_to is not None and self.valid_to < self.valid_from:
-            raise ValidationError({"valid_to": "Период заканчивается раньше, чем начинается."})
+        refuse_a_period_that_ends_before_it_begins(self.valid_from, self.valid_to)
         conflicting = self._conflicting_plans().first()
         if conflicting is not None:
             closes = f"{conflicting.valid_to:%d.%m.%Y}" if conflicting.valid_to else "по сей день"

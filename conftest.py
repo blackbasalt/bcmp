@@ -71,6 +71,18 @@ def administrator(django_user_model, downtown):
 
 
 @pytest.fixture
+def admin_client(client, django_user_model):
+    """A platform administrator, signed in to the Django admin.
+
+    It lives here for the same reason `administrator` does: what is entered in the admin
+    until a screen carries the form is entered on more than one model — плана, аренда —
+    and a second definition of the same superuser would drift from the first.
+    """
+    client.force_login(django_user_model.objects.create_superuser("developer"))
+    return client
+
+
+@pytest.fixture
 def make_building(db):
     """A BC of an organisation. The second client's buildings are made here too: isolation
     is checked with a building of theirs on more than one screen, and it is the same

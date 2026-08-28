@@ -577,12 +577,6 @@ def test_the_contours_of_a_plan_are_not_rebuilt_when_its_period_is_edited(plan):
 # Uploading through the Django admin
 
 
-@pytest.fixture
-def admin_client(client, django_user_model):
-    client.force_login(django_user_model.objects.create_superuser("developer"))
-    return client
-
-
 def admin_upload(client, floor, source, valid_from=date(2020, 1, 1), valid_to=None):
     return client.post(
         reverse("admin:building_passport_floorplan_add"),

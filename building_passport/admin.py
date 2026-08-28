@@ -14,6 +14,9 @@ class SpaceAdmin(LinkedDocumentsMixin, admin.ModelAdmin):
     document_entity_type = "space"          # or auto-detection from db_table
     list_display = ("code","name","floor_number","type","subtype","parent","building","area_m2","is_common","is_leasable","documents")
     list_filter = ("type","floor_number",  "subtype", "is_common", "is_leasable")
+    # Searched by код and by наименование — the two things the УК's own table names a
+    # помещение by. It is what the аренда's autocomplete picks one out of six hundred with.
+    search_fields = ("code", "name")
     inlines = [SpaceDocumentsInline]
 
 @admin.register(FloorPlan)
