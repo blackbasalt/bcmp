@@ -112,15 +112,15 @@
   {% endcomment %}
   <fieldset class="fieldset basis-52">
     <legend class="fieldset-legend">Не заведено</legend>
-    <label class="label cursor-pointer justify-start gap-2">
+    <label class="fieldset-label">
       <input type="checkbox" name="{{ search.no_area.html_name }}" value="1"
              class="checkbox checkbox-sm" {% if search.no_area.value %}checked{% endif %}>
-      <span class="label-text">{{ search.no_area.label }}</span>
+      {{ search.no_area.label }}
     </label>
-    <label class="label cursor-pointer justify-start gap-2">
+    <label class="fieldset-label">
       <input type="checkbox" name="{{ search.no_kind.html_name }}" value="1"
              class="checkbox checkbox-sm" {% if search.no_kind.value %}checked{% endif %}>
-      <span class="label-text">{{ search.no_kind.label }}</span>
+      {{ search.no_kind.label }}
     </label>
   </fieldset>
 
