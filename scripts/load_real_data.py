@@ -1,13 +1,107 @@
+"""Посев рабочей базы: настоящие Стороны, помещения и паспорта — и наполнение аренд.
+
+The first four blocks load what the УК actually handed over. The fifth is наполнение: a
+dozen fictional арендаторы sitting in Manhattan, without which «сдано X из Y», the находки
+and the отбор «свободно» have nothing to be looked at on before the УК enters anything.
+
+    uv run python manage.py runscript load_real_data
+"""
+
 import csv
+from datetime import timedelta
+from decimal import Decimal
+from pathlib import Path
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from dictionary.models import *
 from building_passport.models import *
+from leases.models import Lease
 from parties.models import *
 
+DATA = Path(__file__).parent / "populate_data"
+
+#: What marks a fictional Сторона. It stands in `external_id` — the field that already says
+#: where a row came from — rather than in a flag of its own: a second place saying «это
+#: наполнение» would one day disagree with the first. By the same mark the наполнение finds
+#: its own leavings when it clears them, so a repeat run replaces them instead of laying a
+#: second наполнение on top.
+FILLING_MARK = "наполнение:"
+
+
+def rows(name):
+    """Строки посевного файла. Читают их и посев, и тесты — одним чтением на всех."""
+    with (DATA / name).open(encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def term(row, day):
+    """Срок аренды на этот день: смещения из файла — датами.
+
+    The периоды are held as offsets rather than as dates because absolute ones would mean
+    that half a year after the file was written the наполнение stops showing what it exists
+    for: the прошлые аренды stop being прошлые, and «по сей день» stops being today's
+    answer. Offsets give the same shapes from whatever day the посев is run.
+
+    Пустой конец остаётся пустым — он и означает «по сей день».
+    """
+    return (
+        day + timedelta(days=int(row["from_days"])),
+        day + timedelta(days=int(row["to_days"])) if row["to_days"] else None,
+    )
+
+
+def fill_leases(day=None):
+    """Наполнение: вымышленные арендаторы и их аренды на Manhattan.
+
+    Настоящих Сторон это не касается. 699 Сторон из `party.csv` пришли из настоящего списка
+    контрагентов; сделать «Центр крепежных систем ТОО» арендатором значило бы положить в
+    данные ложь, которую кто-нибудь потом прочитает как правду. Поэтому вымышленные приходят
+    своим файлом рядом, помечены `FILLING_MARK`, и БИН у них невозможный, с месяцем 99: он
+    не помечает, он не даёт занять номер настоящей Стороны.
+
+    Арендодателем же названа настоящая Сторона — та, которой БЦ принадлежит на самом деле,
+    или та, которая ведёт его в своё имя: все пять БЦ принадлежат «Компании системных бизнес
+    технологий», а данные ведёт DownTown Management. У части аренд он пуст: таблица УК не
+    всегда говорит, в чьё имя помещение сдано.
+
+    Заводится всё обычным путём, `Lease.objects.create()`, то есть через ту же проверку
+    периода, что и админка с формой: скрипт, пишущий мимо правила, завёл бы данные, на
+    которых экран считает как попало.
+    """
+    day = day or timezone.localdate()
+
+    # Прежнее наполнение — и только оно: аренду, заведённую УК в админке, посев не трогает.
+    Lease.objects.filter(tenant__external_id__startswith=FILLING_MARK).delete()
+
+    tenants = {}
+    for row in rows("tenant.csv"):
+        tenants[row["slug"]], _ = Party.objects.update_or_create(
+            external_id=FILLING_MARK + row["slug"],
+            defaults={
+                "kind": row["kind"],
+                "name": row["name"],
+                "bin_iin": row["bin_iin"],
+            },
+        )
+
+    for row in rows("lease.csv"):
+        valid_from, valid_to = term(row, day)
+        Lease.objects.create(
+            space=Space.objects.get(code=row["space"]),
+            tenant=tenants[row["tenant"]],
+            landlord=Party.objects.get(bin_iin=row["landlord"]) if row["landlord"] else None,
+            area_m2=Decimal(row["area_m2"]) if row["area_m2"] else None,
+            rate=Decimal(row["rate"]) if row["rate"] else None,
+            contract_no=row["contract_no"] or None,
+            valid_from=valid_from,
+            valid_to=valid_to,
+        )
+
+
 def run():
-    with open("scripts/populate_data/party.csv") as file:
+    with (DATA / "party.csv").open() as file:
         reader = csv.reader(file)
         next(reader)
 
@@ -27,7 +121,7 @@ def run():
             party = dt,
                 )
 
-    with open('scripts/populate_data/user.csv') as file:
+    with (DATA / "user.csv").open() as file:
         reader = csv.reader(file)
         next(reader)
 
@@ -52,7 +146,7 @@ def run():
 
             user.save()
 
-    with open("scripts/populate_data/space.csv") as file:
+    with (DATA / "space.csv").open() as file:
         reader = csv.reader(file)
         next(reader)
 
@@ -103,7 +197,7 @@ def run():
                     floor_number=floor_number,
                     code=row[5],
                     )
-    with open("scripts/populate_data/building_passport.csv") as file:
+    with (DATA / "building_passport.csv").open() as file:
         reader = csv.reader(file)
         next(reader)
 
@@ -165,3 +259,5 @@ def run():
                     designer_party=designer,
                     builder_party=builder,
                     )
+
+    fill_leases()
