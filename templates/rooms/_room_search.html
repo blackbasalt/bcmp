@@ -1,7 +1,7 @@
 {% comment %}
   The question put to a полка of hundreds: a text to find, a БЦ, a вид, a назначение, an
-  этаж, a range of площадь, and two statements about the record — «площадь не заведена» and
-  «вид не заведён».
+  этаж, a range of площадь, two statements about the record — «площадь не заведена» and «вид
+  не заведён» — and one about today: «свободно».
 
   It travels by GET and stands at the section's own address, so a narrowed полка is a link:
   it reloads as it was, survives a tab left open overnight and can be sent to a colleague.
@@ -121,6 +121,25 @@
       <input type="checkbox" name="{{ search.no_kind.html_name }}" value="1"
              class="checkbox checkbox-sm" {% if search.no_kind.value %}checked{% endif %}>
       {{ search.no_kind.label }}
+    </label>
+  </fieldset>
+
+  {% comment %}
+    The one condition that speaks about today rather than about the building or about the
+    record: «что стоит пустым» is asked of 324 арендопригодных помещения, and answering it
+    one карточка at a time is 324 карточки. It stands apart from «Не заведено» — a помещение
+    standing empty is an answer, not a gap in the data.
+
+    The legend is «Занятость» and not «Аренда»: аренда is the record of who sits here on what
+    terms, and this control is about the помещение. There is deliberately no «Сдано» beside
+    the checkbox, and `rooms/shelf_search.py` says why.
+  {% endcomment %}
+  <fieldset class="fieldset basis-40">
+    <legend class="fieldset-legend">Занятость</legend>
+    <label class="fieldset-label">
+      <input type="checkbox" name="{{ search.free.html_name }}" value="1"
+             class="checkbox checkbox-sm" {% if search.free.value %}checked{% endif %}>
+      {{ search.free.label }}
     </label>
   </fieldset>
 

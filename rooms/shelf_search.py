@@ -1,10 +1,11 @@
 """Finding помещения among hundreds — what is asked of the полка, and how it narrows.
 
-Eight conditions of one отбор, asked together and at one address: a text to find, a БЦ, a
-вид, a назначение, an этаж, a range of площадь, and two statements about the record itself
-— «площадь не заведена» and «вид не заведён». They travel in the address rather than in a
-submission, so a narrowed полка can be reloaded, kept open in a tab and sent to a colleague
-— and so that clearing the отбор is the address without it, which is the полка itself.
+Nine conditions of one отбор, asked together and at one address: a text to find, a БЦ, a
+вид, a назначение, an этаж, a range of площадь, two statements about the record itself —
+«площадь не заведена» and «вид не заведён» — and one about today: «свободно». They travel
+in the address rather than in a submission, so a narrowed полка can be reloaded, kept open
+in a tab and sent to a colleague — and so that clearing the отбор is the address without
+it, which is the полка itself.
 
 The search reaches название and код and no further. A word typed to find «каб101» must not
 also answer with every помещение whose назначение happens to contain it; назначение has a
@@ -17,6 +18,12 @@ nothing leaks, but the screen would state an отбор it did not perform.
 
 There is deliberately no статус condition: `status` is filled on 0 of 583 помещения, and a
 control that can only ever answer «ничего не нашлось» teaches the reader that the bar lies.
+
+There is deliberately no «сдано» condition either, and that one is not a matter of the data:
+it would always mean only «не свободно», and «сдано целиком» would need a threshold the
+предметная область does not have — 299 из 300 м² is not «почти сдано», it is two numbers,
+and the карточка prints both. A bar offering two handles able to say one and the same thing
+is a bar the reader has to work out.
 """
 
 import re
@@ -28,6 +35,7 @@ from building_passport import space_kind
 from building_passport.models import Space
 from dictionary.models import DictSpaceSubtype, DictSpaceType
 from documents.building_choice import BuildingChoice
+from leases import occupancy
 
 from .room_display import KIND_CHOICES
 
@@ -50,9 +58,9 @@ def matching(text):
 class ShelfSearch(forms.Form):
     """The отбор as it was asked: what to find, where, of what вид and назначение, how big.
 
-    One form for all eight conditions rather than one each. They are a single question —
-    «санузлы Tokyo на третьем этаже» — and answered one at a time they would leave the
-    screen deciding for itself how the eight combine.
+    One form for all nine conditions rather than one each. They are a single question —
+    «свободные офисы Tokyo на третьем этаже» — and answered one at a time they would leave
+    the screen deciding for itself how the nine combine.
     """
 
     q = forms.CharField(
@@ -132,12 +140,23 @@ class ShelfSearch(forms.Form):
         # and this is a statement about the record rather than about the building. That is
         # why the план may go on refusing a fourth colour while the полка offers this.
     )
+    free = forms.BooleanField(
+        required=False,
+        label="Свободно",
+        # The one condition about today rather than about the building or about the record:
+        # «что стоит пустым» is asked of 324 арендопригодных помещения, and answering it
+        # карточка by карточка is 324 карточки. It carries no «сдано» opposite — see the
+        # module's own note about why the bar does not grow a second handle for it.
+    )
 
-    def __init__(self, data, *, user, **kwargs):
+    def __init__(self, data, *, user, day, **kwargs):
         # Always bound, even to an empty address: a полка nobody asked anything of is an
         # отбор with no conditions filled in, and a form left unbound there would need a
         # second way of saying "nothing was asked".
         super().__init__(data, **kwargs)
+        # The день the отбор speaks about, handed in and not taken from the clock here: the
+        # screen decides once what «сегодня» is, and says why (`RoomListView.today`).
+        self.day = day
         # The BCs on offer are the reader's own (ADR 0001). Naming another client's
         # building on this screen would say what buildings they have.
         self.fields["building"].offer(Space.objects.buildings_visible_to(user))
@@ -189,4 +208,10 @@ class ShelfSearch(forms.Form):
             rooms = rooms.filter(area_m2__isnull=True)
         if asked["no_kind"]:
             rooms = rooms.filter(space_kind.unrecorded())
+        if asked["free"]:
+            # Both what «арендопригодное» is and what «действующая» is are asked of
+            # `leases`: the карточка помещения and the «Арендатор» column answer the same
+            # question, and a condition working it out for itself would be a second answer
+            # to it.
+            rooms = rooms.filter(occupancy.free_on(self.day))
         return rooms

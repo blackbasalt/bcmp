@@ -120,6 +120,13 @@ def missing_area_link(page):
     return found["url"].replace("&amp;", "&")
 
 
+def free_link(page):
+    """The address behind the «свободно N» figure — the figure leads to the work rather than
+    reporting it, and where it leads is the assertion."""
+    found = re.search(r'свободно <a[^>]*href="(?P<url>[^"]+)"', page)
+    return found["url"].replace("&amp;", "&")
+
+
 def shelf(client):
     response = client.get(reverse("rooms:room_list"))
     return response, response.content.decode()
@@ -728,6 +735,63 @@ def test_a_shelf_with_no_gaps_says_nothing_about_them(client, member, first_floo
     _, page = shelf(client)
 
     assert "площадь не заведена" not in count_line(page)
+
+
+def test_the_count_says_how_many_rooms_stand_free(
+    client, member, first_floor, alpha, make_lease
+):
+    """«Что стоит пустым» is answered by the same line that says how much is on screen.
+
+    The figure counts помещения and not metres: a помещение is either free or not, and that
+    is a quantity the double counting of вложенные помещения cannot spoil (ADR 0019).
+    """
+    Space.objects.filter(code__in=("man-f1-a", "man-f1-b")).update(
+        is_leasable=True, is_common=False
+    )
+    make_lease(Space.objects.get(code="man-f1-a"), alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "свободно 1" in count_line(page)
+
+
+def test_the_free_figure_is_a_link_that_asks_for_exactly_those_rooms(
+    client, member, first_floor, alpha, make_lease
+):
+    """The figure leads to the work rather than reporting it: following it leaves exactly the
+    помещения it counted."""
+    Space.objects.filter(code__in=("man-f1-a", "man-f1-b")).update(
+        is_leasable=True, is_common=False
+    )
+    make_lease(Space.objects.get(code="man-f1-a"), alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    followed = client.get(free_link(page)).content.decode()
+    assert rooms_on(followed) == [str(Space.objects.get(code="man-f1-b").pk)]
+    assert "свободно 1" in count_line(followed)
+
+
+def test_a_shelf_with_nothing_free_says_nothing_about_it(shelf_page):
+    """«Свободно 0» is a line about nothing — the same rule the missing площадь figure
+    follows."""
+    assert "свободно" not in count_line(shelf_page)
+
+
+def test_the_free_figure_is_counted_in_rooms_and_not_in_metres(client, member, first_floor):
+    """Свободное считается в помещениях, and no итог in metres stands on the line: adding the
+    площади would count the вложенные помещения twice by an unknown amount (ADR 0019)."""
+    Space.objects.filter(code__in=("man-f1-a", "man-f1-b")).update(
+        is_leasable=True, is_common=False, area_m2=Decimal("120.00")
+    )
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "свободно 2" in count_line(page)
+    assert "м²" not in count_line(page)
 
 
 # Empty states

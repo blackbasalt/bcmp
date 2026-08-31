@@ -1,4 +1,4 @@
-"""Finding помещения among hundreds — the отбор and its eight conditions.
+"""Finding помещения among hundreds — the отбор and its nine conditions.
 
 The seam is the same as everywhere else in this section: the HTTP boundary of `/rooms/`.
 What is asked of the полка is asked in the address, and what is checked is which помещения
@@ -17,6 +17,7 @@ conditions themselves (ADR 0001, ADR 0006).
 """
 
 import re
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -27,6 +28,7 @@ from building_passport.models import Space
 from .test_shelf import (
     count_line,
     folded,
+    free_link,
     make_room,
     missing_area_link,
     rooms_on,
@@ -293,6 +295,75 @@ def test_the_missing_kind_condition_finds_what_nobody_classified(client, member,
     assert rooms_on(page) == [str(portfolio["unclassified"].pk)]
 
 
+def test_the_free_condition_answers_what_stands_empty(
+    client, member, first_floor, portfolio, alpha, make_lease
+):
+    """«Что стоит пустым» — one control rather than 324 карточки."""
+    let = make_room(
+        first_floor, "man-f1-c", "каб305",
+        is_leasable=True, is_common=False, area_m2=Decimal("300.00"),
+    )
+    make_lease(let, alpha)
+    client.force_login(member)
+
+    _, page = asked(client, free="1")
+
+    assert rooms_on(page) == [str(portfolio["office"].pk)]
+
+
+def test_a_room_with_a_lease_in_force_is_not_free(client, member, portfolio, alpha, make_lease):
+    """Свободно means not a single действующая аренда: one is enough to take a помещение off
+    the answer, whatever share of it that аренда covers."""
+    make_lease(portfolio["office"], alpha)
+    client.force_login(member)
+
+    _, page = asked(client, free="1")
+
+    assert rooms_on(page) == []
+
+
+def test_a_room_with_only_past_leases_is_free(
+    client, member, portfolio, alpha, make_lease, today
+):
+    """The арендатор who left is not standing in the помещение: the полка speaks about today,
+    and today the кабинет is empty."""
+    make_lease(
+        portfolio["office"], alpha,
+        valid_from=today - timedelta(days=60), valid_to=today - timedelta(days=30),
+    )
+    client.force_login(member)
+
+    _, page = asked(client, free="1")
+
+    assert rooms_on(page) == [str(portfolio["office"].pk)]
+
+
+def test_a_room_that_was_never_on_offer_is_not_free(client, member, portfolio):
+    """МОП свободным не бывает — иначе полка отчиталась бы венткамерой как возможностью
+    сдать. Both halves of «свободно» are asked, and the first is about the помещение."""
+    client.force_login(member)
+
+    _, page = asked(client, free="1")
+
+    shown = rooms_on(page)
+    for empty in ("cubicle", "heating", "tokyo_toilet", "unclassified"):
+        assert str(portfolio[empty].pk) not in shown
+
+
+def test_the_same_address_answers_the_same(client, member, portfolio):
+    """The condition travels in the address like the eight others, and the address is a link:
+    reloaded, left in a tab overnight or opened by the colleague it was sent to, it answers
+    with the помещения it answered with the first time."""
+    client.force_login(member)
+    address = f"{reverse('rooms:room_list')}?free=1"
+
+    first = client.get(address).content.decode()
+    again = client.get(address).content.decode()
+
+    assert rooms_on(again) == rooms_on(first) == [str(portfolio["office"].pk)]
+    assert count_line(again) == count_line(first)
+
+
 # The conditions together
 
 
@@ -342,6 +413,7 @@ def test_the_bar_holds_on_to_what_was_asked(client, member, portfolio):
         area_to="10",
         no_area="1",
         no_kind="1",
+        free="1",
     )
 
     assert 'value="Санузел"' in page
@@ -353,6 +425,7 @@ def test_the_bar_holds_on_to_what_was_asked(client, member, portfolio):
     assert 'name="area_to" value="10"' in folded(page)
     assert re.search(r'name="no_area"[^>]*checked', folded(page))
     assert re.search(r'name="no_kind"[^>]*checked', folded(page))
+    assert re.search(r'name="free"[^>]*checked', folded(page))
 
 
 # What the screen says about the answer
@@ -387,6 +460,47 @@ def test_the_missing_area_link_keeps_the_rest_of_the_otbor(client, member, portf
     followed = client.get(missing_area_link(page)).content.decode()
 
     assert rooms_on(followed) == [str(portfolio["unclassified"].pk)]
+
+
+def test_the_free_figure_counts_only_what_is_on_screen(client, member, portfolio):
+    """The line must not contradict the table above it: narrowed to МОПы there is nothing
+    свободное on screen, and the figure counts none of the помещения that are not."""
+    client.force_login(member)
+
+    _, page = asked(client, kind="common")
+
+    assert "свободно" not in count_line(page)
+
+
+def test_the_free_link_keeps_the_rest_of_the_otbor(client, member, portfolio, tokyo):
+    """Someone who narrowed the полка to Tokyo and then asks what stands empty means "in
+    Tokyo"."""
+    tokyo_office = make_room(
+        Space.objects.get(building=tokyo, type="floor"), "tok-f3-c", "каб301",
+        is_leasable=True, is_common=False, area_m2=Decimal("50.00"),
+    )
+    client.force_login(member)
+
+    _, page = asked(client, building=str(tokyo.pk))
+
+    followed = client.get(free_link(page)).content.decode()
+
+    assert rooms_on(followed) == [str(tokyo_office.pk)]
+
+
+def test_a_figure_that_is_already_the_question_links_to_the_same_address(
+    client, member, portfolio
+):
+    """Clicking «свободно N» on a полка already narrowed to свободные changes nothing.
+
+    The condition is set, not added to: an address carrying it twice would grow a copy on
+    every click and stop being the link the reader means to send.
+    """
+    client.force_login(member)
+
+    _, page = asked(client, free="1")
+
+    assert free_link(page).count("free=1") == 1
 
 
 def test_a_question_that_matched_nothing_says_so_rather_than_that_nothing_was_entered(
@@ -545,6 +659,18 @@ def test_there_is_no_status_condition(client, member, portfolio):
     _, page = asked(client)
 
     assert "Статус" not in page
+
+
+def test_there_is_no_let_condition(client, member, portfolio):
+    """«Сдано» would only ever mean «не свободно», and «сдано целиком» would need a threshold
+    the предметная область does not have — the bar must not offer a second handle able to say
+    one and the same thing."""
+    client.force_login(member)
+
+    _, page = asked(client)
+
+    assert "Сдано" not in page
+    assert "сдано" not in page
 
 
 def test_the_rows_of_a_narrowed_shelf_read_as_they_always_do(client, member, portfolio):

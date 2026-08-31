@@ -7,7 +7,7 @@ from django.views.generic import ListView
 
 from building_passport.models import Space
 from dictionary.models import DictSpaceType
-from leases.occupancy import tenants_of_each_room
+from leases.occupancy import free_of_each_room, tenants_of_each_room
 from parties.models import Org
 
 from .room_display import rooms_shown
@@ -71,7 +71,11 @@ class RoomListView(LoginRequiredMixin, ListView):
             # «действующая» means and what the column may say are asked of `leases`: the
             # карточка помещения answers the same question, and two places working out who
             # is in force today would one day disagree about it.
-            .annotate(**tenants_of_each_room(timezone.localdate()))
+            .annotate(**tenants_of_each_room(self.today))
+            # And whether each помещение stands free today, in that same query — the very
+            # condition the «свободно» отбор narrows by, hung on the row as a column so that
+            # the figure under the table and the отбор its link sets are one answer.
+            .annotate(**free_of_each_room(self.today))
             .order_by("building__name", "building__code", "floor_number", "code")
         )
 
@@ -107,6 +111,15 @@ class RoomListView(LoginRequiredMixin, ListView):
         # And it is a link: the gap in the data is found from the same полка as everything
         # else, one click away, with the rest of the отбор left standing.
         context["without_area_url"] = self.also_without_area
+        # «Свободно N»: the answer to «что стоит пустым», counted over exactly the rows that
+        # are printed — a figure about the whole полка under a narrowed table would
+        # contradict the table above it. Named in помещениях because that is what it counts:
+        # there is no итог in metres beside it, since 107 арендопригодных помещений stand
+        # inside another one and metres would count them twice (ADR 0019).
+        context["free_rooms"] = sum(1 for room in rooms if room.free_here)
+        # A link, like the figure beside it: the отбор it sets leads to the work rather than
+        # reporting it, and the rest of the question is kept.
+        context["free_rooms_url"] = self.also_free
         # The отбор, back on the screen it was typed into: it says both what was asked and
         # whether anything was, and the markup asks it for both. Handed over as one thing
         # rather than unpacked here, because the two answers must not drift — an empty
@@ -121,9 +134,19 @@ class RoomListView(LoginRequiredMixin, ListView):
         return context
 
     @cached_property
+    def today(self):
+        """The день the screen speaks about, taken once for the whole request.
+
+        The «Арендатор» column and the «свободно» condition are two readings of one
+        «сегодня», and two calls to the clock a moment apart could straddle midnight —
+        leaving a помещение counted as свободное in a row that names who sits in it.
+        """
+        return timezone.localdate()
+
+    @cached_property
     def search(self):
         """What was asked of the полка — read once and used by both the rows and the bar."""
-        return ShelfSearch(self.request.GET, user=self.request.user)
+        return ShelfSearch(self.request.GET, user=self.request.user, day=self.today)
 
     @cached_property
     def floor_of_the_row(self):
@@ -156,6 +179,27 @@ class RoomListView(LoginRequiredMixin, ListView):
         asks where the площадь is missing means "in Tokyo", and an address that dropped the
         БЦ would answer about the whole portfolio.
         """
+        return self.also("no_area")
+
+    @cached_property
+    def also_free(self):
+        """The same отбор with «свободно» ticked — the figure sets the condition and keeps
+        the rest of the question.
+
+        Someone who narrowed the полка to Tokyo and then asks what stands empty means "in
+        Tokyo", exactly as they do about the помещения with no площадь.
+        """
+        return self.also("free")
+
+    def also(self, condition):
+        """This screen's address with one more condition ticked on it.
+
+        The figures under the table are links, and each adds its own condition to the
+        question already being asked rather than replacing it. Assigned and not `update`d: a
+        `QueryDict` holds a list of values per name and its `update` extends that list, so
+        the link on a полка already narrowed by this very condition would carry it twice, and
+        every further click would add another copy.
+        """
         asked = self.request.GET.copy()
-        asked["no_area"] = "1"
+        asked[condition] = "1"
         return f"{reverse('rooms:room_list')}?{asked.urlencode()}"

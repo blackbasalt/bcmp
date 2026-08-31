@@ -123,16 +123,24 @@
 
         {% comment %}
           The count beneath the table. The first half is a phrase assembled in Python, where
-          the agreement with the numeral belongs; the second half has none to work out — «у
-          5» reads the same at any number — and it stands here because the number itself is
-          a link, and a link cannot be built inside a sentence handed over as a string.
+          the agreement with the numeral belongs; the figures after it have none to work out
+          — «свободно 12» and «у 5» read the same at any number — and they stand here
+          because each number is itself a link, and a link cannot be built inside a sentence
+          handed over as a string.
 
-          It is said only when there is something to say: «площадь не заведена у 0» is a
-          line about nothing, and a полка with no gaps should read as one.
+          «Свободно N» comes first of the figures: it answers «что стоит пустым», which is a
+          question about the building, while «площадь не заведена у M» is about a gap in the
+          record. It is counted in помещениях and carries no итог in metres beside it — 107
+          арендопригодных помещений stand inside another one and metres would count them
+          twice by an unknown amount (ADR 0019).
+
+          Each is said only when there is something to say: «свободно 0» and «площадь не
+          заведена у 0» are lines about nothing, and their links would lead to an empty
+          полка.
         {% endcomment %}
         {# `data-count` is the screen's contract: the line that says how much of the полка is on screen. #}
         <p class="text-sm opacity-70" data-count="rooms">
-          {{ shown }}{% if without_area %} · площадь не заведена у <a class="link" href="{{ without_area_url }}">{{ without_area }}</a>{% endif %}
+          {{ shown }}{% if free_rooms %} · свободно <a class="link" href="{{ free_rooms_url }}">{{ free_rooms }}</a>{% endif %}{% if without_area %} · площадь не заведена у <a class="link" href="{{ without_area_url }}">{{ without_area }}</a>{% endif %}
         </p>
       </div>
     </div>

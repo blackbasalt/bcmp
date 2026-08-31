@@ -35,7 +35,15 @@ second account of one rule, and the two would eventually disagree.
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import (
+    BooleanField,
+    Count,
+    Exists,
+    ExpressionWrapper,
+    OuterRef,
+    Q,
+    Subquery,
+)
 from django.db.models.expressions import BaseExpression
 from django.db.models.functions import Coalesce
 
@@ -135,6 +143,48 @@ def occupancy_of(space, day) -> Occupancy:
         past=tuple(leases.filter(ended_before(day))),
         future=tuple(leases.filter(begins_after(day))),
     )
+
+
+def free_on(day) -> Q:
+    """Свободные помещения on this day — «свободно», said to a queryset of помещения.
+
+    Both halves, as the словарь states them: the помещение is арендопригодное, and not one
+    аренда stands on it today. The first half is asked of `space_kind`, so that
+    «арендопригодное» means on this condition what it means in the column beside it and on
+    the план; the second is the same `in_force_on` the карточка and the «Арендатор» column
+    are read through.
+
+    A `NOT EXISTS` over the аренды of the row and not a join with a negation. Joined, a
+    помещение with two аренды — one running and one over — would still come back for the
+    row where the аренда is over, and «свободно» would answer with every помещение anybody
+    has ever left.
+
+    Nothing here reads the tree: a свободный кабинет inside a let входной тамбур is free,
+    and a кабина inside a let уборная is free too, because nothing in a row tells the two
+    kinds of nesting apart (ADR 0019).
+    """
+    return space_kind.being(space_kind.LEASABLE) & ~Exists(
+        Lease.objects.filter(space=OuterRef("pk")).filter(in_force_on(day))
+    )
+
+
+def free_of_each_room(day) -> dict[str, BaseExpression]:
+    """Свободно ли каждое помещение сегодня — `free_on`, hung on a полка as a column.
+
+    One annotation to hang on a queryset of помещения, by the name a row is read under:
+    `.annotate(**free_of_each_room(день))` and then `room.free_here`.
+
+    It is the very condition above wrapped as a value, and not a second reading that would
+    agree with it. The полка prints «свободно N» under a table and makes the figure a link
+    setting that condition: the two have to be one answer, and a count worked out from
+    anything else — the number of арендаторы in the row, say — would agree only for as long
+    as nothing about аренда changed.
+
+    Hung on the rows rather than counted by a second query, for the same reason the
+    «Арендатор» column is: the figure counts what is on the screen, and a second reading of
+    the database is a second chance to disagree with the table above it.
+    """
+    return {"free_here": ExpressionWrapper(free_on(day), output_field=BooleanField())}
 
 
 def tenants_of_each_room(day) -> dict[str, BaseExpression]:
