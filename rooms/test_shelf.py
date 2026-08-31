@@ -14,12 +14,16 @@ test suite.
 """
 
 import re
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from building_passport.models import Space
+from parties.models import Party
 
 pytestmark = pytest.mark.django_db
 
@@ -70,6 +74,27 @@ def headings_on(page):
     """The column headings, left to right — what the cells of a row are to be read against."""
     head = re.search(r"<thead>(.*?)</thead>", page, re.DOTALL)
     return [stated(cell["text"]) for cell in CELL.finditer(head.group(1))] if head else []
+
+
+def cell_under(page, room, heading, raw=False):
+    """What one column says about one помещение, found by the heading it stands under.
+
+    By the heading and not by a fixed position: a column inserted before another one must
+    not turn an assertion about «Арендатор» into a question about a назначение. `raw` keeps
+    the markup, for the questions a cell's text cannot answer — whether there is a link in
+    it, or a form.
+    """
+    return cells_on(page, raw=raw)[str(room.pk)][headings_on(page).index(heading)]
+
+
+def tenant_cell(page, room):
+    """What the «Арендатор» column says about one помещение."""
+    return cell_under(page, room, "Арендатор")
+
+
+def row_markup(page, room):
+    """One row as it stands, tags and all — for what a row must not carry."""
+    return next(row["cells"] for row in ROW.finditer(page) if row["key"] == str(room.pk))
 
 
 def rooms_on(page):
@@ -371,6 +396,270 @@ def test_a_room_let_and_common_at_once_reads_as_leasable(client, member, first_f
 
     assert "Арендопригодное" in row
     assert "МОП" not in row
+
+
+# The «Арендатор» column
+
+
+def test_the_shelf_has_a_tenant_column(shelf_page):
+    """«Кто сидит» is answered across the portfolio, not one карточка at a time."""
+    assert "Арендатор" in headings_on(shelf_page)
+
+
+def test_a_room_with_one_tenant_names_them(client, member, first_floor, alpha, make_lease):
+    """The common case reads without a click: one действующий арендатор, named in the row."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "ТОО «Альфа»"
+
+
+def test_a_room_with_several_tenants_says_how_many(
+    client, member, first_floor, alpha, petrov, make_lease
+):
+    """A shared помещение is visible as shared: an опенспейс with three арендаторы is not
+    one of them named and the rest left off the screen."""
+    room = Space.objects.get(code="man-f1-b")
+    # A third арендатор, staged here rather than in a fixture: two of them are the pair
+    # every screen of this stage is read through, and the third exists only to make «3
+    # арендатора» a phrase about three.
+    third = Party.objects.create(
+        kind=Party.Kind.COMPANY, name="ТОО «Гамма»", bin_iin="990140031473"
+    )
+    for tenant in (alpha, petrov, third):
+        make_lease(room, tenant)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "3 арендатора"
+
+
+def test_one_tenant_holding_two_leases_is_still_named(
+    client, member, first_floor, alpha, make_lease
+):
+    """The column counts арендаторы, not аренды.
+
+    Taking another 20 м² in the middle of a срок is a second аренда of the same арендатор
+    (ADR 0017), and «2 арендатора» would report a neighbour who does not exist.
+    """
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha, area_m2=Decimal("40.00"))
+    make_lease(room, alpha, area_m2=Decimal("20.00"))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "ТОО «Альфа»"
+
+
+def test_a_tenant_who_has_left_does_not_make_a_room_look_shared(
+    client, member, first_floor, alpha, petrov, make_lease, today
+):
+    """The column counts the арендаторы standing here today and nobody else.
+
+    The predecessor of the арендатор who sits here is the ordinary state of a помещение that
+    has been let before, and «2 арендатора» would put them back in the room.
+    """
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha)
+    make_lease(
+        room, petrov, valid_from=today - timedelta(days=60), valid_to=today - timedelta(days=30)
+    )
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "ТОО «Альфа»"
+
+
+def test_each_row_counts_the_leases_of_its_own_room(
+    client, member, first_floor, alpha, petrov, make_lease
+):
+    """Every помещение counts its own аренды and only its own: one column asked of the whole
+    полка must not spread one row's арендатор over the rows beside it."""
+    entrance = Space.objects.get(code="man-f1-a")
+    itp = Space.objects.get(code="man-f1-b")
+    make_lease(entrance, alpha)
+    make_lease(itp, petrov)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, entrance) == "ТОО «Альфа»"
+    assert tenant_cell(page, itp) == "ИП Петров"
+
+
+def test_eleven_tenants_are_counted_in_the_word_eleven_takes(
+    client, member, first_floor, make_lease
+):
+    """«11 арендаторов» and not «11 арендатор»: the second digit of a numeral cancels the
+    first, and an опенспейс is exactly where a teens numeral turns up."""
+    room = Space.objects.get(code="man-f1-b")
+    for number in range(11):
+        make_lease(room, Party.objects.create(
+            kind=Party.Kind.COMPANY, name=f"ТОО «Соседи-{number}»", bin_iin=f"9901400{number:05d}"
+        ))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "11 арендаторов"
+
+
+def test_a_room_with_nobody_in_it_shows_a_bare_dash(shelf_page, first_floor):
+    """The dash reads «свободно», not «данных нет»: nobody sitting there is an answer, and
+    «— нет данных» would report the портфель as unknown rather than as empty."""
+    room = Space.objects.get(code="man-f1-b")
+
+    assert tenant_cell(shelf_page, room) == "—"
+
+
+def test_a_lease_that_is_over_leaves_the_column_empty(
+    client, member, first_floor, alpha, make_lease, today
+):
+    """The полка speaks about today the way every other screen does."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(
+        room, alpha, valid_from=today - timedelta(days=30), valid_to=today - timedelta(days=1)
+    )
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "—"
+
+
+def test_a_lease_that_has_not_begun_leaves_the_column_empty(
+    client, member, first_floor, alpha, make_lease, today
+):
+    """A продление entered while the current срок runs is not somebody sitting there today."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha, valid_from=today + timedelta(days=1))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "—"
+
+
+def test_a_lease_with_no_end_is_in_force(client, member, first_floor, alpha, make_lease, today):
+    """An empty «по» reads «по сей день» — the ordinary бессрочная аренда, and the reading
+    the действующий план already gives (ADR 0004)."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha, valid_from=today, valid_to=None)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "ТОО «Альфа»"
+
+
+def test_a_lease_ending_today_is_still_in_force(
+    client, member, first_floor, alpha, make_lease, today
+):
+    """Both ends are included: an аренда «с 1 по 31 марта» is in force on the 31st."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha, valid_from=today - timedelta(days=1), valid_to=today)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, room) == "ТОО «Альфа»"
+
+
+def test_a_nested_room_does_not_inherit_the_tenant_of_the_room_it_sits_in(
+    client, member, first_floor, alpha, make_lease
+):
+    """Занятость is not read from the tree (ADR 0019): сдача входного тамбура кабинеты за
+    ним не сдаёт, and nothing in a row tells that link from the other one."""
+    entrance = Space.objects.get(code="man-f1-a")
+    nested = Space.objects.get(code="man-f1-a1")
+    make_lease(entrance, alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, entrance) == "ТОО «Альфа»"
+    assert tenant_cell(page, nested) == "—"
+
+
+def test_a_lease_of_another_organisations_room_reaches_no_row(
+    client, member, central, first_floor, alpha, petrov, make_lease, make_building, make_floor
+):
+    """Every помещение counts its own аренды, and its own are the only ones it may show:
+    who sees the помещение sees its аренды and nobody else's (ADR 0018)."""
+    theirs = make_room(make_floor(make_building(central, "ctr", "Central City"), 1),
+                       "ctr-f1-a", "Чужая серверная")
+    make_lease(theirs, petrov)
+    ours = Space.objects.get(code="man-f1-b")
+    make_lease(ours, alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert tenant_cell(page, ours) == "ТОО «Альфа»"
+    assert "ИП Петров" not in page
+
+
+def test_the_tenant_column_costs_no_query_per_row(
+    client, member, first_floor, alpha, petrov, make_lease, django_assert_num_queries
+):
+    """One query for the whole column, as `has_plan` on the floor switcher and `has_twin` on
+    the полка документов already are: the полка carries hundreds of rows, and a question
+    asked per row is a question asked hundreds of times."""
+    client.force_login(member)
+    # Read once before counting: the first request of a session pays for what the column is
+    # not about — the session row, the dictionaries a screen warms — and what is asked here
+    # is what a row costs, not what a first request does.
+    shelf(client)
+    with CaptureQueriesContext(connection) as few_rows:
+        shelf(client)
+
+    for number in range(20):
+        room = make_room(first_floor, f"man-f1-x{number}", f"каб1{number:02d}")
+        make_lease(room, alpha)
+        make_lease(room, petrov)
+
+    with django_assert_num_queries(len(few_rows)):
+        _, page = shelf(client)
+
+    assert len(rooms_on(page)) == 23
+
+
+def test_the_tenant_column_is_not_totalled(client, member, first_floor, alpha, make_lease):
+    """No итог under the column: 107 арендопригодных помещения stand inside another one, and
+    a total would count them twice by an unknown amount (ADR 0015, ADR 0019)."""
+    for code in ("man-f1-a", "man-f1-a1", "man-f1-b"):
+        make_lease(Space.objects.get(code=code), alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "<tfoot" not in page
+    assert "Итого" not in page
+
+
+def test_the_tenant_column_offers_no_way_to_enter_a_lease(
+    client, member, first_floor, alpha, make_lease
+):
+    """The one place an аренда is entered stays the карточка помещения: the полка is a
+    finder, and a second бланк would be a second place to keep in step."""
+    room = Space.objects.get(code="man-f1-b")
+    make_lease(room, alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+    row = row_markup(page, room)
+
+    assert "<form" not in row
+    assert "<button" not in row
+    # The row keeps the one link it had — the название leading to the экран этажа — and the
+    # «Арендатор» cell adds none: the арендатор is named, not offered as a way in.
+    assert "href" not in cell_under(page, room, "Арендатор", raw=True)
 
 
 # The organisation column

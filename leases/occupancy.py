@@ -2,8 +2,9 @@
 
 Two screens ask about occupancy and must not each carry their own copy of it. The карточка
 помещения holds one `Space` and wants the аренды standing on it today together with the two
-numbers; the полка помещений holds a queryset and wants a condition to narrow it by. So the
-rule is given out in both shapes here — the pattern `space_kind` established for вид and
+numbers; the полка помещений holds a queryset and wants the same rule as a condition to
+narrow it by and as columns to print beside hundreds of rows. So the rule is given out in
+every shape it is asked for here — the pattern `space_kind` established for вид and
 `plan_completeness` for полнота плана. Two copies would be two answers to one question, and
 the day they disagreed nobody would know which screen was lying.
 
@@ -33,14 +34,14 @@ second account of one rule, and the two would eventually disagree.
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models.expressions import BaseExpression
+from django.db.models.functions import Coalesce
 
 from building_passport import space_kind
 
-if TYPE_CHECKING:
-    from .models import Lease
+from .models import Lease
 
 
 def in_force_on(day) -> Q:
@@ -78,9 +79,9 @@ class Occupancy:
     #: помещение rather than about its аренды. Read by the same rule the план colours
     #: contours by, so that «арендопригодное» means one thing on both screens.
     is_leasable: bool
-    in_force: tuple["Lease", ...]
-    past: tuple["Lease", ...]
-    future: tuple["Lease", ...]
+    in_force: tuple[Lease, ...]
+    past: tuple[Lease, ...]
+    future: tuple[Lease, ...]
 
     @property
     def let_m2(self) -> Decimal:
@@ -103,7 +104,7 @@ class Occupancy:
         return self.is_leasable and not self.in_force
 
     @property
-    def behind(self) -> tuple["Lease", ...]:
+    def behind(self) -> tuple[Lease, ...]:
         """Аренды за складкой: those that are over and those that have not begun yet.
 
         One group and not two on screen: what a reader looks for behind a складка is an
@@ -134,3 +135,53 @@ def occupancy_of(space, day) -> Occupancy:
         past=tuple(leases.filter(ended_before(day))),
         future=tuple(leases.filter(begins_after(day))),
     )
+
+
+def tenants_of_each_room(day) -> dict[str, BaseExpression]:
+    """Кто сидит в каждом помещении сегодня — the same rule, said to a whole полка at once.
+
+    Two annotations to hang on a queryset of помещения, by the names the column reads them
+    under: `.annotate(**tenants_of_each_room(день))`.
+
+    Two annotations and not an `Occupancy` per row. The карточка holds one помещение and can
+    afford to read its аренды; the полка holds hundreds of rows, and what is asked of a row
+    is asked hundreds of times — so who sits where travels in the same query as the rows, the
+    device `has_plan` on the floor switcher and `has_twin` on the полка документов already
+    are.
+
+    - **`tenants_here`** — how many арендаторы stand here today. Counted in арендаторах and
+      not in арендах: one арендатор taking another 20 м² in the middle of a срок holds two
+      аренды of one помещение (ADR 0017), and «2 арендатора» would report a neighbour who is
+      not there. Zero rather than NULL where nobody sits, so the screen reads a number.
+    - **`tenant_here`** — the name of one of them, which is the name of the only one wherever
+      the count is 1. That is the only case the screen prints it in: naming one of three
+      would leave the other two off the row.
+
+    The аренды are narrowed by `in_force_on` and by nothing else, so the полка and the
+    карточка say «действующая» about the same аренды. Neither annotation goes through a
+    checkpoint of its own: the аренды of a помещение are visible exactly when it is
+    (ADR 0018), and the rows have already been through the spaces chokepoint. Nor does
+    either read the tree — сдача входного тамбура кабинеты за ним не сдаёт, and each
+    помещение is asked about its own аренды only (ADR 0019).
+    """
+    here = Lease.objects.filter(space=OuterRef("pk")).filter(in_force_on(day))
+    return {
+        # `values("space").annotate(...)` is a GROUP BY on the помещение, so the subquery
+        # gives one row — the count — rather than one row per аренда. The model's own
+        # ordering is dropped: an ORDER BY inside a grouped subquery orders nothing and some
+        # backends refuse it outright.
+        "tenants_here": Coalesce(
+            Subquery(
+                here.order_by()
+                .values("space")
+                .annotate(tenants=Count("tenant", distinct=True))
+                .values("tenants")
+            ),
+            0,
+        ),
+        # Ordered by name so that a помещение with several арендаторы hands back the same
+        # one from request to request. The screen prints this name only where there is a
+        # single арендатор — and then the order decides nothing — but a value left to the
+        # table is a value that changes under a reader for no reason.
+        "tenant_here": Subquery(here.order_by("tenant__name").values("tenant__name")[:1]),
+    }

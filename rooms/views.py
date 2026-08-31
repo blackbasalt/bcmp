@@ -1,11 +1,13 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import OuterRef, Subquery
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import ListView
 
 from building_passport.models import Space
 from dictionary.models import DictSpaceType
+from leases.occupancy import tenants_of_each_room
 from parties.models import Org
 
 from .room_display import rooms_shown
@@ -65,6 +67,11 @@ class RoomListView(LoginRequiredMixin, ListView):
             # as `has_plan` on the floor switcher and `has_twin` on the полка документов.
             # Asked row by row this would be a query per помещение over hundreds of them.
             .annotate(leads_to_floor=Subquery(self.floor_of_the_row.values("pk")[:1]))
+            # Кто сидит в каждом помещении сегодня, in the same query again. Both what
+            # «действующая» means and what the column may say are asked of `leases`: the
+            # карточка помещения answers the same question, and two places working out who
+            # is in force today would one day disagree about it.
+            .annotate(**tenants_of_each_room(timezone.localdate()))
             .order_by("building__name", "building__code", "floor_number", "code")
         )
 

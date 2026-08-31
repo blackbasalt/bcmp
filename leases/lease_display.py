@@ -14,9 +14,22 @@ its tail cut off reads as a rounded figure rather than as a condition of an agre
 
 from building_passport.passport_display import NBSP, is_missing, measure, quantity
 
+#: Ни одного действующего арендатора, in the «Арендатор» column of the полка: a bare dash,
+#: and deliberately not `or_missing`'s «— нет данных». Nobody sitting in a помещение is an
+#: answer and not a gap — that the помещение stands empty is exactly what the reader came to
+#: the полка for — and «нет данных» would report what BCMP knows as what it does not.
+NOBODY = "—"
+
 #: Свободно: an арендопригодное помещение with nobody sitting in it today. The словарь's own
-#: word for that state, and the one the полка помещений is to say when it comes to ask the
-#: same question — «вакансия» is not this project's word for it.
+#: word for that state — «вакансия» is not this project's word for it — and the word every
+#: screen names the state by.
+#:
+#: A row of the полка does not name it: the column is «Арендатор», it holds names, and
+#: «Свободно» is a statement about the помещение rather than a Сторона sitting in it. It
+#: would also be false in that cell as often as it was true — a МОП with nobody in it is a
+#: лобби and not a leasing opportunity, and the cell cannot tell the two apart while the
+#: «Вид» column beside it already does. So a row says `NOBODY` and the word is kept for
+#: where the state itself is named rather than a tenant asked for.
 FREE = "Свободно"
 
 
@@ -92,6 +105,27 @@ def occupancy_line(occupancy) -> str | None:
     return line
 
 
+def tenants_named(room) -> str:
+    """The «Арендатор» cell of one row of the полка: a name, «3 арендатора» or a dash.
+
+    Read off the two annotations `occupancy.tenants_of_each_room` hangs on the row, so the cell
+    costs nothing per row and says exactly what the query counted.
+
+    One арендатор is named because that is the ordinary case and it must read without a
+    click; several are counted because naming one of three would leave the other two off the
+    screen, and the row has no width for a list. The вид of the помещение is not consulted:
+    a банкомат in a лобби is an аренда, and the column shows who stands where rather than
+    who ought to. Which of the dashes means «свободно» in the sense the словарь gives the
+    word is told by the «Вид» column beside it.
+    """
+    tenants = room.tenants_here
+    if not tenants:
+        return NOBODY
+    if tenants == 1:
+        return room.tenant_here
+    return f"{tenants}{NBSP}{_tenants_in(tenants)}"
+
+
 def fold_title(occupancy) -> str:
     """What the складка promises: «Прошлые аренды (2)» — so opening it is a choice.
 
@@ -102,6 +136,29 @@ def fold_title(occupancy) -> str:
     behind = len(occupancy.past) + len(occupancy.future)
     named = "Прошлые и будущие аренды" if occupancy.future else "Прошлые аренды"
     return f"{named} ({behind})"
+
+
+def _tenants_in(count: int) -> str:
+    """«2 арендатора», «5 арендаторов», «21 арендатор» — the word after a numeral.
+
+    Three forms and not two, because this numeral governs a nominative: it is the rule
+    `document_display.agreeing_with` states, and not `_leases_in`'s above, where «у» takes
+    the genitive and the forms collapse to two. It is spelled out here rather than imported
+    from документы: аренда and документ share a grammar and nothing else, and an import
+    between the two subject areas for the sake of four lines would be the first thing to
+    look wrong when either of them moves.
+
+    The form for one is written down although the column never prints it — an арендатор is
+    named where there is one — because 21 арендатор takes it and 21 is not one.
+    """
+    if 11 <= count % 100 <= 14:
+        return "арендаторов"
+    ones = count % 10
+    if ones == 1:
+        return "арендатор"
+    if 2 <= ones <= 4:
+        return "арендатора"
+    return "арендаторов"
 
 
 def _leases_in(count: int) -> str:

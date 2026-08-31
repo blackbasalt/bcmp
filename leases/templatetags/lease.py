@@ -1,8 +1,9 @@
 """Template filters over the аренда display rules.
 
 Only the registration lives here: the rules are in `lease_display`, because the карточка is
-not the only reader of them — the полка помещений names the same things in its own column —
-and the one about the складка is in `lease_edit`, where правка and удаление live.
+not the only reader of them — the полка помещений names the same things in its own column,
+and reads `tenants_named` from this same library — and the one about the складка is in
+`lease_edit`, where правка and удаление live.
 """
 
 from django import template
@@ -13,6 +14,7 @@ from ..lease_display import (
     lease_rate,
     lease_term,
     occupancy_line,
+    tenants_named,
 )
 from ..lease_edit import fold_stands_open
 
@@ -22,5 +24,6 @@ register.filter(lease_area)
 register.filter(lease_rate)
 register.filter(lease_term)
 register.filter(occupancy_line)
+register.filter(tenants_named)
 register.filter(fold_title)
 register.filter(fold_stands_open)

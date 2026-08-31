@@ -1,5 +1,5 @@
 {% extends "shell.html" %}
-{% load rooms passport %}
+{% load rooms passport lease %}
 
 {% block title %}Помещения — BCMP{% endblock %}
 {% block page_title %}Помещения{% endblock %}
@@ -52,6 +52,13 @@
                 <th>Вид</th>
                 <th>Назначение</th>
                 <th>Площадь</th>
+                {% comment %}
+                  «Арендатор» stands last, after everything a помещение is: the columns
+                  before it say what was built, and this one says who is in it today. It is
+                  a column and not a screen of its own — «кто сидит» is asked of the whole
+                  портфель, and answering it one карточка at a time is 324 карточки.
+                {% endcomment %}
+                <th>Арендатор</th>
               </tr>
             </thead>
             <tbody>
@@ -97,6 +104,17 @@
                     (ADR 0015). What stands instead is the second figure in the count line.
                   {% endcomment %}
                   <td class="whitespace-nowrap">{{ room.area_m2|area|or_missing }}</td>
+                  {% comment %}
+                    Named when there is one арендатор, counted when there are several, a bare
+                    dash when there is none — the dash reading «свободно» rather than «нет
+                    данных». Read from `leases`, which decides both who is in force today and
+                    what the cell may say, and printed here without a link: аренды are entered
+                    and corrected on the карточка помещения, and a second place to do it is a
+                    second place to keep in step. There is no итог under this column either —
+                    107 арендопригодных помещений stand inside another one and would be
+                    counted twice (ADR 0015, ADR 0019).
+                  {% endcomment %}
+                  <td>{{ room|tenants_named }}</td>
                 </tr>
               {% endfor %}
             </tbody>

@@ -1,14 +1,23 @@
-"""The organisations and the building the tests are staged on.
+"""The organisations, the building and the аренды the tests are staged on.
 
 There is one building for the whole suite: the floor and its spaces are needed both by the
 floor screen and by the plan, and there must not be two definitions of one and the same
 Manhattan. Where a test needs several of something — floors, spaces — the fixture hands
 out a factory rather than a ready-made object.
+
+The Стороны that sit in помещения and the factory for an аренда stand here for the same
+reason `both_clients` does: the карточка помещения and the полка помещений both ask who
+sits where, and two definitions of ТОО «Альфа» would let the two screens be checked against
+different арендаторы.
 """
 
+from datetime import date
+
 import pytest
+from django.utils import timezone
 
 from building_passport.models import Space
+from leases.models import Lease
 from parties.models import Org, OrgMembership, Party
 
 
@@ -158,3 +167,43 @@ def first_floor(manhattan, make_floor, make_space):
     make_space(entrance, "man-f1-a1", "каб101")
     make_space(floor, "man-f1-b", "ИТП")
     return floor
+
+
+@pytest.fixture
+def today():
+    """The day the screens speak about — taken once, so a test does not straddle midnight."""
+    return timezone.localdate()
+
+
+@pytest.fixture
+def alpha(db):
+    """A юрлицо sitting in a помещение — the арендатор of the УК's own table."""
+    return Party.objects.create(
+        kind=Party.Kind.COMPANY, name="ТОО «Альфа»", bin_iin="050340008889"
+    )
+
+
+@pytest.fixture
+def petrov(db):
+    """A физлицо: an ИП in the стрит-ритейл is not made to register a fictitious ТОО."""
+    return Party.objects.create(kind=Party.Kind.PERSON, name="ИП Петров", bin_iin="770101300123")
+
+
+@pytest.fixture
+def make_lease(db):
+    """An аренда on a помещение, with a период that has begun and has not ended.
+
+    Almost every rule read through this factory is about something other than the срок, and
+    a test that had to name two dates before it could say «two аренды on one помещение
+    overlap» would bury the thing it is about.
+    """
+
+    def _make_lease(space, tenant, valid_from=None, **fields):
+        return Lease.objects.create(
+            space=space,
+            tenant=tenant,
+            valid_from=date(2026, 1, 1) if valid_from is None else valid_from,
+            **fields,
+        )
+
+    return _make_lease

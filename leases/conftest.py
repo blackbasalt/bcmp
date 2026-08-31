@@ -1,34 +1,19 @@
 """What the аренда tests are staged on.
 
 The организации, the employees, Manhattan and its first floor come from the root
-`conftest` — there must not be a second definition of one Manhattan. What stands here is
-only what аренда needs: the помещения an аренда is staged on, the Стороны that sit in them,
-and a factory for an аренда.
+`conftest`, and so do the Стороны and the factory for an аренда — the полка помещений asks
+who sits where as well, and there must not be a second ТОО «Альфа» for it to ask about.
+What stands here is only what the карточка needs: the помещения an аренда is staged on and
+the two signed-in clients.
 
 The помещения stand here rather than in one of the test modules because three of them ask
 about the same two — the model, the block on the карточка and the form on it — and a
 кабинет of 300 м² defined three times would drift into three different кабинеты. The two
 signed-in clients stand here for the same reason: «сотрудник без права» and «администратор
 организации» are the pair every screen of this stage is read through.
-
-The factory fills in a период that has begun and has not ended: almost every rule here is
-about something other than the срок, and a test that had to name two dates before it could
-say «two аренды on one помещение overlap» would bury the thing it is about.
 """
 
-from datetime import date
-
 import pytest
-from django.utils import timezone
-
-from leases.models import Lease
-from parties.models import Party
-
-
-@pytest.fixture
-def today():
-    """The day the screens speak about — taken once, so a test does not straddle midnight."""
-    return timezone.localdate()
 
 
 @pytest.fixture
@@ -43,33 +28,6 @@ def entering(client, administrator):
     """The администратор организации — the one every write is offered to (ADR 0005)."""
     client.force_login(administrator)
     return client
-
-
-@pytest.fixture
-def alpha(db):
-    """A юрлицо sitting in a помещение — the arendator of the УК's own table."""
-    return Party.objects.create(
-        kind=Party.Kind.COMPANY, name="ТОО «Альфа»", bin_iin="050340008889"
-    )
-
-
-@pytest.fixture
-def petrov(db):
-    """A физлицо: an ИП in the стрит-ритейл is not made to register a fictitious ТОО."""
-    return Party.objects.create(kind=Party.Kind.PERSON, name="ИП Петров", bin_iin="770101300123")
-
-
-@pytest.fixture
-def make_lease(db):
-    def _make_lease(space, tenant, valid_from=None, **fields):
-        return Lease.objects.create(
-            space=space,
-            tenant=tenant,
-            valid_from=date(2026, 1, 1) if valid_from is None else valid_from,
-            **fields,
-        )
-
-    return _make_lease
 
 
 @pytest.fixture
