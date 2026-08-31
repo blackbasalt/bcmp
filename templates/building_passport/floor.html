@@ -240,8 +240,13 @@
     {% endcomment %}
     <section x-show="selected" x-cloak class="card bg-base-100 shadow-sm"
              aria-label="Карточка помещения">
-      <div class="card-body gap-3">
-        <div class="flex items-center justify-between gap-2">
+      {% comment %}
+        The body has no padding of its own and the blocks of the card pay for their own:
+        the hairlines between them then run from edge to edge, and the card reads as a stack
+        of leaves rather than as boxes inside a box (`_space_card.html`).
+      {% endcomment %}
+      <div class="card-body gap-0 p-0">
+        <div class="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
           {% comment %}
             The rail names itself in small capitals rather than in a heading the size of the ones
             over the tree and the plan: those two head columns of equal standing, whereas this one
@@ -263,7 +268,7 @@
           they always do. An address naming a помещение that is not visible, does not exist
           or lies on another этаж carries no `opened`, and the rail stays empty.
         {% endcomment %}
-        <div id="space-card" class="flex flex-col gap-3"
+        <div id="space-card"
              {% if opened %}hx-get="{% url 'building_passport:space_card' opened.pk %}" hx-trigger="load"{% endif %}></div>
       </div>
     </section>

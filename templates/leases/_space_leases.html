@@ -4,6 +4,13 @@
 
   Whether it stands here at all is `lease_display.shows_leases`, which states why.
 
+  It is one of the card's blocks and is built like the others: a hairline от края до края,
+  a caption in small capitals, and its own side padding (`_space_card.html` says why the
+  padding is spent per block). What stood here before was a block of the card holding boxes
+  of its own — a bordered fold under every аренда and another under the list — and on a rail
+  20rem wide those frames read as the loudest thing on the карточка, louder than the
+  арендаторы they were about.
+
   `data-leases` on the block and `data-past-leases` on the складка are the screen's
   contract, mirroring `data-upload` on the two upload forms: they say whether the block is
   offered at all and whether there is anything behind the складка, so a test asks about the
@@ -13,7 +20,7 @@
   inside another арендопригодное, and a sum over an этаж or a здание would count them twice
   (ADR 0019). What is said here is said about this one помещение.
 {% endcomment %}
-<div class="border-t border-base-300 pt-3 text-sm" data-leases>
+<div class="border-t border-base-300 px-4 py-3 text-sm" data-leases>
   <h4 class="mb-2 text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Аренда</h4>
 
   {% comment %}
@@ -21,17 +28,25 @@
     with no boundary, so «сдано ли помещение» is not a question with a yes or a no
     (ADR 0017). A помещение whose own площадь is not recorded gets no line at all, and the
     аренды under it still name themselves.
+
+    The line is the block's answer and is set as one: dark, like the values in the rows
+    above it, while everything the аренды say about themselves below is quieter. A reader
+    who came to ask how much of the помещение is let stops here.
   {% endcomment %}
   {% with line=occupancy|occupancy_line %}
-    {% if line %}<p class="mb-2 font-medium">{{ line }}</p>{% endif %}
+    {% if line %}<p class="mb-2 font-medium text-neutral">{{ line }}</p>{% endif %}
   {% endwith %}
 
   {% comment %}
+    Аренды идут списком, разделённым волосяными линиями, а не карточками в карточке: строк
+    здесь редко больше трёх, и линия между ними отделяет одного арендатора от другого не хуже
+    рамки, ничего при этом не обводя.
+
     The rows carry what may be done with each аренда besides what it says — `lease_edit.rows`
     is what put it there, and a row shown to a reader carries nothing at all.
   {% endcomment %}
   {% if rows_in_force %}
-    <ul class="flex flex-col gap-1">
+    <ul class="divide-y divide-base-300">
       {% for row in rows_in_force %}
         {% include "leases/_lease_row.html" %}
       {% endfor %}
@@ -62,9 +77,9 @@
       Складка открыта, когда за ней стоит вопрос об удалении или отказ на правке: ответ,
       попавший в закрытую складку, — это карточка, вернувшаяся такой же, какой ушла.
     {% endcomment %}
-    <details class="mt-2" data-past-leases {% if rows_behind|fold_stands_open %}open{% endif %}>
-      <summary class="cursor-pointer opacity-60">{{ occupancy|fold_title }}</summary>
-      <ul class="mt-1 flex flex-col gap-1 opacity-60">
+    <details class="mt-3" data-past-leases {% if rows_behind|fold_stands_open %}open{% endif %}>
+      <summary class="cursor-pointer text-xs opacity-60 hover:opacity-100">{{ occupancy|fold_title }}</summary>
+      <ul class="mt-1 divide-y divide-base-300 opacity-60">
         {% for row in rows_behind %}
           {% include "leases/_lease_row.html" %}
         {% endfor %}

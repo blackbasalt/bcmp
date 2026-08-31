@@ -10,6 +10,13 @@
   above it and a caption set in small capitals: the rail is narrow, and a reader who has
   come for one of the three must find it without reading the other two.
 
+  The hairlines run from edge to edge of the card and each block carries its own side
+  padding: the card is then a stack of leaves and not a column of boxes floating inside a
+  box. A rule that stops short of the card's edge draws a second frame within the frame the
+  card already has, and with four blocks on a rail 20rem wide those frames were the loudest
+  thing on it. This is why the card body itself has no padding (`floor.html`) — the padding
+  is spent here, once per block.
+
   The "Документы" and "Системы" sections are deliberately absent here: the tables behind
   them are empty, and a section promising data that does not exist is worse than its own
   absence.
@@ -25,7 +32,7 @@
   row with «нет» in it takes as much of a narrow rail as one with «да» and says nothing.
   The mark of the absent property is its absence.
 {% endcomment %}
-<div class="flex flex-col gap-2">
+<div class="flex flex-col gap-2 px-4 pb-3">
   <h3 class="text-xl leading-tight font-semibold text-neutral">{{ space|space_label }}</h3>
   <div class="flex flex-wrap items-center gap-1.5">
     <span class="badge badge-sm badge-ghost font-mono">{{ space.code|or_missing }}</span>
@@ -41,14 +48,17 @@
   read slowly. The two stand side by side because they answer «сколько» and «чего» about the
   same помещение.
 
+  The plate is a band across the card and not a tile with rounded corners: it is one of the
+  four blocks and is told from its neighbours by its tint alone.
+
   An empty field is shown as a dash — the same «— нет данных» as in the passport (#5): blank
   space can be read as a zero, a dash cannot. The dash stands here too, only set small and
   quiet: a площадь that has not been recorded is not a large figure, and in the face this
   plate gives to numbers it would shout across the card louder than any of them. Nought is
   a value and is printed large like any other — hence `is None` and not a plain truth test.
 {% endcomment %}
-<dl class="grid grid-cols-2 divide-x divide-base-300 rounded border border-base-300 bg-base-200/60">
-  <div class="px-3 py-2">
+<dl class="grid grid-cols-2 divide-x divide-base-300 border-t border-base-300 bg-base-200/60">
+  <div class="px-4 py-2.5">
     <dt class="text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Площадь</dt>
     <dd class="{% if space.area_m2 is None %}text-sm opacity-60{% else %}text-lg font-semibold text-neutral{% endif %}">{{ space.area_m2|area|or_missing }}</dd>
   </div>
@@ -58,7 +68,7 @@
     помещения among themselves, and it is вид that the план shows in colour right beside
     this card. Two axes must not share one word on one screen.
   {% endcomment %}
-  <div class="px-3 py-2">
+  <div class="px-4 py-2.5">
     <dt class="text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Тип</dt>
     <dd class="text-lg font-semibold text-neutral">{{ space.get_type_display }}</dd>
   </div>
@@ -66,7 +76,9 @@
 
 {% comment %}
   What is left is set as rows, label to value across the rail: these are read one at a time
-  and by name.
+  and by name. The label is quiet and the value is not: on a narrow rail the eye runs down
+  the right-hand edge collecting answers, and a row where both halves are equally dark makes
+  it read the questions again on every pass.
 
   «Назначение» and not «Подтип»: `subtype` is what the column is called in the storage,
   and a storage word put in front of a reader tells them what the table looks like rather
@@ -77,11 +89,11 @@
   falls back to the код where there is no name (`space_label`), and then this row is the
   only place saying that the name has not been recorded at all.
 {% endcomment %}
-<dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5 text-sm">
+<dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5 border-t border-base-300 px-4 py-3 text-sm">
   <dt class="opacity-60">Назначение</dt>
-  <dd class="text-right font-medium">{{ space.subtype|or_missing }}</dd>
+  <dd class="text-right font-medium text-neutral">{{ space.subtype|or_missing }}</dd>
   <dt class="opacity-60">Наименование</dt>
-  <dd class="text-right font-medium">{{ space.name|or_missing }}</dd>
+  <dd class="text-right font-medium text-neutral">{{ space.name|or_missing }}</dd>
 </dl>
 
 {% comment %}
@@ -106,7 +118,7 @@
   leading away from the floor screen the panel exists for. They select a space by the same
   means as a tree node and a contour on the plan (`_space_select.html`).
 {% endcomment %}
-<div class="border-t border-base-300 pt-3">
+<div class="border-t border-base-300 px-4 py-3">
   <h4 class="mb-2 text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Место в дереве</h4>
   <ol class="space-branches text-sm">
     {% if parent %}

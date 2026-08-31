@@ -22,62 +22,70 @@
   Кнопки «продлить» здесь нет: продление на новый срок — новая аренда, а не сдвинутый конец
   у прежней (ADR 0017).
 {% endcomment %}
-<details class="mt-1 rounded-lg border border-base-300 p-2"
+<details class="mt-1"
          {% if row.form.errors or row.confirming or row.form.tenant_q.value or row.form.landlord_q.value %}open{% endif %}>
-  <summary class="cursor-pointer text-xs opacity-60">Править или удалить</summary>
+  {% comment %}
+    Закрытая складка — это подпись под строкой, а не поле ввода: рамка во всю ширину, стоявшая
+    здесь раньше, читалась как пустая коробка, в которую нужно что-то написать, и таких коробок
+    под тремя арендами набиралось три. Рамку получает то, что за складкой: форма — это работа,
+    и ей место в отдельной плашке, отделённой от строки, которую правят.
+  {% endcomment %}
+  <summary class="w-fit cursor-pointer text-xs opacity-60 hover:text-primary hover:opacity-100">Править или удалить</summary>
 
-  <form method="post" class="mt-2 space-y-2" data-lease-edit="{{ row.lease.pk }}"
-        hx-post="{% url 'building_passport:space_card' space.pk %}"
-        hx-target="#space-card">
-    {% csrf_token %}
-    <input type="hidden" name="submitted" value="lease-edit">
-    {% comment %}
-      Какую аренду правят, названо в самой отправке: помещение — это адрес карточки, а на
-      помещении аренд столько, сколько в нём сидит арендаторов. Аренда чужого помещения
-      этим ключом не называется — её на этой карточке нет.
-    {% endcomment %}
-    <input type="hidden" name="lease" value="{{ row.lease.pk }}">
-
-    {% include "leases/_lease_fields.html" with form=row.form %}
-
-    <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
-  </form>
-
-  <div class="mt-3 border-t border-base-300 pt-2"
-       data-deletion="{% if row.confirming %}confirming{% else %}offered{% endif %}">
-    {% if row.confirming %}
+  <div class="mt-2 rounded border border-base-300 bg-base-200/50 p-3">
+    <form method="post" class="space-y-2" data-lease-edit="{{ row.lease.pk }}"
+          hx-post="{% url 'building_passport:space_card' space.pk %}"
+          hx-target="#space-card">
+      {% csrf_token %}
+      <input type="hidden" name="submitted" value="lease-edit">
       {% comment %}
-        Вопрос называет арендатора: спрашивают о строке, а на помещении их может быть три, и
-        «удалить аренду» без имени — это выбор наугад.
+        Какую аренду правят, названо в самой отправке: помещение — это адрес карточки, а на
+        помещении аренд столько, сколько в нём сидит арендаторов. Аренда чужого помещения
+        этим ключом не называется — её на этой карточке нет.
       {% endcomment %}
-      <p class="text-sm">Аренда «{{ row.lease.tenant }}» будет удалена без возможности восстановления.</p>
-      <p class="text-sm">Если арендатор съехал, это не удаление: поставьте дату «по» — аренда останется в истории помещения.</p>
+      <input type="hidden" name="lease" value="{{ row.lease.pk }}">
 
-      <form method="post" class="mt-2 inline-flex items-center gap-2"
-            hx-post="{% url 'building_passport:space_card' space.pk %}"
-            hx-target="#space-card">
-        {% csrf_token %}
-        <input type="hidden" name="submitted" value="lease-deletion-confirmed">
-        <input type="hidden" name="lease" value="{{ row.lease.pk }}">
-        <button type="submit" class="btn btn-error btn-sm">Удалить</button>
-      </form>
-      {% comment %}
-        Отмена стоит вне формы удаления и ничего не отправляет: вопрос ничего не записал,
-        поэтому и брать назад нечего — карточка просто читается заново.
-      {% endcomment %}
-      <button type="button" class="btn btn-ghost btn-sm"
-              hx-get="{% url 'building_passport:space_card' space.pk %}"
-              hx-target="#space-card">Отмена</button>
-    {% else %}
-      <form method="post"
-            hx-post="{% url 'building_passport:space_card' space.pk %}"
-            hx-target="#space-card">
-        {% csrf_token %}
-        <input type="hidden" name="submitted" value="lease-deletion">
-        <input type="hidden" name="lease" value="{{ row.lease.pk }}">
-        <button type="submit" class="btn btn-ghost btn-sm text-error">Удалить аренду</button>
-        <p class="label">Удаление необратимо. Съехавшего арендатора не удаляют — ему ставят дату «по».</p>
-      </form>
-    {% endif %}
+      {% include "leases/_lease_fields.html" with form=row.form %}
+
+      <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+    </form>
+
+    <div class="mt-3 border-t border-base-300 pt-2"
+         data-deletion="{% if row.confirming %}confirming{% else %}offered{% endif %}">
+      {% if row.confirming %}
+        {% comment %}
+          Вопрос называет арендатора: спрашивают о строке, а на помещении их может быть три, и
+          «удалить аренду» без имени — это выбор наугад.
+        {% endcomment %}
+        <p class="text-sm">Аренда «{{ row.lease.tenant }}» будет удалена без возможности восстановления.</p>
+        <p class="text-sm">Если арендатор съехал, это не удаление: поставьте дату «по» — аренда останется в истории помещения.</p>
+
+        <form method="post" class="mt-2 inline-flex items-center gap-2"
+              hx-post="{% url 'building_passport:space_card' space.pk %}"
+              hx-target="#space-card">
+          {% csrf_token %}
+          <input type="hidden" name="submitted" value="lease-deletion-confirmed">
+          <input type="hidden" name="lease" value="{{ row.lease.pk }}">
+          <button type="submit" class="btn btn-error btn-sm">Удалить</button>
+        </form>
+        {% comment %}
+          Отмена стоит вне формы удаления и ничего не отправляет: вопрос ничего не записал,
+          поэтому и брать назад нечего — карточка просто читается заново.
+        {% endcomment %}
+        <button type="button" class="btn btn-ghost btn-sm"
+                hx-get="{% url 'building_passport:space_card' space.pk %}"
+                hx-target="#space-card">Отмена</button>
+      {% else %}
+        <form method="post"
+              hx-post="{% url 'building_passport:space_card' space.pk %}"
+              hx-target="#space-card">
+          {% csrf_token %}
+          <input type="hidden" name="submitted" value="lease-deletion">
+          <input type="hidden" name="lease" value="{{ row.lease.pk }}">
+          <button type="submit" class="btn btn-ghost btn-sm text-error">Удалить аренду</button>
+          <p class="label">Удаление необратимо. Съехавшего арендатора не удаляют — ему ставят дату «по».</p>
+        </form>
+      {% endif %}
+    </div>
   </div>
 </details>

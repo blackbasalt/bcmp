@@ -8,6 +8,13 @@
   template for a действующая and for одна за складкой — what is written about an аренда does
   not change with whether it is in force, only where it stands.
 
+  Строка набрана в два яруса, а не одной обёрткой: имя арендатора и его метры — то, чем одна
+  аренда отличается от другой, — стоят на первой строке по краям колонки, как значения в
+  строках карточки выше, а условия договора идут под ними и тише. Пущенные одним абзацем,
+  четыре величины переносились там, где придётся: «— нет данных» оказывалось приклеено к
+  имени, а ставка начинала строку сама по себе, и три аренды подряд читались как один
+  сплошной текст.
+
   Метры and ставка are printed through the аренда's own rules: «— нет данных» where the
   условие is not recorded, because blank space reads as zero, and «₸ за м² в месяц» on the
   ставка, because 4500 on its own reads as the rent for the whole помещение.
@@ -16,13 +23,13 @@
   и форма, стоящая отдельно от строк, заставила бы сперва сказать, какую из трёх она правит.
   Читателю их не достаётся вовсе — у его строки нет формы (`lease_edit.Row` says why).
 {% endcomment %}
-<li data-lease="{{ row.lease.pk }}" class="flex flex-col">
-  <div class="flex flex-wrap gap-x-2">
-    <span>{{ row.lease.tenant }}</span>
+<li data-lease="{{ row.lease.pk }}" class="py-2 first:pt-0 last:pb-0">
+  <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+    <span class="font-medium text-neutral">{{ row.lease.tenant }}</span>
     <span class="opacity-60">{{ row.lease.area_m2|lease_area|or_missing }}</span>
-    <span class="opacity-60">{{ row.lease|lease_term }}</span>
-    <span class="opacity-60">{{ row.lease.rate|lease_rate|or_missing }}</span>
   </div>
+  <p class="text-xs opacity-60">{{ row.lease|lease_term }}</p>
+  <p class="text-xs opacity-60">{{ row.lease.rate|lease_rate|or_missing }}</p>
 
   {% if row.form %}
     {% include "leases/_lease_edit.html" %}
