@@ -12,141 +12,172 @@
   all. Over a полка with no помещения there is no bar — narrowing a nothing is an offer
   that answers nothing — and this markup is then absent altogether, not disabled: offered
   and useless at once reads as a breakage.
+
+  Nine conditions stand on a card of their own, above the card with the table: the отбор is
+  one thing said to the полка, and left loose on the page's grey it read as controls
+  scattered over the heading rather than as a bar. The полка документов asks three and gets
+  by in a single row; nine in one row is what crushed «Этаж» to a stub and pushed «Найти»
+  into the far corner.
+
+  The bar is laid out in two parts, and the parting is the предметная one. Above stand the
+  fields — what a помещение is: text, БЦ, вид, назначение, этаж, площадь — on a twelve
+  column grid, so that the boxes line up in columns instead of drifting with the length of
+  their captions. Below, under a rule, stand the statements — the two gaps in the record and
+  the one about today — and beside them the actions. They are checkboxes, they take a line
+  and not a column, and in the grid above they were the thing that tore the row's baseline
+  apart: a fieldset two checkboxes tall raised its legend a line above every other one.
 {% endcomment %}
-<form method="get" class="mb-4 flex flex-wrap items-end gap-2" data-search="rooms">
-  <fieldset class="fieldset grow basis-64">
-    <legend class="fieldset-legend">{{ search.q.label }}</legend>
-    {% comment %}
-      `type="search"` and not `type="text"`: the browser offers the clearing cross and its
-      own history of what was looked for here, and on a phone the keyboard comes up with
-      «Найти» on it. The код is named in the placeholder — an empty box gives no hint that
-      it is searched too.
-    {% endcomment %}
-    <input type="search" name="{{ search.q.html_name }}"
-           value="{{ search.q.value|default_if_none:'' }}"
-           placeholder="{{ search.q.field.widget.attrs.placeholder }}"
-           class="input w-full">
-  </fieldset>
+<form method="get" class="card mb-4 bg-base-100 shadow-sm" data-search="rooms">
+  <div class="card-body gap-4">
 
-  <fieldset class="fieldset grow basis-44">
-    <legend class="fieldset-legend">{{ search.building.label }}</legend>
-    {% comment %}
-      Only the BCs this reader may see are on the list, and one named in the address anyway
-      is not accepted either: the отбор is checked against the buildings, not against what
-      the screen happened to print (ADR 0001).
-    {% endcomment %}
-    <select name="{{ search.building.html_name }}" class="select w-full">
-      {% for value, label in search.building.field.choices %}
-        <option value="{{ value }}" {% if search.building.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    {% if search.building.errors %}
-      <p class="text-sm text-error">{{ search.building.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
+    <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-12">
+      <fieldset class="fieldset sm:col-span-2 lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.q.label }}</legend>
+        {% comment %}
+          `type="search"` and not `type="text"`: the browser offers the clearing cross and its
+          own history of what was looked for here, and on a phone the keyboard comes up with
+          «Найти» on it. The код is named in the placeholder — an empty box gives no hint that
+          it is searched too.
+        {% endcomment %}
+        <input type="search" name="{{ search.q.html_name }}"
+               value="{{ search.q.value|default_if_none:'' }}"
+               placeholder="{{ search.q.field.widget.attrs.placeholder }}"
+               class="input w-full">
+      </fieldset>
 
-  <fieldset class="fieldset grow basis-44">
-    <legend class="fieldset-legend">{{ search.kind.label }}</legend>
-    <select name="{{ search.kind.html_name }}" class="select w-full">
-      {% for value, label in search.kind.field.choices %}
-        <option value="{{ value }}" {% if search.kind.value == value %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    {% comment %}
-      A condition that came in from the address and did not read. The полка is empty
-      beneath, and without this line the select stands on «Любой вид» over it: narrowed to
-      nothing by something the screen is not showing.
-    {% endcomment %}
-    {% if search.kind.errors %}
-      <p class="text-sm text-error">{{ search.kind.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.building.label }}</legend>
+        {% comment %}
+          Only the BCs this reader may see are on the list, and one named in the address anyway
+          is not accepted either: the отбор is checked against the buildings, not against what
+          the screen happened to print (ADR 0001).
+        {% endcomment %}
+        <select name="{{ search.building.html_name }}" class="select w-full">
+          {% for value, label in search.building.field.choices %}
+            <option value="{{ value }}" {% if search.building.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.building.errors %}
+          <p class="text-sm text-error">{{ search.building.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
 
-  <fieldset class="fieldset grow basis-44">
-    <legend class="fieldset-legend">{{ search.purpose.label }}</legend>
-    <select name="{{ search.purpose.html_name }}" class="select w-full">
-      {% for value, label in search.purpose.field.choices %}
-        <option value="{{ value }}" {% if search.purpose.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    {% if search.purpose.errors %}
-      <p class="text-sm text-error">{{ search.purpose.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.kind.label }}</legend>
+        <select name="{{ search.kind.html_name }}" class="select w-full">
+          {% for value, label in search.kind.field.choices %}
+            <option value="{{ value }}" {% if search.kind.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% comment %}
+          A condition that came in from the address and did not read. The полка is empty
+          beneath, and without this line the select stands on «Любой вид» over it: narrowed to
+          nothing by something the screen is not showing.
+        {% endcomment %}
+        {% if search.kind.errors %}
+          <p class="text-sm text-error">{{ search.kind.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
 
-  <fieldset class="fieldset basis-24">
-    <legend class="fieldset-legend">{{ search.floor.label }}</legend>
-    <input type="number" name="{{ search.floor.html_name }}"
-           value="{{ search.floor.value|default_if_none:'' }}" class="input w-full">
-    {% if search.floor.errors %}
-      <p class="text-sm text-error">{{ search.floor.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
+      <fieldset class="fieldset sm:col-span-2 lg:col-span-5">
+        <legend class="fieldset-legend">{{ search.purpose.label }}</legend>
+        <select name="{{ search.purpose.html_name }}" class="select w-full">
+          {% for value, label in search.purpose.field.choices %}
+            <option value="{{ value }}" {% if search.purpose.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.purpose.errors %}
+          <p class="text-sm text-error">{{ search.purpose.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
 
-  {% comment %}
-    «от» and «до» are one condition asked in two boxes, so they stand together under one
-    caption: apart they read as two separate questions about площадь, and the reader has to
-    work out that filling in one of them is allowed.
-  {% endcomment %}
-  <fieldset class="fieldset basis-56">
-    <legend class="fieldset-legend">Площадь, м²</legend>
-    <div class="flex items-center gap-2">
-      <input type="number" step="0.01" min="0" name="{{ search.area_from.html_name }}"
-             value="{{ search.area_from.value|default_if_none:'' }}"
-             placeholder="от" class="input w-full">
-      <input type="number" step="0.01" min="0" name="{{ search.area_to.html_name }}"
-             value="{{ search.area_to.value|default_if_none:'' }}"
-             placeholder="до" class="input w-full">
+      <fieldset class="fieldset lg:col-span-2">
+        <legend class="fieldset-legend">{{ search.floor.label }}</legend>
+        <input type="number" name="{{ search.floor.html_name }}"
+               value="{{ search.floor.value|default_if_none:'' }}" class="input w-full">
+        {% if search.floor.errors %}
+          <p class="text-sm text-error">{{ search.floor.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      {% comment %}
+        «от» and «до» are one condition asked in two boxes, so they stand together under one
+        caption: apart they read as two separate questions about площадь, and the reader has to
+        work out that filling in one of them is allowed. Two boxes and their spinners need the
+        room of a proper field, not the tail end of a row — squeezed, «от» and «до» were
+        illegible behind their own arrows.
+      {% endcomment %}
+      <fieldset class="fieldset lg:col-span-5">
+        <legend class="fieldset-legend">Площадь, м²</legend>
+        <div class="flex items-center gap-2">
+          <input type="number" step="0.01" min="0" name="{{ search.area_from.html_name }}"
+                 value="{{ search.area_from.value|default_if_none:'' }}"
+                 placeholder="от" class="input w-full">
+          <input type="number" step="0.01" min="0" name="{{ search.area_to.html_name }}"
+                 value="{{ search.area_to.value|default_if_none:'' }}"
+                 placeholder="до" class="input w-full">
+        </div>
+        {% if search.area_from.errors or search.area_to.errors %}
+          <p class="text-sm text-error">{{ search.area_from.errors|join:" " }} {{ search.area_to.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
     </div>
-    {% if search.area_from.errors or search.area_to.errors %}
-      <p class="text-sm text-error">{{ search.area_from.errors|join:" " }} {{ search.area_to.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
 
-  {% comment %}
-    The two statements about the record rather than about the building. They are checkboxes
-    and not values in the selects above: вид answers three things and only three, and
-    «площадь не заведена» is not a размер. Both are the audit questions — «у каких
-    помещений не заведена площадь», «каких никто не классифицировал» — asked from the same
-    полка as everything else.
-  {% endcomment %}
-  <fieldset class="fieldset basis-52">
-    <legend class="fieldset-legend">Не заведено</legend>
-    <label class="fieldset-label">
-      <input type="checkbox" name="{{ search.no_area.html_name }}" value="1"
-             class="checkbox checkbox-sm" {% if search.no_area.value %}checked{% endif %}>
-      {{ search.no_area.label }}
-    </label>
-    <label class="fieldset-label">
-      <input type="checkbox" name="{{ search.no_kind.html_name }}" value="1"
-             class="checkbox checkbox-sm" {% if search.no_kind.value %}checked{% endif %}>
-      {{ search.no_kind.label }}
-    </label>
-  </fieldset>
+    <div class="flex flex-wrap items-end gap-x-8 gap-y-3 border-t border-base-300 pt-3">
+      {% comment %}
+        The two statements about the record rather than about the building. They are checkboxes
+        and not values in the selects above: вид answers three things and only three, and
+        «площадь не заведена» is not a размер. Both are the audit questions — «у каких
+        помещений не заведена площадь», «каких никто не классифицировал» — asked from the same
+        полка as everything else. Side by side and not one under the other: the pair is one
+        line of the bar, and stacked it made the bar a head taller than it has business being.
+      {% endcomment %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Не заведено</legend>
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <label class="fieldset-label cursor-pointer">
+            <input type="checkbox" name="{{ search.no_area.html_name }}" value="1"
+                   class="checkbox checkbox-sm" {% if search.no_area.value %}checked{% endif %}>
+            {{ search.no_area.label }}
+          </label>
+          <label class="fieldset-label cursor-pointer">
+            <input type="checkbox" name="{{ search.no_kind.html_name }}" value="1"
+                   class="checkbox checkbox-sm" {% if search.no_kind.value %}checked{% endif %}>
+            {{ search.no_kind.label }}
+          </label>
+        </div>
+      </fieldset>
 
-  {% comment %}
-    The one condition that speaks about today rather than about the building or about the
-    record: «что стоит пустым» is asked of 324 арендопригодных помещения, and answering it
-    one карточка at a time is 324 карточки. It stands apart from «Не заведено» — a помещение
-    standing empty is an answer, not a gap in the data.
+      {% comment %}
+        The one condition that speaks about today rather than about the building or about the
+        record: «что стоит пустым» is asked of 324 арендопригодных помещения, and answering it
+        one карточка at a time is 324 карточки. It stands apart from «Не заведено» — a помещение
+        standing empty is an answer, not a gap in the data.
 
-    The legend is «Занятость» and not «Аренда»: аренда is the record of who sits here on what
-    terms, and this control is about the помещение. There is deliberately no «Сдано» beside
-    the checkbox, and `rooms/shelf_search.py` says why.
-  {% endcomment %}
-  <fieldset class="fieldset basis-40">
-    <legend class="fieldset-legend">Занятость</legend>
-    <label class="fieldset-label">
-      <input type="checkbox" name="{{ search.free.html_name }}" value="1"
-             class="checkbox checkbox-sm" {% if search.free.value %}checked{% endif %}>
-      {{ search.free.label }}
-    </label>
-  </fieldset>
+        The legend is «Занятость» and not «Аренда»: аренда is the record of who sits here on what
+        terms, and this control is about the помещение. There is deliberately no «Сдано» beside
+        the checkbox, and `rooms/shelf_search.py` says why.
+      {% endcomment %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Занятость</legend>
+        <label class="fieldset-label cursor-pointer">
+          <input type="checkbox" name="{{ search.free.html_name }}" value="1"
+                 class="checkbox checkbox-sm" {% if search.free.value %}checked{% endif %}>
+          {{ search.free.label }}
+        </label>
+      </fieldset>
 
-  <div class="flex gap-2 pb-1">
-    <button type="submit" class="btn btn-primary btn-sm">Найти</button>
-    {% if search.asked %}
-      <a class="btn btn-ghost btn-sm" href="{% url 'rooms:room_list' %}">Сбросить</a>
-    {% endif %}
+      {% comment %}
+        The actions keep to the right end of the same line as the statements: «Найти» closes
+        the bar where reading it ends. `ms-auto` and not a spacer — on a narrow screen the line
+        wraps and the buttons simply take the next row, without a hole left in the layout.
+      {% endcomment %}
+      <div class="ms-auto flex gap-2 pb-1">
+        <button type="submit" class="btn btn-primary btn-sm">Найти</button>
+        {% if search.asked %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'rooms:room_list' %}">Сбросить</a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </form>
