@@ -31,6 +31,17 @@ def space_label(space):
     return or_missing(space.name or space.code)
 
 
+def quantity(value):
+    """The number itself in the passport's notation: «2 484,00» — to hundredths, unrounded.
+
+    Split out of `measure` because a number is not always followed by its unit: «сдано 210
+    из 300 м²» names the unit once for two numbers. The notation is spelled out here and
+    nowhere else, so that one screen cannot start separating thousands differently from
+    another.
+    """
+    return f"{value:,.2f}".replace(",", NBSP).replace(".", ",")
+
+
 def measure(value, unit):
     """A quantity with its unit — to hundredths, unrounded, with non-breaking spaces.
 
@@ -38,7 +49,7 @@ def measure(value, unit):
     """
     if is_missing(value):
         return None
-    return f"{value:,.2f}{NBSP}{unit}".replace(",", NBSP).replace(".", ",")
+    return f"{quantity(value)}{NBSP}{unit}"
 
 
 def area(value):

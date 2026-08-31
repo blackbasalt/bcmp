@@ -1,0 +1,20 @@
+{% load lease passport %}
+{% comment %}
+  Одна аренда строкой: арендатор, метры, срок, ставка — в том же порядке, что и в вопросе
+  «кто здесь сидит и на каких условиях».
+
+  `data-lease` is the block's contract, mirroring `data-room` on the полка помещений: a test
+  names an аренда by its key and reads its text without parsing the layout. The row is one
+  template for a действующая and for одна за складкой — what is written about an аренда does
+  not change with whether it is in force, only where it stands.
+
+  Метры and ставка are printed through the аренда's own rules: «— нет данных» where the
+  условие is not recorded, because blank space reads as zero, and «₸ за м² в месяц» on the
+  ставка, because 4500 on its own reads as the rent for the whole помещение.
+{% endcomment %}
+<li data-lease="{{ lease.pk }}" class="flex flex-wrap gap-x-2">
+  <span>{{ lease.tenant }}</span>
+  <span class="opacity-60">{{ lease.area_m2|lease_area|or_missing }}</span>
+  <span class="opacity-60">{{ lease|lease_term }}</span>
+  <span class="opacity-60">{{ lease.rate|lease_rate|or_missing }}</span>
+</li>

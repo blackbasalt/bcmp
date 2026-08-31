@@ -10,6 +10,12 @@ from django.views.generic import DetailView, ListView, View
 
 from dictionary.models import DictSpaceType
 
+# Аренда is read from `leases` and never the other way round: `leases.models` imports
+# `building_passport.models`, which imports nothing back, so the occupancy rule travels one
+# way — the same direction `documents` and `rooms` take what they need in.
+from leases.lease_display import shows_leases
+from leases.occupancy import occupancy_of
+
 from . import plan_completeness, plan_layer
 from .models import FloorPlan, Space
 from .passport_sections import sections
@@ -269,6 +275,14 @@ class SpaceCardView(LoginRequiredMixin, DetailView):
         # node of the tree but the screen the rail itself stands on — a link would lead
         # where the reader already is.
         context["parent_is_a_space"] = parent is not None and parent.type != DictSpaceType.FLOOR
+        # Кто здесь сидит. The аренды of a помещение are visible to whoever sees the
+        # помещение — the checkpoint above has already decided that, and a second place
+        # deciding it would one day disagree with this one (ADR 0018). Both the занятость
+        # and whether it is shown at all are asked of `leases`: the rule and its wording
+        # belong with аренда, and the карточка is not the only screen that will ask.
+        occupancy = occupancy_of(self.object, timezone.localdate())
+        context["occupancy"] = occupancy
+        context["shows_leases"] = shows_leases(occupancy)
         return context
 
 

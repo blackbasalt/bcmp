@@ -39,6 +39,13 @@
 </dl>
 
 {% comment %}
+  Кто здесь сидит. The block is included and not written out here: what is said about an
+  аренда belongs with аренда, and the полка помещений names the same things in its own
+  column. Whether it appears at all is `lease_display.shows_leases`, which states why.
+{% endcomment %}
+{% if shows_leases %}{% include "leases/_space_leases.html" %}{% endif %}
+
+{% comment %}
   The place in the tree. It is called «выше» and «ниже» rather than "belongs to" and
   "contains": the `parent` relation means both nesting (cubicles in a lavatory) and the
   grouping of neighbouring spaces (a vestibule and the offices behind it), and the card

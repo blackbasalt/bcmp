@@ -1,0 +1,52 @@
+{% load lease %}
+{% comment %}
+  Блок аренды на карточке помещения: «кто здесь сидит» рядом с тем, что это за помещение.
+
+  Whether it stands here at all is `lease_display.shows_leases`, which states why.
+
+  `data-leases` on the block and `data-past-leases` on the складка are the screen's
+  contract, mirroring `data-upload` on the two upload forms: they say whether the block is
+  offered at all and whether there is anything behind the складка, so a test asks about the
+  block itself rather than hunting for a word that some other column might print one day.
+
+  There is no итог here and none anywhere above it: 107 арендопригодных помещений stand
+  inside another арендопригодное, and a sum over an этаж or a здание would count them twice
+  (ADR 0019). What is said here is said about this one помещение.
+{% endcomment %}
+<div class="border-t border-base-300 pt-3 text-sm" data-leases>
+  <h4 class="mb-1 opacity-60">Аренда</h4>
+
+  {% comment %}
+    «Сдано 210 из 300 м²» and not «сдано / свободно»: a часть помещения is a number of metres
+    with no boundary, so «сдано ли помещение» is not a question with a yes or a no
+    (ADR 0017). A помещение whose own площадь is not recorded gets no line at all, and the
+    аренды under it still name themselves.
+  {% endcomment %}
+  {% with line=occupancy|occupancy_line %}
+    {% if line %}<p class="mb-2 font-medium">{{ line }}</p>{% endif %}
+  {% endwith %}
+
+  {% if occupancy.in_force %}
+    <ul class="flex flex-col gap-1">
+      {% for lease in occupancy.in_force %}
+        {% include "leases/_lease_row.html" %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% comment %}
+    Прошлые аренды за складкой, и складка называет их число: ten departed арендаторы must not
+    bury the one sitting there now, and a reader is not made to open a fold to find out
+    whether there is anything behind it. A складка with nothing behind it is not drawn.
+  {% endcomment %}
+  {% if occupancy.behind %}
+    <details class="mt-2" data-past-leases>
+      <summary class="cursor-pointer opacity-60">{{ occupancy|fold_title }}</summary>
+      <ul class="mt-1 flex flex-col gap-1 opacity-60">
+        {% for lease in occupancy.behind %}
+          {% include "leases/_lease_row.html" %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</div>
