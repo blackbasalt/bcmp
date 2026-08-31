@@ -36,6 +36,10 @@ OFFERED = re.compile(
     r'<select[^>]*name="(?P<field>tenant|landlord)"[^>]*>(?P<options>.*?)</select>', re.DOTALL
 )
 OPTION = re.compile(r'<option[^>]*value="(?P<key>[^"]*)"[^>]*>(?P<label>.*?)</option>', re.DOTALL)
+#: The form заведения cut out of the карточка. It has to be cut out: every аренда on the
+#: карточка now carries a form правки of its own, and «what is on the list» is a question
+#: about one form rather than about the page.
+ENTRY = re.compile(r"<form[^>]*data-lease-form[^>]*>(?P<fields>.*?)</form>", re.DOTALL)
 
 
 def carries_the_form(page) -> bool:
@@ -43,9 +47,14 @@ def carries_the_form(page) -> bool:
     return "data-lease-form" in page
 
 
-def offered(page, field):
-    """The Стороны on offer for one field, by key: what the поиск put on the list."""
-    for select in OFFERED.finditer(page):
+def parties_offered(markup, field):
+    """The Стороны one form offers for one field, by key: what the поиск put on the list.
+
+    Given a slice of markup rather than the page: the карточка holds a form правки for every
+    аренда on it besides the one заведения, and «what is on the list» is a question about one
+    form. Who cuts the slice out is the caller's business — this reads the list.
+    """
+    for select in OFFERED.finditer(markup):
         if select["field"] == field:
             return {
                 option["key"]: stated(option["label"])
@@ -53,6 +62,12 @@ def offered(page, field):
                 if option["key"]
             }
     return {}
+
+
+def offered(page, field):
+    """The Стороны the form заведения offers for one field."""
+    entry = ENTRY.search(page)
+    return parties_offered(entry["fields"] if entry else "", field)
 
 
 def card_url(space):
@@ -71,25 +86,6 @@ def search(client, space, **asked):
     """The поиск Стороны: a parameter on the карточка's own address, redrawing the карточка."""
     response = client.get(card_url(space), asked)
     return response, response.content.decode()
-
-
-@pytest.fixture
-def today():
-    return timezone.localdate()
-
-
-@pytest.fixture
-def reader(client, member):
-    """A сотрудник УК without the administrator right — the card is a screen, not a form."""
-    client.force_login(member)
-    return client
-
-
-@pytest.fixture
-def entering(client, administrator):
-    """The администратор организации: the one the form is offered to (ADR 0005)."""
-    client.force_login(administrator)
-    return client
 
 
 # Кому форма предложена

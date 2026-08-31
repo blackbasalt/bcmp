@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Exists, OuterRef, Q
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -13,8 +13,9 @@ from dictionary.models import DictSpaceType
 # Аренда is read from `leases` and never the other way round: `leases.models` imports
 # `building_passport.models`, which imports nothing back, so the occupancy rule travels one
 # way — the same direction `documents` and `rooms` take what they need in.
+from leases import lease_edit
 from leases.lease_display import shows_leases
-from leases.lease_entry import LeaseForm, carried_back
+from leases.lease_form import LeaseForm, carried_back
 from leases.occupancy import occupancy_of
 
 from . import plan_completeness, plan_layer
@@ -283,35 +284,67 @@ class SpaceCardView(LoginRequiredMixin, DetailView):
         # belong with аренда, and the карточка is not the only screen that will ask.
         occupancy = occupancy_of(self.object, timezone.localdate())
         context["occupancy"] = occupancy
-        # Заведение аренды goes only to whoever may write into this организация's data, by
-        # the same rule the плана upload states in full (ADR 0005): a form that would be
-        # refused is not offered, and the карточка reads as a screen rather than as a
-        # бланк. A refusal brings its own already filled-in form, so the empty one is only
-        # put in its place.
-        if not self.administers_the_space:
+        # Заведение, правка и удаление go only to whoever may write into this организация's
+        # data, by the same rule the плана upload states in full (ADR 0005): what would be
+        # refused is not offered, and the карточка reads as a screen rather than as a бланк.
+        # A refusal brings its own already filled-in form, so the empty one is only put in
+        # its place.
+        administers = self.administers_the_space
+        # `request.GET` is what the поиск Стороны travels in — the same address, no ручка of
+        # its own — and it carries back whatever had already been typed into the form when
+        # the поиск was sent. What an address may fill in, and that it may fill in nothing
+        # without a поиск, is `carried_back`'s rule: аренда's, not this screen's.
+        typed = carried_back(self.request.GET) if administers else {}
+        # Which form asked: the поиск is sent by `hx-include` from the form it stands in, so
+        # a form правки sends its own `submitted` and the ключ of its аренда along with it —
+        # the same field the writes are told apart by, read on the way in as well as on the
+        # way back. An address naming neither asked from the form заведения, and what came
+        # back goes into the form it was asked from: otherwise looking up an арендатор fills
+        # in a form nobody was typing into.
+        corrected = (
+            self.lease_named(self.request.GET)
+            if typed and self.request.GET.get("submitted") == "lease-edit"
+            else None
+        )
+        if not administers:
             context["lease_form"] = None
         else:
-            # `request.GET` is what the поиск Стороны travels in — the same address, no
-            # ручка of its own — and it carries back whatever had already been typed into
-            # the form when the поиск was sent. What an address may fill in, and that it may
-            # fill in nothing without a поиск, is `carried_back`'s rule: аренда's, not this
-            # screen's.
             context.setdefault(
                 "lease_form",
-                LeaseForm(space=self.object, already_typed=carried_back(self.request.GET)),
+                LeaseForm(space=self.object, already_typed={} if corrected else typed),
             )
+        at_hand = context.get("at_hand")
+        if at_hand is None and corrected is not None:
+            at_hand = lease_edit.AtHand(
+                str(corrected.pk),
+                form=LeaseForm(space=self.object, instance=corrected, already_typed=typed),
+            )
+        # Действующие и те, что за складкой, — одними и теми же строками: what may be done
+        # with an аренда does not change with which side of today its срок lies on.
+        context["rows_in_force"] = lease_edit.rows(
+            occupancy.in_force, space=self.object, offered=administers, at_hand=at_hand
+        )
+        context["rows_behind"] = lease_edit.rows(
+            occupancy.behind, space=self.object, offered=administers, at_hand=at_hand
+        )
         context["shows_leases"] = shows_leases(
             occupancy, entry_offered=context["lease_form"] is not None
         )
         return context
 
     def post(self, request, *args, **kwargs):
-        """Заведение аренды: the карточка's own address, because the form stands on it.
+        """Заведение, правка и два шага удаления — четыре отправки на адрес самой карточки.
+
+        One address because all of them stand on this карточка and are read off it: a refusal
+        comes back onto the screen it was sent from, with the помещение around it (ADR 0005).
+        Правка and удаление name their submissions; заведение does not need to — it is the
+        block's own form, and everything that does not name itself is it. The same rule the
+        документ's page follows for its five.
 
         A refusal returns the same карточка with the reason on the form and what was typed
-        still in it; success returns the карточка redrawn with the new аренда on it. Neither
-        is a redirect: the карточка arrives by `hx-get` into the rail of the экран этажа, and
-        the redrawn карточка going back into that same rail is the confirmation itself.
+        still in it; a save returns the карточка redrawn around what it did. Neither is a
+        redirect: the карточка arrives by `hx-get` into the rail of the экран этажа, and the
+        redrawn карточка going back into that same rail is the confirmation itself.
         """
         self.object = self.get_object()
         if not self.administers_the_space:
@@ -319,12 +352,90 @@ class SpaceCardView(LoginRequiredMixin, DetailView):
             # employee has already been shown does not become non-existent because they may
             # not write to it. Another client's помещение answers 404 above, and does so to
             # a write for the same reason it does to a read (ADR 0001, ADR 0005).
-            raise PermissionDenied("Заводить аренды этой организации может её администратор.")
+            raise PermissionDenied("Вести аренды этой организации может её администратор.")
+        submitted = request.POST.get("submitted")
+        if submitted == "lease-edit":
+            return self.correct_a_lease(request)
+        if submitted == "lease-deletion":
+            return self.ask_about_a_deletion(request)
+        if submitted == "lease-deletion-confirmed":
+            return self.delete_a_lease(request)
+        return self.enter_a_lease(request)
+
+    def enter_a_lease(self, request):
+        """Завести аренду: the помещение is the карточка, and nothing else is asked for."""
         form = LeaseForm(request.POST, space=self.object)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(lease_form=form))
         form.save()
         return self.render_to_response(self.get_context_data())
+
+    def correct_a_lease(self, request):
+        """Править аренду на месте: ставка исправляется в самой записи, а не второй рядом.
+
+        The refused form goes back onto the row it came from, and the row itself keeps saying
+        what is recorded: nothing was written, and a row redrawn from what was typed would
+        read as though something had been.
+        """
+        lease = self.lease_submitted(request.POST)
+        form = LeaseForm(request.POST, space=self.object, instance=lease)
+        if not form.is_valid():
+            return self.render_to_response(
+                self.get_context_data(at_hand=lease_edit.AtHand(str(lease.pk), form=form))
+            )
+        form.save()
+        return self.render_to_response(self.get_context_data())
+
+    def ask_about_a_deletion(self, request):
+        """The question, asked on the карточка itself and destroying nothing.
+
+        Asked by the application and not by the browser, for the reason the документ's page
+        states in full: a confirmation living in a script is gone the moment the script does
+        not run, and the press behind it deletes a record nobody was asked about. Two presses
+        in two places, the second reachable only through a redrawn карточка.
+        """
+        lease = self.lease_submitted(request.POST)
+        return self.render_to_response(
+            self.get_context_data(at_hand=lease_edit.AtHand(str(lease.pk), confirming=True))
+        )
+
+    def delete_a_lease(self, request):
+        """Удалить аренду целиком — то, чем съезд арендатора не является.
+
+        Nothing goes with it: an аренда holds no file and no близнец, and the помещение it
+        named stands where it stood. A съезд is a дата «по» on the same record and is written
+        by правка above; an аренда deleted here was entered by mistake and leaves no history
+        behind, because there was none to leave.
+        """
+        self.lease_submitted(request.POST).delete()
+        return self.render_to_response(self.get_context_data())
+
+    def lease_submitted(self, asked):
+        """The аренда a submission names — one of this помещение's, or 404.
+
+        Другой карточкой чужую аренду не править: the помещение has already been through the
+        checkpoint, and an аренда is looked for among its own. A key naming an аренда of
+        another помещение and a key that is not a key at all get one answer, the one the
+        экран этажа gives a `?space=` it cannot place: the address is typed and pasted by
+        people, and a mistaken one is not worth a different screen from a malformed one.
+        """
+        lease = self.lease_named(asked)
+        if lease is None:
+            raise Http404("На этом помещении такой аренды нет.")
+        return lease
+
+    def lease_named(self, asked):
+        """The аренда a submission or a поиск names, if it is one of this помещение's.
+
+        Compared as text rather than parsed: a key that is not a uuid must not reach the
+        query as one, and there are a handful of аренд on a помещение to compare against.
+        """
+        wanted = asked.get("lease")
+        if not wanted:
+            return None
+        return next(
+            (lease for lease in self.object.leases.all() if str(lease.pk) == wanted), None
+        )
 
     @cached_property
     def administers_the_space(self):

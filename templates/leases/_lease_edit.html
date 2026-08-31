@@ -1,0 +1,83 @@
+{% comment %}
+  Правка и удаление одной аренды — там же, где она напечатана.
+
+  Both submissions go to the карточка's own address and name themselves in `submitted`, the
+  way the документ's page tells five submissions apart. The заведение beside them names
+  nothing: what does not name itself is the block's own form.
+
+  `data-lease-edit` carries the аренда's key and is the block's contract about правка —
+  whether it is offered at all, which is how the administrator right is read off the screen.
+  `data-deletion` says whether удаление is on offer or the screen is holding the question,
+  exactly as it does on the документ's page. Both stand inside the row's own `data-lease`, so
+  everything about one аренда is read within that аренда rather than hunted for on the page.
+
+  Удаление в два шага, и второй шаг достижим только через перерисованную карточку: у записи
+  нет отмены, и промах мыши не должен её стоить. What makes the misclick impossible is the
+  two presses in two different places, not the sentence between them.
+
+  Съезд — это дата «по», а не удаление, и на экране это сказано дважды: у поля «Действует
+  по» и над самой кнопкой. Аренда съехавшего остаётся в базе и уходит за складку сама;
+  удалённая не остаётся нигде, и история помещения теряется вместе с ней.
+
+  Кнопки «продлить» здесь нет: продление на новый срок — новая аренда, а не сдвинутый конец
+  у прежней (ADR 0017).
+{% endcomment %}
+<details class="mt-1 rounded-lg border border-base-300 p-2"
+         {% if row.form.errors or row.confirming or row.form.tenant_q.value or row.form.landlord_q.value %}open{% endif %}>
+  <summary class="cursor-pointer text-xs opacity-60">Править или удалить</summary>
+
+  <form method="post" class="mt-2 space-y-2" data-lease-edit="{{ row.lease.pk }}"
+        hx-post="{% url 'building_passport:space_card' space.pk %}"
+        hx-target="#space-card">
+    {% csrf_token %}
+    <input type="hidden" name="submitted" value="lease-edit">
+    {% comment %}
+      Какую аренду правят, названо в самой отправке: помещение — это адрес карточки, а на
+      помещении аренд столько, сколько в нём сидит арендаторов. Аренда чужого помещения
+      этим ключом не называется — её на этой карточке нет.
+    {% endcomment %}
+    <input type="hidden" name="lease" value="{{ row.lease.pk }}">
+
+    {% include "leases/_lease_fields.html" with form=row.form %}
+
+    <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+  </form>
+
+  <div class="mt-3 border-t border-base-300 pt-2"
+       data-deletion="{% if row.confirming %}confirming{% else %}offered{% endif %}">
+    {% if row.confirming %}
+      {% comment %}
+        Вопрос называет арендатора: спрашивают о строке, а на помещении их может быть три, и
+        «удалить аренду» без имени — это выбор наугад.
+      {% endcomment %}
+      <p class="text-sm">Аренда «{{ row.lease.tenant }}» будет удалена без возможности восстановления.</p>
+      <p class="text-sm">Если арендатор съехал, это не удаление: поставьте дату «по» — аренда останется в истории помещения.</p>
+
+      <form method="post" class="mt-2 inline-flex items-center gap-2"
+            hx-post="{% url 'building_passport:space_card' space.pk %}"
+            hx-target="#space-card">
+        {% csrf_token %}
+        <input type="hidden" name="submitted" value="lease-deletion-confirmed">
+        <input type="hidden" name="lease" value="{{ row.lease.pk }}">
+        <button type="submit" class="btn btn-error btn-sm">Удалить</button>
+      </form>
+      {% comment %}
+        Отмена стоит вне формы удаления и ничего не отправляет: вопрос ничего не записал,
+        поэтому и брать назад нечего — карточка просто читается заново.
+      {% endcomment %}
+      <button type="button" class="btn btn-ghost btn-sm"
+              hx-get="{% url 'building_passport:space_card' space.pk %}"
+              hx-target="#space-card">Отмена</button>
+    {% else %}
+      <form method="post"
+            hx-post="{% url 'building_passport:space_card' space.pk %}"
+            hx-target="#space-card">
+        {% csrf_token %}
+        <input type="hidden" name="submitted" value="lease-deletion">
+        <input type="hidden" name="lease" value="{{ row.lease.pk }}">
+        <button type="submit" class="btn btn-ghost btn-sm text-error">Удалить аренду</button>
+        <p class="label">Удаление необратимо. Съехавшего арендатора не удаляют — ему ставят дату «по».</p>
+      </form>
+    {% endif %}
+  </div>
+</details>

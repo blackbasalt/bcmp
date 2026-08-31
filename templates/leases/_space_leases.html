@@ -26,9 +26,13 @@
     {% if line %}<p class="mb-2 font-medium">{{ line }}</p>{% endif %}
   {% endwith %}
 
-  {% if occupancy.in_force %}
+  {% comment %}
+    The rows carry what may be done with each аренда besides what it says — `lease_edit.rows`
+    is what put it there, and a row shown to a reader carries nothing at all.
+  {% endcomment %}
+  {% if rows_in_force %}
     <ul class="flex flex-col gap-1">
-      {% for lease in occupancy.in_force %}
+      {% for row in rows_in_force %}
         {% include "leases/_lease_row.html" %}
       {% endfor %}
     </ul>
@@ -54,10 +58,14 @@
     whether there is anything behind it. A складка with nothing behind it is not drawn.
   {% endcomment %}
   {% if occupancy.behind %}
-    <details class="mt-2" data-past-leases>
+    {% comment %}
+      Складка открыта, когда за ней стоит вопрос об удалении или отказ на правке: ответ,
+      попавший в закрытую складку, — это карточка, вернувшаяся такой же, какой ушла.
+    {% endcomment %}
+    <details class="mt-2" data-past-leases {% if rows_behind|fold_stands_open %}open{% endif %}>
       <summary class="cursor-pointer opacity-60">{{ occupancy|fold_title }}</summary>
       <ul class="mt-1 flex flex-col gap-1 opacity-60">
-        {% for lease in occupancy.behind %}
+        {% for row in rows_behind %}
           {% include "leases/_lease_row.html" %}
         {% endfor %}
       </ul>

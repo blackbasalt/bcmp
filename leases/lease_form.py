@@ -1,9 +1,14 @@
-"""Форма заведения аренды — то, что спрашивают на карточке помещения, и то, чего не спрашивают.
+"""Форма аренды — то, что спрашивают на карточке помещения, и то, чего не спрашивают.
+
+One form for two writes. Аренда is entered by it empty and corrected by it filled in with
+the аренда as it stands: «ставка не та» is answered by the same six fields as «сюда сел
+арендатор», and a second form for правка would be a second wording of one аренда — the day
+a field was added to one of them, the other would quietly stop asking for it.
 
 The form stands in the аренда block on the карточка помещения and is submitted to the
-карточка's own address: заведение happens where the помещение is already open in front of
-the reader, and a refusal has the карточка to come back onto — the rule the плана upload and
-the близнец already follow (ADR 0005). No address is added by this stage.
+карточка's own address: заведение and правка happen where the помещение is already open in
+front of the reader, and a refusal has the карточка to come back onto — the rule the плана
+upload and the близнец already follow (ADR 0005). No address is added by this stage.
 
 **Обязательны арендатор и дата начала, и больше ничего.** Every other field is left empty on
 purpose rather than by omission:
@@ -27,6 +32,7 @@ will read it.
 
 from django import forms
 
+from building_passport.date_entered import DateEntered
 from parties.models import Party
 
 from .models import Lease
@@ -56,7 +62,8 @@ def carried_back(address) -> dict:
 
 
 class LeaseForm(forms.ModelForm):
-    """Аренда as it is entered: a Сторона found by поиск, a срок, and three optional terms."""
+    """Аренда as it is entered and as it is corrected: a Сторона found by поиск, a срок and
+    three optional terms."""
 
     #: The Стороны are searched for, not scrolled to: the реестр holds 699 of them, mostly
     #: поставщики. What may be chosen is the whole реестр and what is offered is what the
@@ -83,9 +90,18 @@ class LeaseForm(forms.ModelForm):
             "valid_from": "Действует с",
             "valid_to": "Действует по",
         }
+        # The fields are rendered by their own widgets, so that a срок already recorded
+        # comes back into the form in the notation `type="date"` reads. Printed by hand it
+        # would arrive as «1 января 2026 г.», the browser would show an empty field, and the
+        # правка that came to correct the ставка would save the дата начала away.
+        widgets = {"valid_from": DateEntered(), "valid_to": DateEntered()}
 
     def __init__(self, data=None, *, space, already_typed=None, **kwargs):
         """The помещение comes from the карточка the form stands on, the rest from the address.
+
+        An `instance` makes the same form a правка: what stands in the fields is then the
+        аренда as it is recorded, and what the Стороны list stands on is the арендатор
+        already chosen — a form that came up having forgotten it would save it away.
 
         `already_typed` is what stood in the fields when the поиск was sent: the поиск redraws
         the whole карточка, and without it a reader who filled in the срок and the ставка
@@ -93,7 +109,11 @@ class LeaseForm(forms.ModelForm):
         rather than bound as data — nothing was submitted, and a form that answered
         «обязательное поле» to a поиск would refuse a question nobody asked.
         """
-        super().__init__(data, initial=already_typed, **kwargs)
+        # No `id` on the fields: a карточка holding three аренды holds three of these forms
+        # at once besides the one заведения, and one `id_valid_from` per form would be four
+        # elements answering to one name. Nothing here is addressed by id — each field is
+        # named by the `<legend>` of its own `<fieldset>`.
+        super().__init__(data, initial=already_typed, auto_id=False, **kwargs)
         self.instance.space = space
         # The реестр Сторон is system-wide: the isolation of the platform's clients stands
         # on the помещение and is decided before this form is reached (ADR 0018).

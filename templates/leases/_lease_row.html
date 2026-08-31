@@ -11,10 +11,20 @@
   Метры and ставка are printed through the аренда's own rules: «— нет данных» where the
   условие is not recorded, because blank space reads as zero, and «₸ за м² в месяц» on the
   ставка, because 4500 on its own reads as the rent for the whole помещение.
+
+  Правка и удаление стоят внутри строки, а не под блоком: правится та аренда, которую читают,
+  и форма, стоящая отдельно от строк, заставила бы сперва сказать, какую из трёх она правит.
+  Читателю их не достаётся вовсе — у его строки нет формы (`lease_edit.Row` says why).
 {% endcomment %}
-<li data-lease="{{ lease.pk }}" class="flex flex-wrap gap-x-2">
-  <span>{{ lease.tenant }}</span>
-  <span class="opacity-60">{{ lease.area_m2|lease_area|or_missing }}</span>
-  <span class="opacity-60">{{ lease|lease_term }}</span>
-  <span class="opacity-60">{{ lease.rate|lease_rate|or_missing }}</span>
+<li data-lease="{{ row.lease.pk }}" class="flex flex-col">
+  <div class="flex flex-wrap gap-x-2">
+    <span>{{ row.lease.tenant }}</span>
+    <span class="opacity-60">{{ row.lease.area_m2|lease_area|or_missing }}</span>
+    <span class="opacity-60">{{ row.lease|lease_term }}</span>
+    <span class="opacity-60">{{ row.lease.rate|lease_rate|or_missing }}</span>
+  </div>
+
+  {% if row.form %}
+    {% include "leases/_lease_edit.html" %}
+  {% endif %}
 </li>

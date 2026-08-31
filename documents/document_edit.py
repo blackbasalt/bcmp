@@ -14,23 +14,12 @@ a known номер out until a дата выдачи is found for it.
 
 from django import forms
 
+# A date read back into `type="date"` is not this section's rule: the правка аренды reads
+# one back the same way, and the widget stands where both of them reach it.
+from building_passport.date_entered import DateEntered
 from parties.models import Party
 
 from .models import Document
-
-
-class DateEntered(forms.DateInput):
-    """A date typed into a date field, not into a line of free text.
-
-    The browser's own picker writes `2024-03-14`, and the field must be told to read and to
-    show that: left to the locale, a date already stored would come back to the form empty
-    and be saved away by whoever came to fill in the номер.
-    """
-
-    input_type = "date"
-
-    def __init__(self, **kwargs):
-        super().__init__(format="%Y-%m-%d", **kwargs)
 
 
 class DocumentParticularsForm(forms.ModelForm):

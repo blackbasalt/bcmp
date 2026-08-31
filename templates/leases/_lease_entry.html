@@ -7,6 +7,10 @@
   the экран этажа, so the answer to a write is the redrawn карточка going back into that same
   rail — there is no redirect anywhere here, and the screen is its own confirmation.
 
+  This submission names nothing in `submitted`, and that is the rule the документ's page
+  already follows: правка and удаление name themselves, and what does not name itself is the
+  block's own form.
+
   `data-lease-form` is the block's contract, mirroring `data-upload` on the two upload
   forms: it says whether заведение is offered at all. A сотрудник without the administrator
   right does not get this markup — neither collapsed nor disabled: offered and refused at
@@ -26,90 +30,7 @@
         hx-target="#space-card">
     {% csrf_token %}
 
-    {% comment %}
-      A reason for refusal belonging to no single field. The период names «по» itself, so
-      nothing lands here today — it stays because the model is where refusals live, and the
-      next one it grows must not fall silently off the form.
-    {% endcomment %}
-    {% if form.non_field_errors %}
-      <div class="alert alert-error" role="alert">
-        <span>{{ form.non_field_errors|join:" " }}</span>
-      </div>
-    {% endif %}
-
-    {% comment %}
-      Арендатор и дата начала — единственное обязательное. The арендодатель is left empty so
-      that one and the same company is not chosen 324 times.
-    {% endcomment %}
-    {% include "leases/_party_choice.html" with field=form.tenant query=form.tenant_q %}
-    {% include "leases/_party_choice.html" with field=form.landlord query=form.landlord_q %}
-
-    <div class="flex gap-2">
-      <fieldset class="fieldset grow">
-        <legend class="fieldset-legend">{{ form.valid_from.label }}</legend>
-        {% comment %}
-          No default of today: the день, с которого идёт аренда, стоит в бумаге, and a
-          pre-filled date is accepted without a glance — the same reason the плана upload
-          fills nothing in (ADR 0004).
-        {% endcomment %}
-        <input type="date" name="{{ form.valid_from.html_name }}"
-               value="{{ form.valid_from.value|default_if_none:'' }}" required class="input w-full">
-        {% if form.valid_from.errors %}
-          <p class="text-sm text-error">{{ form.valid_from.errors|join:" " }}</p>
-        {% endif %}
-      </fieldset>
-
-      <fieldset class="fieldset grow">
-        <legend class="fieldset-legend">{{ form.valid_to.label }}</legend>
-        <input type="date" name="{{ form.valid_to.html_name }}"
-               value="{{ form.valid_to.value|default_if_none:'' }}" class="input w-full">
-        {% if form.valid_to.errors %}
-          <p class="text-sm text-error">{{ form.valid_to.errors|join:" " }}</p>
-        {% endif %}
-        {# Пустое «по» читается «по сей день» — то же чтение, что у поэтажного плана. #}
-        <p class="label">Пусто — по сей день.</p>
-      </fieldset>
-    </div>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend">{{ form.area_m2.label }}</legend>
-      <input type="number" step="0.01" name="{{ form.area_m2.html_name }}"
-             value="{{ form.area_m2.value|default_if_none:'' }}" class="input w-full">
-      {% if form.area_m2.errors %}
-        <p class="text-sm text-error">{{ form.area_m2.errors|join:" " }}</p>
-      {% endif %}
-      {% comment %}
-        Said on the field, because one empty box must not carry two opposite meanings: an
-        empty арендуемая площадь is «не заведено» and never «всё помещение». The карточка
-        prints a dash for it and leaves it out of «сдано X из Y».
-      {% endcomment %}
-      <p class="label">Пусто — не заведено, а не «всё помещение».</p>
-    </fieldset>
-
-    <div class="flex gap-2">
-      <fieldset class="fieldset grow">
-        <legend class="fieldset-legend">{{ form.rate.label }}</legend>
-        <input type="number" step="0.01" name="{{ form.rate.html_name }}"
-               value="{{ form.rate.value|default_if_none:'' }}" class="input w-full">
-        {% if form.rate.errors %}
-          <p class="text-sm text-error">{{ form.rate.errors|join:" " }}</p>
-        {% endif %}
-      </fieldset>
-
-      <fieldset class="fieldset grow">
-        <legend class="fieldset-legend">{{ form.contract_no.label }}</legend>
-        {% comment %}
-          A free field: «по договору №17» is written down without BCMP pretending to hold
-          the договор. The скан is attached as a документ, and the договор itself is not an
-          entity here.
-        {% endcomment %}
-        <input type="text" name="{{ form.contract_no.html_name }}"
-               value="{{ form.contract_no.value|default_if_none:'' }}" class="input w-full">
-        {% if form.contract_no.errors %}
-          <p class="text-sm text-error">{{ form.contract_no.errors|join:" " }}</p>
-        {% endif %}
-      </fieldset>
-    </div>
+    {% include "leases/_lease_fields.html" %}
 
     <button type="submit" class="btn btn-primary btn-sm">Завести аренду</button>
   </form>

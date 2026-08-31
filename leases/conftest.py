@@ -7,7 +7,9 @@ and a factory for an аренда.
 
 The помещения stand here rather than in one of the test modules because three of them ask
 about the same two — the model, the block on the карточка and the form on it — and a
-кабинет of 300 м² defined three times would drift into three different кабинеты.
+кабинет of 300 м² defined three times would drift into three different кабинеты. The two
+signed-in clients stand here for the same reason: «сотрудник без права» and «администратор
+организации» are the pair every screen of this stage is read through.
 
 The factory fills in a период that has begun and has not ended: almost every rule here is
 about something other than the срок, and a test that had to name two dates before it could
@@ -17,9 +19,30 @@ say «two аренды on one помещение overlap» would bury the thing 
 from datetime import date
 
 import pytest
+from django.utils import timezone
 
 from leases.models import Lease
 from parties.models import Party
+
+
+@pytest.fixture
+def today():
+    """The day the screens speak about — taken once, so a test does not straddle midnight."""
+    return timezone.localdate()
+
+
+@pytest.fixture
+def reader(client, member):
+    """A сотрудник УК without the administrator right: the карточка is a screen, not a бланк."""
+    client.force_login(member)
+    return client
+
+
+@pytest.fixture
+def entering(client, administrator):
+    """The администратор организации — the one every write is offered to (ADR 0005)."""
+    client.force_login(administrator)
+    return client
 
 
 @pytest.fixture

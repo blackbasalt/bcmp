@@ -22,7 +22,6 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from django.utils import timezone
 
 from building_passport.models import Space
 
@@ -56,18 +55,6 @@ def open_card(client, space):
 def leases_on(page):
     """The аренда rows by key: what is written in each of them."""
     return {row["key"]: stated(row["text"]) for row in LEASE.finditer(page)}
-
-
-@pytest.fixture
-def today():
-    return timezone.localdate()
-
-
-@pytest.fixture
-def reader(client, member):
-    """A сотрудник УК looking at their own building — the ordinary reader of the card."""
-    client.force_login(member)
-    return client
 
 
 # When the block is there at all
