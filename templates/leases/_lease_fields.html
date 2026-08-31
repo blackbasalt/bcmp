@@ -36,8 +36,15 @@
 {% include "leases/_party_choice.html" with field=form.tenant query=form.tenant_q %}
 {% include "leases/_party_choice.html" with field=form.landlord query=form.landlord_q %}
 
-<div class="flex gap-2">
-  <fieldset class="fieldset grow">
+{% comment %}
+  «с» и «по» — одно условие, спрошенное в двух полях, и стоят они рядом, пока рядом
+  помещаются: врозь они читаются как два отдельных вопроса о сроке. Перенос — не украшение:
+  форма живёт в правой колонке этажа шириной 20rem, а `type="date"` рисует «мм.дд.гггг» и
+  кнопку календаря и в половине этой колонки обрезается. `basis` — та ширина, ниже которой
+  поле разъезжается на свою строку; то же, чем набрана строка отбора на полке помещений.
+{% endcomment %}
+<div class="flex flex-wrap gap-2">
+  <fieldset class="fieldset grow basis-44">
     <legend class="fieldset-legend">{{ form.valid_from.label }}</legend>
     {% comment %}
       No default of today: the день, с которого идёт аренда, стоит в бумаге, and a
@@ -50,7 +57,7 @@
     {% endif %}
   </fieldset>
 
-  <fieldset class="fieldset grow">
+  <fieldset class="fieldset grow basis-44">
     <legend class="fieldset-legend">{{ form.valid_to.label }}</legend>
     {{ form.valid_to|styled:"input w-full" }}
     {% if form.valid_to.errors %}
@@ -79,8 +86,13 @@
   <p class="label">Пусто — не заведено, а не «всё помещение».</p>
 </fieldset>
 
-<div class="flex gap-2">
-  <fieldset class="fieldset grow">
+{% comment %}
+  Тоже парой и тоже с переносом. Легенды здесь разной высоты — «Ставка за м² в месяц» в узкой
+  колонке набирается в две строки, «Номер договора» в одну, — и бок о бок поля встали бы
+  уступом; на своих строках им ровняться не по чему.
+{% endcomment %}
+<div class="flex flex-wrap gap-2">
+  <fieldset class="fieldset grow basis-40">
     <legend class="fieldset-legend">{{ form.rate.label }}</legend>
     {{ form.rate|styled:"input w-full" }}
     {% if form.rate.errors %}
@@ -88,7 +100,7 @@
     {% endif %}
   </fieldset>
 
-  <fieldset class="fieldset grow">
+  <fieldset class="fieldset grow basis-40">
     <legend class="fieldset-legend">{{ form.contract_no.label }}</legend>
     {% comment %}
       A free field: «по договору №17» is written down without BCMP pretending to hold

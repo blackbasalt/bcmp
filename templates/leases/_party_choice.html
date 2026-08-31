@@ -20,13 +20,19 @@
   <legend class="fieldset-legend">{{ field.label }}</legend>
 
   {% comment %}
+    Коробка и кнопка — один элемент управления (`join`), а не два рядом с зазором: искать
+    Сторону — это одно действие, и читается оно как одно. Заодно уходит разнобой высот —
+    `join` тянет обе части в одну строку, и кнопку больше не приходится ставить по центру
+    поля вручную. Кнопка обычная, не `btn-primary`: главное действие формы — «Завести
+    аренду», и две зелёные кнопки в одной складке спорят за то, какую нажимать.
+
     The box and the button carry the same four htmx attributes rather than sharing them from
     this wrapper. htmx does inherit `hx-get`, `hx-target`, `hx-include` and `hx-params` down
     the DOM — but a `<div>` holding `hx-get` becomes an htmx element itself, triggered by a
     click, and every click anywhere in the row would send a поиск. The repetition is the
     cheaper of the two.
   {% endcomment %}
-  <div class="flex gap-2">
+  <div class="join w-full">
     {% comment %}
       `type="search"` for the same reason the полка uses it: the browser gives the clearing
       cross and its own history, and on a phone the keyboard comes up with «Найти». Enter
@@ -36,13 +42,13 @@
     {% endcomment %}
     <input type="search" name="{{ query.html_name }}"
            value="{{ query.value|default_if_none:'' }}"
-           placeholder="Название или БИН/ИИН" class="input w-full"
+           placeholder="Название или БИН" class="input join-item w-full"
            hx-get="{% url 'building_passport:space_card' space.pk %}"
            hx-target="#space-card" hx-include="closest form"
            hx-params="not csrfmiddlewaretoken"
            hx-trigger="search, keyup[key=='Enter']"
            hx-on:keydown="if (event.key === 'Enter') event.preventDefault()">
-    <button type="button" class="btn btn-sm btn-ghost self-center"
+    <button type="button" class="btn join-item"
             hx-get="{% url 'building_passport:space_card' space.pk %}"
             hx-target="#space-card" hx-include="closest form"
             hx-params="not csrfmiddlewaretoken">Найти</button>
@@ -67,12 +73,16 @@
   {% endif %}
 
   {% comment %}
-    Не нашлось. «Завести Сторону» is a deliberate separate step and not a button here: a
-    реестр of 699 rows filled from this form would grow «ТОО Альфа», «Альфа ТОО» and «ТОО
-    «Альфа»» — three writings of one company, and no screen able to say which of them an
-    аренда means.
+    Не нашлось. Здесь же сказано, где искали: поиск идёт и по названию, и по БИН/ИИН, а в
+    подсказке поля на ширину карточки помещается только «Название или БИН». Набравший ИИН и
+    не нашедший ничего иначе не узнает, что по ИИН тоже искали, — и решит, что спросил не
+    так, хотя Стороны просто нет.
+
+    «Завести Сторону» is a deliberate separate step and not a button here: a реестр of 699
+    rows filled from this form would grow «ТОО Альфа», «Альфа ТОО» and «ТОО «Альфа»» — three
+    writings of one company, and no screen able to say which of them an аренда means.
   {% endcomment %}
   {% if query.value and not field.field.offered %}
-    <p class="label">Не нашлось. Сторону заводят отдельно — через администратора платформы, — и только потом выбирают здесь.</p>
+    <p class="label">Не нашлось — ни по названию, ни по БИН/ИИН. Сторону заводят отдельно — через администратора платформы, — и только потом выбирают здесь.</p>
   {% endif %}
 </fieldset>

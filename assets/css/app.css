@@ -246,6 +246,16 @@
   stroke-width: 2.5;
 }
 
+/* Подсказка под полем переносится по словам. daisyUI ставит `.label` в
+   `white-space: nowrap`, рассчитывая на короткую надпись внутри поля; у нас этим классом
+   набрана строка под полем — «Пусто — по сей день. Съезд — это дата «по».» — и в узкой
+   колонке карточки помещения она уезжала за край и обрезалась. Подсказка, которую не
+   дочитать, — это подсказка, которой нет, и правило стоит здесь одно на все формы: то же
+   `.label` набирают загрузка плана, реквизиты документа и удаление. */
+.label {
+  white-space: normal;
+}
+
 /* Until Alpine has started, `x-show` hides nothing yet, and the closed AI manager panel
    would manage to blink on the screen. The rule is removed together with the attribute on
    initialisation. */
