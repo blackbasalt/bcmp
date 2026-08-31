@@ -55,15 +55,20 @@ def lease_term(lease) -> str:
     return f"с {lease.valid_from:%d.%m.%Y} по {ends}"
 
 
-def shows_leases(occupancy) -> bool:
+def shows_leases(occupancy, entry_offered) -> bool:
     """Whether the карточка carries the аренда block at all.
 
     On every арендопригодное помещение, empty or not: «свободно» has to read as an answer
     and not as a section that failed to load. On a МОП or a техническое only when there is
     an аренда to show — the банкомат in the лобби is visible where it stands, and a section
     promising data that does not exist is not put in front of a reader.
+
+    And wherever заведение is offered, whatever the вид: the form is the reason the block is
+    there for an администратор организации, and an empty лобби with no block is a лобби the
+    банкомат standing in it can never be entered on. What a reader is spared is a section
+    with nothing in it; a form is not nothing.
     """
-    return occupancy.is_leasable or occupancy.has_any
+    return occupancy.is_leasable or occupancy.has_any or entry_offered
 
 
 def occupancy_line(occupancy) -> str | None:

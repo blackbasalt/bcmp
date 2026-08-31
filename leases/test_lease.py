@@ -31,14 +31,6 @@ from parties.models import PartyRole
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def kab305(first_floor, make_space):
-    """An арендопригодное помещение of a known площадь — the ordinary subject of an аренда."""
-    return make_space(
-        first_floor, "man-f1-c", "каб305", area_m2=300, is_leasable=True, is_common=False
-    )
-
-
 # What an аренда holds
 
 

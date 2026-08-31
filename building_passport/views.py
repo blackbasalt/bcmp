@@ -14,6 +14,7 @@ from dictionary.models import DictSpaceType
 # `building_passport.models`, which imports nothing back, so the occupancy rule travels one
 # way — the same direction `documents` and `rooms` take what they need in.
 from leases.lease_display import shows_leases
+from leases.lease_entry import LeaseForm, carried_back
 from leases.occupancy import occupancy_of
 
 from . import plan_completeness, plan_layer
@@ -282,8 +283,58 @@ class SpaceCardView(LoginRequiredMixin, DetailView):
         # belong with аренда, and the карточка is not the only screen that will ask.
         occupancy = occupancy_of(self.object, timezone.localdate())
         context["occupancy"] = occupancy
-        context["shows_leases"] = shows_leases(occupancy)
+        # Заведение аренды goes only to whoever may write into this организация's data, by
+        # the same rule the плана upload states in full (ADR 0005): a form that would be
+        # refused is not offered, and the карточка reads as a screen rather than as a
+        # бланк. A refusal brings its own already filled-in form, so the empty one is only
+        # put in its place.
+        if not self.administers_the_space:
+            context["lease_form"] = None
+        else:
+            # `request.GET` is what the поиск Стороны travels in — the same address, no
+            # ручка of its own — and it carries back whatever had already been typed into
+            # the form when the поиск was sent. What an address may fill in, and that it may
+            # fill in nothing without a поиск, is `carried_back`'s rule: аренда's, not this
+            # screen's.
+            context.setdefault(
+                "lease_form",
+                LeaseForm(space=self.object, already_typed=carried_back(self.request.GET)),
+            )
+        context["shows_leases"] = shows_leases(
+            occupancy, entry_offered=context["lease_form"] is not None
+        )
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Заведение аренды: the карточка's own address, because the form stands on it.
+
+        A refusal returns the same карточка with the reason on the form and what was typed
+        still in it; success returns the карточка redrawn with the new аренда on it. Neither
+        is a redirect: the карточка arrives by `hx-get` into the rail of the экран этажа, and
+        the redrawn карточка going back into that same rail is the confirmation itself.
+        """
+        self.object = self.get_object()
+        if not self.administers_the_space:
+            # 403 and not 404, by the rule the плана upload states in full: a помещение this
+            # employee has already been shown does not become non-existent because they may
+            # not write to it. Another client's помещение answers 404 above, and does so to
+            # a write for the same reason it does to a read (ADR 0001, ADR 0005).
+            raise PermissionDenied("Заводить аренды этой организации может её администратор.")
+        form = LeaseForm(request.POST, space=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(lease_form=form))
+        form.save()
+        return self.render_to_response(self.get_context_data())
+
+    @cached_property
+    def administers_the_space(self):
+        """Whether this user may maintain the data of this помещение's организация (ADR 0005).
+
+        The same question is asked of the form and of the request that carries it back: a
+        form offered and then refused offers an action that cannot be performed. One answer
+        per request, so it is asked once — a refused form would otherwise ask it twice.
+        """
+        return Space.objects.administered_by(self.request.user).filter(pk=self.object.pk).exists()
 
 
 class FloorPlanSVGView(LoginRequiredMixin, View):

@@ -1,0 +1,78 @@
+{% comment %}
+  Выбор Стороны поиском — одинаково для арендатора и для арендодателя.
+
+  One template for both fields, because the two must behave alike: a reader who learned to
+  find a Сторона in one of them must not have to learn the other. It is included with
+  `field` and `query` — the Сторона itself and the box it is looked for in — and it reads
+  `space` from the карточка it stands on, which is the address the поиск is sent to.
+
+  The поиск edет параметром на адрес самой карточки (`…/card/?tenant_q=аль`) and redraws the
+  карточка with the matches: no автодополнение of its own, one address, and отбор travelling
+  in the address exactly as the словарь says it does everywhere else. `hx-include` sends the
+  whole form along, so looking up the арендатор does not cost the срок and the ставка already
+  typed; the CSRF token is left out of it — it belongs to the submission, not to a question
+  asked in an address.
+
+  Until something is looked for the list is empty. The реестр holds 699 Сторон, mostly
+  поставщики, and a list of them is a scroll rather than a choice.
+{% endcomment %}
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">{{ field.label }}</legend>
+
+  {% comment %}
+    The box and the button carry the same four htmx attributes rather than sharing them from
+    this wrapper. htmx does inherit `hx-get`, `hx-target`, `hx-include` and `hx-params` down
+    the DOM — but a `<div>` holding `hx-get` becomes an htmx element itself, triggered by a
+    click, and every click anywhere in the row would send a поиск. The repetition is the
+    cheaper of the two.
+  {% endcomment %}
+  <div class="flex gap-2">
+    {% comment %}
+      `type="search"` for the same reason the полка uses it: the browser gives the clearing
+      cross and its own history, and on a phone the keyboard comes up with «Найти». Enter
+      searches and is kept from submitting the form — the арендатор is not chosen yet, and a
+      form sent by the very keystroke that was meant to find them would answer with a
+      refusal about a field nobody had reached.
+    {% endcomment %}
+    <input type="search" name="{{ query.html_name }}"
+           value="{{ query.value|default_if_none:'' }}"
+           placeholder="Название или БИН/ИИН" class="input w-full"
+           hx-get="{% url 'building_passport:space_card' space.pk %}"
+           hx-target="#space-card" hx-include="closest form"
+           hx-params="not csrfmiddlewaretoken"
+           hx-trigger="search, keyup[key=='Enter']"
+           hx-on:keydown="if (event.key === 'Enter') event.preventDefault()">
+    <button type="button" class="btn btn-sm btn-ghost self-center"
+            hx-get="{% url 'building_passport:space_card' space.pk %}"
+            hx-target="#space-card" hx-include="closest form"
+            hx-params="not csrfmiddlewaretoken">Найти</button>
+  </div>
+
+  {% comment %}
+    The options are written out here rather than by the widget: what stands on the list is
+    what the поиск found, while what may be sent is the whole реестр — `PartyChoice` says
+    why the two differ. The Сторона is named with its БИН/ИИН, because that is what tells
+    «ТОО «Альфа»» from «ТОО «Альфа»».
+  {% endcomment %}
+  <select name="{{ field.html_name }}" class="select w-full"
+          {% if field.field.required %}required{% endif %}>
+    <option value="">{% if field.field.required %}Не выбран{% else %}Не указан{% endif %}</option>
+    {% for key, label in field.field.offered %}
+      <option value="{{ key }}"
+              {% if field.value|stringformat:"s" == key|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% if field.errors %}
+    <p class="text-sm text-error">{{ field.errors|join:" " }}</p>
+  {% endif %}
+
+  {% comment %}
+    Не нашлось. «Завести Сторону» is a deliberate separate step and not a button here: a
+    реестр of 699 rows filled from this form would grow «ТОО Альфа», «Альфа ТОО» and «ТОО
+    «Альфа»» — three writings of one company, and no screen able to say which of them an
+    аренда means.
+  {% endcomment %}
+  {% if query.value and not field.field.offered %}
+    <p class="label">Не нашлось. Сторону заводят отдельно — через администратора платформы, — и только потом выбирают здесь.</p>
+  {% endif %}
+</fieldset>

@@ -35,6 +35,20 @@
   {% endif %}
 
   {% comment %}
+    Заведение аренды стоит здесь же: аренда заводится там, где помещение уже открыто перед
+    читателем. Whoever may not write into this организация's data gets no form at all
+    (`lease_form` is empty) — a button shown and then refused offers an action that cannot
+    be performed (ADR 0005).
+
+    It stands above the складка rather than below it: a складка with ten departed арендаторы
+    behind it would otherwise push the form off the bottom of the rail on the one помещение
+    that has the most history to enter against.
+  {% endcomment %}
+  {% if lease_form %}
+    {% include "leases/_lease_entry.html" with form=lease_form %}
+  {% endif %}
+
+  {% comment %}
     Прошлые аренды за складкой, и складка называет их число: ten departed арендаторы must not
     bury the one sitting there now, and a reader is not made to open a fold to find out
     whether there is anything behind it. A складка with nothing behind it is not drawn.

@@ -70,22 +70,6 @@ def reader(client, member):
     return client
 
 
-@pytest.fixture
-def kab305(first_floor, make_space):
-    """An арендопригодное помещение of a known площадь — the ordinary subject of an аренда."""
-    return make_space(
-        first_floor, "man-f1-c", "каб305", area_m2=300, is_leasable=True, is_common=False
-    )
-
-
-@pytest.fixture
-def lobby(first_floor, make_space):
-    """A МОП: not let as a whole, and still holding a банкомат of two metres."""
-    return make_space(
-        first_floor, "man-f1-d", "Лобби", area_m2=500, is_leasable=False, is_common=True
-    )
-
-
 # When the block is there at all
 
 
