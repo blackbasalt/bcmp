@@ -4,38 +4,84 @@
   panel of the floor screen by a separate request, so this is a chunk of markup rather than
   a screen — the plan and the tree do not go anywhere when it opens.
 
+  The card is read top to bottom as an answer to three questions in order: что это за
+  помещение (the heading and the marks beside it), сколько его и какого оно рода (the
+  numbers), где оно стоит (the tree). Each answer is a block of its own with a hairline
+  above it and a caption set in small capitals: the rail is narrow, and a reader who has
+  come for one of the three must find it without reading the other two.
+
   The "Документы" and "Системы" sections are deliberately absent here: the tables behind
   them are empty, and a section promising data that does not exist is worse than its own
   absence.
 {% endcomment %}
-<h3 class="text-base font-semibold">{{ space|space_label }}</h3>
 
 {% comment %}
-  An empty field is shown as a dash — the same «— нет данных» as in the passport (#5):
-  blank space can be read as a zero, a dash cannot.
-{% endcomment %}
-<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-  <dt class="opacity-60">Код</dt>
-  <dd>{{ space.code|or_missing }}</dd>
-  <dt class="opacity-60">Наименование</dt>
-  <dd>{{ space.name|or_missing }}</dd>
-  {% comment %}
-    «Назначение» and not «Подтип»: `subtype` is what the column is called in the storage,
-    and a storage word put in front of a reader tells them what the table looks like rather
-    than what the помещение is for. The полка помещений names the same field the same way —
-    a reader who found a санузел by that word must meet it again on the card.
+  The heading is the space's name, and the marks under it are what is said about the space
+  in one word each. The код is set in a monospace face and not among the fields below: it
+  is an identifier, read character by character and compared against a drawing, a table and
+  a contract — and it is the one thing on the card that is copied rather than read.
 
-    «Тип» and not «Тип помещения»: this row prints `Space.type` and reads «Тип помещения:
-    Помещение» today. Тип tells a помещение from an этаж and a здание; вид divides
+  «Арендопригодное» and «Общего пользования» stand as marks and not as rows «да / нет»: a
+  row with «нет» in it takes as much of a narrow rail as one with «да» and says nothing.
+  The mark of the absent property is its absence.
+{% endcomment %}
+<div class="flex flex-col gap-2">
+  <h3 class="text-xl leading-tight font-semibold text-neutral">{{ space|space_label }}</h3>
+  <div class="flex flex-wrap items-center gap-1.5">
+    <span class="badge badge-sm badge-ghost font-mono">{{ space.code|or_missing }}</span>
+    {% if space.is_leasable %}<span class="badge badge-sm badge-primary badge-soft">Арендопригодное</span>{% endif %}
+    {% if space.is_common %}<span class="badge badge-sm badge-ghost">Общего пользования</span>{% endif %}
+    {% if space.status %}<span class="badge badge-sm badge-ghost">{{ space.status }}</span>{% endif %}
+  </div>
+</div>
+
+{% comment %}
+  Площадь and тип — на плашке крупно, а не строками списка: площадь is the number this card
+  is opened for most often, and a number the eye has to find among five labels is a number
+  read slowly. The two stand side by side because they answer «сколько» and «чего» about the
+  same помещение.
+
+  An empty field is shown as a dash — the same «— нет данных» as in the passport (#5): blank
+  space can be read as a zero, a dash cannot. The dash stands here too, only set small and
+  quiet: a площадь that has not been recorded is not a large figure, and in the face this
+  plate gives to numbers it would shout across the card louder than any of them. Nought is
+  a value and is printed large like any other — hence `is None` and not a plain truth test.
+{% endcomment %}
+<dl class="grid grid-cols-2 divide-x divide-base-300 rounded border border-base-300 bg-base-200/60">
+  <div class="px-3 py-2">
+    <dt class="text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Площадь</dt>
+    <dd class="{% if space.area_m2 is None %}text-sm opacity-60{% else %}text-lg font-semibold text-neutral{% endif %}">{{ space.area_m2|area|or_missing }}</dd>
+  </div>
+  {% comment %}
+    «Тип» and not «Тип помещения»: this cell prints `Space.type` and read «Тип помещения:
+    Помещение» before. Тип tells a помещение from an этаж and a здание; вид divides
     помещения among themselves, and it is вид that the план shows in colour right beside
     this card. Two axes must not share one word on one screen.
   {% endcomment %}
+  <div class="px-3 py-2">
+    <dt class="text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Тип</dt>
+    <dd class="text-lg font-semibold text-neutral">{{ space.get_type_display }}</dd>
+  </div>
+</dl>
+
+{% comment %}
+  What is left is set as rows, label to value across the rail: these are read one at a time
+  and by name.
+
+  «Назначение» and not «Подтип»: `subtype` is what the column is called in the storage,
+  and a storage word put in front of a reader tells them what the table looks like rather
+  than what the помещение is for. The полка помещений names the same field the same way —
+  a reader who found a санузел by that word must meet it again on the card.
+
+  «Наименование» stands here even though the heading above already prints it: the heading
+  falls back to the код where there is no name (`space_label`), and then this row is the
+  only place saying that the name has not been recorded at all.
+{% endcomment %}
+<dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5 text-sm">
   <dt class="opacity-60">Назначение</dt>
-  <dd>{{ space.subtype|or_missing }}</dd>
-  <dt class="opacity-60">Тип</dt>
-  <dd>{{ space.get_type_display }}</dd>
-  <dt class="opacity-60">Площадь</dt>
-  <dd>{{ space.area_m2|area|or_missing }}</dd>
+  <dd class="text-right font-medium">{{ space.subtype|or_missing }}</dd>
+  <dt class="opacity-60">Наименование</dt>
+  <dd class="text-right font-medium">{{ space.name|or_missing }}</dd>
 </dl>
 
 {% comment %}
@@ -46,37 +92,45 @@
 {% if shows_leases %}{% include "leases/_space_leases.html" %}{% endif %}
 
 {% comment %}
-  The place in the tree. It is called «выше» and «ниже» rather than "belongs to" and
-  "contains": the `parent` relation means both nesting (cubicles in a lavatory) and the
-  grouping of neighbouring spaces (a vestibule and the offices behind it), and the card
-  must not claim which of the two is at hand.
+  The place in the tree — a rail of dots read downwards, the selected space marked on it by
+  a ring. It is drawn rather than listed because that is what it says: the помещение lies
+  between what is above it and what is inside it, and «Выше» and «Ниже» as two labels made
+  the reader assemble that picture themselves.
+
+  The words «выше» and «ниже» stay in the captions of the neighbours' группы for the reason
+  they were chosen: the `parent` relation means both nesting (cubicles in a lavatory) and
+  the grouping of neighbouring spaces (a vestibule and the offices behind it), and the card
+  must not claim which of the two is at hand. What the rail draws is order, not ownership.
 
   The tree neighbours are buttons, not links: they re-fill this same panel rather than
   leading away from the floor screen the panel exists for. They select a space by the same
   means as a tree node and a contour on the plan (`_space_select.html`).
 {% endcomment %}
-<div class="border-t border-base-300 pt-3 text-sm">
-  <h4 class="mb-1 opacity-60">Место в дереве</h4>
-  <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+<div class="border-t border-base-300 pt-3">
+  <h4 class="mb-2 text-[0.6875rem] font-semibold tracking-wider uppercase opacity-60">Место в дереве</h4>
+  <ol class="space-branches text-sm">
     {% if parent %}
-      <dt class="opacity-60">Выше</dt>
-      <dd>
+      <li class="space-branch" title="Выше">
+        <span class="space-branch-dot"></span>
         {% if parent_is_a_space %}
           <button type="button" class="link link-hover text-left"
                   {% include "building_passport/_space_select.html" with space=parent %}>{{ parent|space_label }}</button>
         {% else %}
-          {{ parent|space_label }}
+          {# The floor above the space is named but opens no card: it is the screen this rail stands on. #}
+          <span>{{ parent|space_label }}</span>
         {% endif %}
-      </dd>
+      </li>
     {% endif %}
-    {% if children %}
-      <dt class="opacity-60">Ниже</dt>
-      <dd class="flex flex-col items-start gap-1">
-        {% for child in children %}
-          <button type="button" class="link link-hover text-left"
-                  {% include "building_passport/_space_select.html" with space=child %}>{{ child|space_label }}</button>
-        {% endfor %}
-      </dd>
-    {% endif %}
-  </dl>
+    <li class="space-branch">
+      <span class="space-branch-dot" data-current></span>
+      <span class="font-semibold text-neutral">{{ space|space_label }}</span>
+    </li>
+    {% for child in children %}
+      <li class="space-branch space-branch-inside" title="Ниже">
+        <span class="space-branch-dot"></span>
+        <button type="button" class="link link-hover text-left"
+                {% include "building_passport/_space_select.html" with space=child %}>{{ child|space_label }}</button>
+      </li>
+    {% endfor %}
+  </ol>
 </div>

@@ -242,9 +242,15 @@
              aria-label="Карточка помещения">
       <div class="card-body gap-3">
         <div class="flex items-center justify-between gap-2">
-          <h2 class="card-title text-lg">Карточка помещения</h2>
+          {% comment %}
+            The rail names itself in small capitals rather than in a heading the size of the ones
+            over the tree and the plan: those two head columns of equal standing, whereas this one
+            is a caption over a card whose own heading — the помещение itself — follows immediately
+            below and must be the largest thing in the column.
+          {% endcomment %}
+          <h2 class="text-xs font-semibold tracking-wider uppercase opacity-60">Карточка помещения</h2>
           {# Closing gives the plan back its full width: a floor is surveyed whole more often than one space is read. #}
-          <button type="button" class="btn btn-sm btn-ghost" x-on:click="selected = null"
+          <button type="button" class="btn btn-xs btn-circle btn-ghost" x-on:click="selected = null"
                   aria-label="Закрыть карточку помещения">✕</button>
         </div>
         {% comment %}

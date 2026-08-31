@@ -262,3 +262,81 @@
 [x-cloak] {
   display: none !important;
 }
+
+/* The rail of «место в дереве» on the space card: dots on a single line, read downwards —
+   what is above the space, the space itself, and what lies inside it. The line is drawn by
+   the items rather than by a border on the list, so that it can be cut back to the dot on
+   the first and the last of them: a line running past the outermost dot would promise a
+   neighbour that is not there.
+
+   The geometry lives here and not in utility classes because it is one figure and not a
+   set of margins: the dot's diameter, the line's position and the label's offset are three
+   expressions of the same number, and they must not be able to drift apart. */
+.space-branches {
+  --branch-dot: 0.5rem;
+  --branch-rail: calc(var(--branch-dot) / 2);
+}
+
+.space-branch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding-block: 0.3125rem;
+}
+
+.space-branch::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--branch-rail);
+  width: 1px;
+  background-color: var(--color-base-300);
+}
+
+.space-branch:first-child::before {
+  top: 50%;
+}
+
+.space-branch:last-child::before {
+  bottom: 50%;
+}
+
+.space-branch-dot {
+  position: relative;
+  flex: none;
+  width: var(--branch-dot);
+  height: var(--branch-dot);
+  border-radius: 9999px;
+  background-color: var(--color-base-300);
+}
+
+/* The selected space is a ring and not a filled dot: the card is already about it, and the
+   ring says «вы здесь» without competing with the heading above for attention. It is drawn
+   in the accent colour — the same one the selected floor and the primary action wear. */
+.space-branch-dot[data-current] {
+  background-color: var(--color-base-100);
+  border: 2px solid var(--color-primary);
+  width: calc(var(--branch-dot) + 0.125rem);
+  height: calc(var(--branch-dot) + 0.125rem);
+  margin-left: -0.0625rem;
+}
+
+/* What lies inside the space is set in from the rail and joined to it by an elbow — the
+   shape of the tree on the left of the screen, in miniature. The neighbours above and the
+   ones inside are told apart by that step: on one line they would read as a list of equals,
+   and «выше» and «ниже» would have to be taken on trust from the order alone. */
+.space-branch-inside {
+  padding-left: 1rem;
+}
+
+.space-branch-inside::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: var(--branch-rail);
+  width: calc(1rem - var(--branch-rail));
+  height: 1px;
+  background-color: var(--color-base-300);
+}
