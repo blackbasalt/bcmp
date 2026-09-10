@@ -32,5 +32,10 @@ urlpatterns = [
     # БЦ and every этаж at once, and it needs its own namespace so that the menu highlights
     # «Помещения» rather than «Бизнес-центры» while the reader stands on it (ADR 0016).
     path("rooms/", include("rooms.urls")),
+    # The Стороны section, beside the passports rather than inside them: «с кем мы имеем
+    # дело» is asked of the whole portfolio, and it needs its own namespace so that the menu
+    # highlights «Стороны» while the reader stands on it (ADR 0016). The app already existed
+    # and held the models; this is the day it acquires addresses.
+    path("parties/", include("parties.urls")),
     path("", include("building_passport.urls")),
 ]

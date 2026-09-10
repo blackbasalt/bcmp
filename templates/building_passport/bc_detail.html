@@ -38,7 +38,14 @@
   {% endcomment %}
   <div class="grid gap-4 lg:grid-cols-2">
     {% for section in sections %}
-      <section class="card bg-base-100 shadow-sm">
+      {% comment %}
+        `data-passport-section` is the screen's contract: it says which sections of the
+        паспорт are on screen. Named and not read off the heading, because the heading is not
+        the only place a section's name appears on the page — «Стороны» is a section here and
+        a раздел of the menu, which stands on every screen (ADR 0016) — and not `data-section`
+        either, which is the menu item's own contract.
+      {% endcomment %}
+      <section class="card bg-base-100 shadow-sm" data-passport-section="{{ section.title }}">
         <div class="card-body gap-3">
           <h2 class="card-title text-lg">{{ section.title }}</h2>
           <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">

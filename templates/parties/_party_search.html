@@ -1,0 +1,58 @@
+{% comment %}
+  The question put to a полка of hundreds: for now a text to find, looked for in the
+  название and in the БИН/ИИН at once.
+
+  It travels by GET and stands at the section's own address, so a narrowed полка is a link:
+  it reloads as it was, survives a tab left open overnight and can be sent to a colleague.
+  Clearing it is the address without it — hence «Сбросить» is a link back to the section and
+  not a button that submits an emptied form.
+
+  `data-search` is the screen's contract: it says whether the полка can be questioned at
+  all. Over a полка with no Сторонами there is no bar — narrowing a nothing is an offer that
+  answers nothing — and this markup is then absent altogether, not disabled: offered and
+  useless at once reads as a breakage.
+
+  A bar of its own file and not one shared with the two existing ones: the полка документов
+  asks three conditions and the полка помещений nine, and what they have in common is a
+  `<form method="get">`. The docstring of `_room_search.html` says why the first two were not
+  merged, and a third handwritten bar does not weaken it.
+{% endcomment %}
+<form method="get" class="card mb-4 bg-base-100 shadow-sm" data-search="parties">
+  <div class="card-body gap-4">
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
+      <fieldset class="fieldset grow">
+        <legend class="fieldset-legend">{{ search.q.label }}</legend>
+        {% comment %}
+          `type="search"` and not `type="text"`: the browser offers the clearing cross and
+          its own history of what was looked for here, and on a phone the keyboard comes up
+          with «Найти» on it. The БИН is named in the placeholder — an empty box gives no
+          hint that it is searched too.
+        {% endcomment %}
+        <input type="search" name="{{ search.q.html_name }}"
+               value="{{ search.q.value|default_if_none:'' }}"
+               placeholder="{{ search.q.field.widget.attrs.placeholder }}"
+               class="input w-full">
+        {% comment %}
+          A condition that came in from the address and did not read. The полка is empty
+          beneath, and without this line the box stands there over it as though nothing had
+          been asked: narrowed to nothing by something the screen is not showing.
+        {% endcomment %}
+        {% if search.q.errors %}
+          <p class="text-sm text-error">{{ search.q.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      {% comment %}
+        The actions keep to the right end of the same line: «Найти» closes the bar where
+        reading it ends. `ms-auto` and not a spacer — on a narrow screen the line wraps and
+        the buttons simply take the next row, without a hole left in the layout.
+      {% endcomment %}
+      <div class="ms-auto flex gap-2 pb-1">
+        <button type="submit" class="btn btn-primary btn-sm">Найти</button>
+        {% if search.asked %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'parties:party_list' %}">Сбросить</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>

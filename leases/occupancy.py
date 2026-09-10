@@ -1,12 +1,13 @@
 """Занятость помещения — «действующая на день», «сдано X из Y» и «свободно», в одном месте.
 
-Two screens ask about occupancy and must not each carry their own copy of it. The карточка
+Three screens ask about occupancy and must not each carry their own copy of it. The карточка
 помещения holds one `Space` and wants the аренды standing on it today together with the two
 numbers; the полка помещений holds a queryset and wants the same rule as a condition to
-narrow it by and as columns to print beside hundreds of rows. So the rule is given out in
-every shape it is asked for here — the pattern `space_kind` established for вид and
-`plan_completeness` for полнота плана. Two copies would be two answers to one question, and
-the day they disagreed nobody would know which screen was lying.
+narrow it by and as columns to print beside hundreds of rows; the полка Сторон asks the same
+question from the other end — how many помещения each Сторона holds today. So the rule is
+given out in every shape it is asked for here — the pattern `space_kind` established for вид
+and `plan_completeness` for полнота плана. Two copies would be two answers to one question,
+and the day they disagreed nobody would know which screen was lying.
 
 Three readings are settled here and nowhere else:
 
@@ -28,7 +29,7 @@ Nothing here reads the tree: сдача входного тамбура каби
 помещение counts its own аренды and only its own.
 
 The module has no tests of its own, exactly as `space_kind` and `plan_completeness` have
-none: it is read by both screens, and both screens check it. A test of its own would be a
+none: it is read by the screens, and the screens check it. A test of its own would be a
 second account of one rule, and the two would eventually disagree.
 """
 
@@ -234,4 +235,52 @@ def tenants_of_each_room(day) -> dict[str, BaseExpression]:
         # single арендатор — and then the order decides nothing — but a value left to the
         # table is a value that changes under a reader for no reason.
         "tenant_here": Subquery(here.order_by("tenant__name").values("tenant__name")[:1]),
+    }
+
+
+def rooms_of_each_record(day) -> dict[str, BaseExpression]:
+    """Сколько помещений арендует каждая Сторона сегодня — the same rule, said to the полка
+    Сторон.
+
+    One annotation to hang on a queryset of учётных карточек, by the name a row is read
+    under: `.annotate(**rooms_of_each_record(день))` and then `record.rooms_rented`.
+
+    It stands here rather than in `parties` for the reason the module opens with: what
+    «действующая на день» means is settled in one place, and a полка working it out for
+    itself would be a second answer to the question the карточка помещения and the
+    «Арендатор» column already answer. What it counts is помещения and never metres — a
+    Сторона sitting in a помещение inside another one would be counted twice by an unknown
+    amount, and nothing in a row tells that nesting from the other kind (ADR 0015, ADR 0019).
+
+    Counted in помещениях and not in арендах: taking another 20 м² in the middle of a срок is
+    a second аренда of the same помещение (ADR 0017), and «2 помещения» would report a room
+    the арендатор does not have. Hence `distinct`.
+
+    The аренды are narrowed to the помещения of the карточка's own организация. A Сторона is
+    shared and her аренды are not: who sees the помещение sees its аренды (ADR 0018), so a
+    карточка of DownTown counts DownTown's помещения and says nothing about what the same
+    юрлицо rents at another client of the platform. This is the row's own half of the
+    isolation and not a second chokepoint: which карточки reach the полка at all is decided
+    before it, by `PartyRecord.objects.visible_to` (ADR 0020).
+
+    In the same query as the rows, for the reason `tenants_of_each_room` is: the полка
+    carries 637 rows, and what is asked of a row is asked 637 times.
+    """
+    here = Lease.objects.filter(
+        tenant=OuterRef("party"), space__org=OuterRef("org")
+    ).filter(in_force_on(day))
+    return {
+        # `values("tenant").annotate(...)` is a GROUP BY on the Сторона, so the subquery
+        # gives one row — the count — rather than one row per аренда. The model's own
+        # ordering is dropped: an ORDER BY inside a grouped subquery orders nothing and some
+        # backends refuse it outright.
+        "rooms_rented": Coalesce(
+            Subquery(
+                here.order_by()
+                .values("tenant")
+                .annotate(rooms=Count("space", distinct=True))
+                .values("rooms")
+            ),
+            0,
+        ),
     }

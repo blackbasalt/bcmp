@@ -40,8 +40,9 @@ def sidebar(client, url):
 
 
 def test_every_section_is_offered_without_going_through_a_building(client, member):
-    """Документы and Помещения are both reached without opening a building: one holds
-    papers attached to no БЦ at all, the other spans every БЦ at once."""
+    """Документы, Помещения and Стороны are all reached without opening a building: one
+    holds papers attached to no БЦ at all, one spans every БЦ at once, and the third answers
+    «с кем мы имеем дело», where 637 of the 699 Стороны are tied to no building either."""
     client.force_login(member)
 
     items = sidebar(client, reverse("building_passport:bc_list"))
@@ -49,6 +50,7 @@ def test_every_section_is_offered_without_going_through_a_building(client, membe
     assert reverse("building_passport:bc_list") in items["building_passport"]
     assert reverse("documents:document_list") in items["documents"]
     assert reverse("rooms:room_list") in items["rooms"]
+    assert reverse("parties:party_list") in items["parties"]
 
 
 def test_the_documents_item_is_highlighted_inside_the_section(client, member):
@@ -60,6 +62,7 @@ def test_the_documents_item_is_highlighted_inside_the_section(client, member):
     assert 'aria-current="page"' in items["documents"]
     assert "aria-current" not in items["building_passport"]
     assert "aria-current" not in items["rooms"]
+    assert "aria-current" not in items["parties"]
 
 
 def test_the_rooms_item_is_highlighted_on_the_shelf_of_rooms(client, member):
@@ -73,10 +76,26 @@ def test_the_rooms_item_is_highlighted_on_the_shelf_of_rooms(client, member):
     assert 'aria-current="page"' in items["rooms"]
     assert "aria-current" not in items["building_passport"]
     assert "aria-current" not in items["documents"]
+    assert "aria-current" not in items["parties"]
+
+
+def test_the_parties_item_is_highlighted_on_the_shelf_of_parties(client, member):
+    """The fourth раздел obeys the same rule as the third: a раздел is a Django app, and the
+    menu lights the item whose `app_name` the open address carries (ADR 0016). `parties`
+    already was an app and merely had no addresses — whoever gives the полка an address under
+    another раздел lights the wrong item here and breaks not one test about the полка."""
+    client.force_login(member)
+
+    items = sidebar(client, reverse("parties:party_list"))
+
+    assert 'aria-current="page"' in items["parties"]
+    assert "aria-current" not in items["building_passport"]
+    assert "aria-current" not in items["documents"]
+    assert "aria-current" not in items["rooms"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, manhattan):
-    """The second section must not break the first: inside a building, buildings are highlighted."""
+    """A further section must not break the first: inside a building, buildings are highlighted."""
     client.force_login(member)
 
     items = sidebar(client, reverse("building_passport:bc_detail", args=[manhattan.pk]))
@@ -84,6 +103,7 @@ def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, 
     assert 'aria-current="page"' in items["building_passport"]
     assert "aria-current" not in items["documents"]
     assert "aria-current" not in items["rooms"]
+    assert "aria-current" not in items["parties"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_floor(client, member, first_floor):

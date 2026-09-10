@@ -1,0 +1,129 @@
+{% extends "shell.html" %}
+{% load parties passport %}
+
+{% block title %}Стороны — BCMP{% endblock %}
+{% block page_title %}Стороны{% endblock %}
+{% block breadcrumbs %}<li>Стороны</li>{% endblock %}
+
+{% block content %}
+  {% comment %}
+    The question stands above the table: it is asked of what is below it and answered by it.
+    On a полка with no Сторонами there is nothing to narrow, and the bar is not shown — but
+    it stays on a полка that a question emptied, because that is where the question has to be
+    corrected.
+
+    Which of the two it is follows from the size of the полка and not from what came back: an
+    empty полка can be questioned exactly as a full one can, and a bar shown on the strength
+    of the address alone would offer to narrow a nothing.
+  {% endcomment %}
+  {% if whole %}{% include "parties/_party_search.html" %}{% endif %}
+
+  {% comment %}
+    A table, not cards: there are hundreds of Стороны, and what tells them apart — the
+    название, the БИН, the сфера деятельности — reads as columns, whereas as cards they would
+    sprawl across a dozen screens.
+
+    The whole полка is rendered at once, with no pagination: the browser's own find then
+    works across every row, and a link sent to a colleague loses nothing. The same as the two
+    полки before it, neither of which sets `paginate_by` either.
+  {% endcomment %}
+  {% if records %}
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body gap-3">
+        <div class="overflow-x-auto">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                {% if organisation_named %}<th>Организация</th>{% endif %}
+                <th>Название</th>
+                {% comment %}
+                  Both in one column, because a Сторона has one of the two and never both: a
+                  юрлицо has a БИН and a физлицо an ИИН, and two columns would leave whichever
+                  is not this row's empty down the whole table.
+                {% endcomment %}
+                <th>БИН/ИИН</th>
+                <th>Сфера деятельности</th>
+                {% comment %}
+                  «Арендует» stands last, after everything a Сторона is: the columns before it
+                  say who she is, and this one says what she holds of ours today. The count is
+                  in the cell and the word for what is counted in the heading — the same
+                  arrangement as «Арендатор» and «3 арендатора» on the полка помещений.
+                {% endcomment %}
+                <th>Арендует</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in records %}
+                {% comment %}
+                  `data-party` is the screen's contract: it shows which Стороны are displayed
+                  and in what order. It names the Сторона and not the карточка, because that
+                  is what the row is about — and a Сторона two of the reader's clients both
+                  know is honestly two rows, told apart by the «Организация» column.
+                {% endcomment %}
+                <tr data-party="{{ record.party_id }}">
+                  {% if organisation_named %}<td class="opacity-60">{{ record.org.name }}</td>{% endif %}
+                  <td>{{ record.party.name }}</td>
+                  {% comment %}
+                    The ОПФ is not a column of its own: it is already the suffix of the
+                    название, and a second account of it would be a second thing to keep in
+                    step (ADR 0025).
+                  {% endcomment %}
+                  <td class="whitespace-nowrap">{{ record.party.bin_iin|or_missing }}</td>
+                  {% comment %}
+                    A dash where it is not filled in, and it is filled in nowhere yet: none of
+                    the 699 Стороны carries a сфера, and an empty cell would read as a Сторона
+                    that does nothing rather than as a fact we have not recorded.
+                  {% endcomment %}
+                  <td>{{ record.party.line_of_business|or_missing }}</td>
+                  {% comment %}
+                    Counted in помещениях and never in метрах: a Сторона sitting in a
+                    помещение inside another one would be counted twice by an unknown amount
+                    (ADR 0015, ADR 0019). A bare dash where nothing is rented — 637 of the 699
+                    Стороны are поставщики, and that is an answer rather than a gap.
+                  {% endcomment %}
+                  <td class="whitespace-nowrap">{{ record|rents }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% comment %}
+          The count beneath the table: a phrase assembled in Python, where the agreement with
+          the numeral belongs. There is no итог beside it — neither in метрах, which would
+          count a Сторона in a вложенное помещение twice, nor in помещениях, which would add
+          up rows of different Стороны sitting in the same room.
+        {% endcomment %}
+        {# `data-count` is the screen's contract: the line that says how much of the полка is on screen. #}
+        <p class="text-sm opacity-70" data-count="parties">{{ shown }}</p>
+      </div>
+    </div>
+  {% elif whole %}
+    {% comment %}
+      A question that matched nothing, said as such: «ничего не нашлось» sends the reader to
+      change the question, «Стороны не заведены» sends them to whoever enters them, and one
+      screen for both would send them to the wrong one half the time.
+
+      Which of the two is decided by whether the полка has anything on it, not by whether
+      anything was asked — the полка follows помещения here and not документы. A reader whose
+      организация has no Стороны at all and a condition left in the address would otherwise be
+      sent to fix a question that was never the problem.
+
+      The count line stands here too, and only its second figure is worth reading: «Показано 0
+      из 637 Сторон» is what says the полка is full and the отбор is empty.
+    {% endcomment %}
+    <div class="alert alert-warning">
+      <span>По этому отбору ничего не нашлось. Измените условия или сбросьте отбор.</span>
+    </div>
+    <p class="mt-3 text-sm opacity-70" data-count="parties">{{ shown }}</p>
+  {% else %}
+    {% comment %}
+      An empty раздел says its emptiness out loud, and names who acts: the учётная карточка is
+      kept by the организация itself, so the reader is sent to their own администратор
+      организации rather than to the platform's support (ADR 0021).
+    {% endcomment %}
+    <div class="alert alert-info">
+      <span>Стороны не заведены — их заводит администратор организации.</span>
+    </div>
+  {% endif %}
+{% endblock %}

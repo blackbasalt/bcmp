@@ -6,6 +6,7 @@ is on the screen and which status code comes back. Markup and classes are not ch
 rebuild of the layout below the level of the URL must not rewrite the test set.
 """
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -17,6 +18,19 @@ from parties.models import OrgMembership, Party
 pytestmark = pytest.mark.django_db
 
 SECTIONS = ["Идентификация", "Характеристики", "Конструктив и безопасность", "Стороны"]
+
+
+def sections_on(page):
+    """The sections of the паспорт on the screen, by the name each card gives itself.
+
+    Read off `data-passport-section` — the screen's contract for it — and not looked for
+    anywhere in the markup: «Стороны» is both a section of the паспорт and, since the раздел
+    acquired addresses of its own, an item of the menu that stands on every screen (ADR 0016).
+    A section name searched for in the whole page would find the menu item and report a
+    section the паспорт has not got. A foothold and not the heading's classes, because this
+    file checks what is on the screen and not how it is laid out.
+    """
+    return re.findall(r'data-passport-section="([^"]*)"', page)
 
 
 @pytest.fixture
@@ -115,7 +129,7 @@ def test_a_building_of_another_organisation_is_missing_rather_than_forbidden(
 
 def test_a_filled_passport_is_read_in_four_sections(filled_page):
     """A field is found by its section rather than read out of the whole screen."""
-    assert [section for section in SECTIONS if section not in filled_page] == []
+    assert [section for section in SECTIONS if section not in sections_on(filled_page)] == []
 
 
 def test_identification_matches_the_building_against_an_external_registry(filled_page):
@@ -184,10 +198,12 @@ def test_a_section_without_a_single_value_does_not_appear(client, member, manhat
 
     _, page = open_bc(client, manhattan)
 
-    assert "Идентификация" in page
-    assert "Характеристики" in page
-    assert "Конструктив и безопасность" not in page
-    assert "Стороны" not in page
+    shown = sections_on(page)
+
+    assert "Идентификация" in shown
+    assert "Характеристики" in shown
+    assert "Конструктив и безопасность" not in shown
+    assert "Стороны" not in shown
 
 
 def test_a_building_without_a_passport_opens_instead_of_failing(client, member, manhattan):
@@ -198,7 +214,7 @@ def test_a_building_without_a_passport_opens_instead_of_failing(client, member, 
 
     assert response.status_code == 200
     assert "Manhattan" in page
-    assert [section for section in SECTIONS if section in page] == []
+    assert [section for section in SECTIONS if section in sections_on(page)] == []
 
 
 def test_an_entirely_empty_passport_is_not_reported_as_a_missing_one(
@@ -212,7 +228,7 @@ def test_an_entirely_empty_passport_is_not_reported_as_a_missing_one(
 
     assert response.status_code == 200
     assert "не заведён" not in page
-    assert [section for section in SECTIONS if section in page] == []
+    assert [section for section in SECTIONS if section in sections_on(page)] == []
 
 
 def test_a_commercial_passport_is_not_padded_with_residential_lines(
