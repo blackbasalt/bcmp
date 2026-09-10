@@ -393,6 +393,30 @@ def test_clearing_the_question_returns_the_whole_shelf(client, member, portfolio
     assert len(rooms_on(whole)) == 5
 
 
+def test_a_narrowed_shelf_offers_the_way_back_to_the_whole_one(client, member, portfolio):
+    """«Сбросить» is on screen exactly when there is a question to drop.
+
+    It is the полка saying which of the two states it is in — «спросили» or «не
+    спрашивали» — and that reading is `bcmp.shelf`'s rather than this section's, so each
+    полка asserts it of itself.
+    """
+    client.force_login(member)
+
+    _, page = asked(client, q="Санузел")
+
+    assert "Сбросить" in page
+
+
+def test_a_shelf_nobody_asked_anything_of_offers_nothing_to_clear(client, member, portfolio):
+    """The other half: an отбор with no conditions filled in was not asked, and a «Сбросить»
+    over it would offer to undo a question the reader never put."""
+    client.force_login(member)
+
+    _, page = asked(client)
+
+    assert "Сбросить" not in page
+
+
 def test_the_bar_holds_on_to_what_was_asked(client, member, portfolio):
     """The question stays in the bar after it is answered.
 

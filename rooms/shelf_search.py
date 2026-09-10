@@ -12,9 +12,11 @@ also answer with every помещение whose назначение happens to 
 condition of its own, and вид has one, and they are asked when they are meant.
 
 Every condition is checked before it is used, and one that checks out to nothing narrows
-the полка to nothing rather than being dropped (ADR 0014). Dropped, the tampered address
-naming another client's building would answer with the whole полка — the reader's own, so
-nothing leaks, but the screen would state an отбор it did not perform.
+the полка to nothing rather than being dropped (ADR 0014) — that is `bcmp.shelf`'s doing and
+not this полка's, and so is the reading of whether anything was asked at all. Which of the
+two empty screens this one shows is decided elsewhere and by the size of the un-narrowed
+полка (`RoomListView`); the reading is asked here only for whether «Сбросить» has anything
+to drop.
 
 There is deliberately no статус condition: `status` is filled on 0 of 583 помещения, and a
 control that can only ever answer «ничего не нашлось» teaches the reader that the bar lies.
@@ -31,6 +33,7 @@ import re
 from django import forms
 from django.db.models import Q
 
+from bcmp import shelf
 from building_passport import space_kind
 from building_passport.models import Space
 from dictionary.models import DictSpaceSubtype, DictSpaceType
@@ -55,7 +58,7 @@ def matching(text):
     return Q(name__iregex=wanted) | Q(code__iregex=wanted)
 
 
-class ShelfSearch(forms.Form):
+class ShelfSearch(shelf.Search):
     """The отбор as it was asked: what to find, where, of what вид and назначение, how big.
 
     One form for all nine conditions rather than one each. They are a single question —
@@ -161,30 +164,13 @@ class ShelfSearch(forms.Form):
         # building on this screen would say what buildings they have.
         self.fields["building"].offer(Space.objects.buildings_visible_to(user))
 
-    @property
-    def asked(self):
-        """Whether anything was asked of the полка at all.
-
-        Read off what came in rather than off what came back: a полка can be empty and
-        narrowed at the same time, and it is the отбор that decides whether an empty screen
-        reads as «ничего не нашлось» or as «помещения не заведены».
-
-        A condition that is present but unreadable counts as asked. It matched nothing, and
-        that is what the reader is told — the alternative is a screen that silently ignores
-        half of what was typed into it.
-        """
-        return any(self.data.get(name) for name in self.fields)
-
-    def narrow(self, rooms):
+    def answering(self, rooms):
         """The помещения that answer the отбор, out of the ones the reader may see.
 
-        It narrows what it is handed and does not go looking for rows itself: whose
-        помещения these are is decided by the chokepoint before this is called (ADR 0001),
-        and a second place selecting rows would be a second place to one day disagree
-        about whose they are.
+        Which помещения reach here at all — whose they are — is decided by the chokepoint
+        before `narrow` is called (ADR 0001); the nine conditions can only take rows away
+        from that answer.
         """
-        if not self.is_valid():
-            return rooms.none()
         asked = self.cleaned_data
         if text := asked["q"]:
             rooms = rooms.filter(matching(text))

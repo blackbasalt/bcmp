@@ -11,9 +11,10 @@ that also matched the вид or the issuing Сторона would answer «наш
 typed to find one paper.
 
 Every condition is checked before it is used, and one that checks out to nothing narrows
-the shelf to nothing rather than being dropped (ADR 0014). Dropped, the tampered address
-naming another client's building would answer with the whole shelf — the reader's own, so
-nothing leaks, but the screen would state an отбор it did not perform.
+the shelf to nothing rather than being dropped (ADR 0014) — that is `bcmp.shelf`'s doing and
+not this shelf's, and so is the reading of whether anything was asked at all. What this
+screen makes of that reading is its own: it is what tells «ничего не нашлось» from «ничего не
+загружено».
 """
 
 import re
@@ -21,6 +22,7 @@ import re
 from django import forms
 from django.db.models import Q
 
+from bcmp import shelf
 from building_passport.models import Space
 
 from .building_choice import BuildingChoice
@@ -38,7 +40,7 @@ def matching(text):
     return Q(title__iregex=wanted) | Q(doc_no__iregex=wanted)
 
 
-class ShelfSearch(forms.Form):
+class ShelfSearch(shelf.Search):
     """The отбор as it was asked: what to find, of what вид, on what БЦ.
 
     One form for all three conditions rather than one each. They are a single question —
@@ -88,30 +90,13 @@ class ShelfSearch(forms.Form):
         # building on this screen would say what buildings they have.
         self.fields["building"].offer(Space.objects.buildings_visible_to(user))
 
-    @property
-    def asked(self):
-        """Whether anything was asked of the shelf at all.
-
-        Read off what came in rather than off what came back: a shelf can be empty and
-        narrowed at the same time, and it is the отбор that decides whether an empty screen
-        reads as «ничего не нашлось» or as «ничего не загружено».
-
-        A condition that is present but unreadable counts as asked. It matched nothing, and
-        that is what the reader is told — the alternative is a screen that silently ignores
-        half of what was typed into it.
-        """
-        return any(self.data.get(name) for name in self.fields)
-
-    def narrow(self, documents):
+    def answering(self, documents):
         """The documents that answer the отбор, out of the ones the reader may see.
 
-        It narrows what it is handed and does not go looking for rows itself: whose
-        документы these are is decided by the chokepoint before this is called (ADR 0006),
-        and a second place selecting rows would be a second place to one day disagree
-        about whose they are.
+        Which документы reach here at all — whose they are — is decided by the chokepoint
+        before `narrow` is called (ADR 0006); the three conditions can only take rows away
+        from that answer.
         """
-        if not self.is_valid():
-            return documents.none()
         if text := self.cleaned_data["q"]:
             documents = documents.filter(matching(text))
         if kind := self.cleaned_data["kind"]:
