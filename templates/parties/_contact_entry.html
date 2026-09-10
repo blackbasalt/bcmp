@@ -1,0 +1,83 @@
+{% load passport %}
+{% comment %}
+  Створка контактного лица — в блоке, где людей и читают: «кому звонить» и «кого поздравить»
+  один список, и заводят его там же, где смотрят.
+
+  `data-entry` — тот же договор экрана, что и у створки комплекта реквизитов. У физлица этой
+  разметки нет вовсе, и не потому, что нечего показать: физлицо не делают своим же
+  представителем (ADR 0025), и свёрнутая створка над пустым блоком сказала бы «не заведено»
+  там, где верно «не бывает».
+
+  БИН не спрашивается: контактное лицо — не Сторона, аренду на него не заводят и на полку
+  Сторон он не попадает. Тот же человек, зарегистрированный как ИП, заводится Стороной на
+  полке, и это другая запись — ИП может кончиться, а человек остаться.
+
+  Отправка называет себя `submitted`: створок на этом экране несколько, и всё, что не
+  назвалось, есть створка самой карточки — комплект реквизитов.
+{% endcomment %}
+<details class="mt-2" data-entry="contact" {% if contact_entry.errors %}open{% endif %}>
+  <summary class="btn btn-sm btn-block btn-outline border-base-300 font-medium">Завести контактное лицо</summary>
+
+  <form method="post" class="mt-3 space-y-2 rounded border border-base-300 bg-base-200/50 p-3">
+    {% csrf_token %}
+    {# Чем эта отправка называет себя. Скрытым полем, а не адресом: адрес у экрана один. #}
+    <input type="hidden" name="submitted" value="contact">
+
+    {% if contact_entry.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ contact_entry.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    {% comment %}
+      Обязательно одно имя, и остальное набирают по мере того, как узнают: инженер, чей
+      телефон записали, а должность — нет, из списка не выпадает.
+    {% endcomment %}
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ contact_entry.full_name.label }}</legend>
+      {{ contact_entry.full_name|styled:"input w-full" }}
+      {% if contact_entry.full_name.errors %}
+        <p class="text-sm text-error">{{ contact_entry.full_name.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ contact_entry.position.label }}</legend>
+      {# Свободным текстом: справочник должностей был бы словарём привычек одного клиента. #}
+      {{ contact_entry.position|styled:"input w-full" }}
+      {% if contact_entry.position.errors %}
+        <p class="text-sm text-error">{{ contact_entry.position.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ contact_entry.phone.label }}</legend>
+      {{ contact_entry.phone|styled:"input w-full" }}
+      {% if contact_entry.phone.errors %}
+        <p class="text-sm text-error">{{ contact_entry.phone.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ contact_entry.email.label }}</legend>
+      {{ contact_entry.email|styled:"input w-full" }}
+      {% if contact_entry.email.errors %}
+        <p class="text-sm text-error">{{ contact_entry.email.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    {% comment %}
+      День рождения — личный повод, и печатается он полем даты, которое читает набранное
+      обратно: набранная от руки дата вернулась бы в форму пустой и уехала бы такой в базу.
+    {% endcomment %}
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ contact_entry.born_on.label }}</legend>
+      {{ contact_entry.born_on|styled:"input w-full" }}
+      {% if contact_entry.born_on.errors %}
+        <p class="text-sm text-error">{{ contact_entry.born_on.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary btn-sm">Завести контактное лицо</button>
+  </form>
+</details>

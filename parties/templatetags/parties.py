@@ -7,7 +7,7 @@ The same arrangement as `passport`, `documents` and `rooms`.
 
 from django import template
 
-from ..party_display import NOTHING, day, nearest_occasion, rooms_rented
+from ..party_display import NOTHING, bank_said, day, nearest_occasion, rooms_rented
 
 register = template.Library()
 
@@ -15,6 +15,11 @@ register = template.Library()
 #: разметке: строка контактного лица печатает день рождения сама, а шапка и повод приходят
 #: уже написанными, и написание у всех трёх должно быть одно.
 register.filter(day)
+
+#: Банк, как он назван в разделе. Регистрируется по той же причине, что и дата: тем же
+#: написанием банк стоит в списке, из которого его выбирают, — и разойтись двум написаниям
+#: одного банка на одном экране нечем.
+register.filter(bank_said)
 
 
 @register.filter

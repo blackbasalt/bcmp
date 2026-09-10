@@ -1,0 +1,82 @@
+{% load passport %}
+{% comment %}
+  Створка комплекта платёжных реквизитов — в блоке, где комплекты и читают. Отправляется по
+  адресу самого экрана: заводят там, где читают, и отказу есть куда вернуться (ADR 0005).
+
+  `data-entry` — договор экрана, тот же, каким названа створка заведения Стороны на полке: он
+  говорит, что предложено завести. Сотруднику без флага администратора эта разметка не
+  достаётся вовсе — ни свёрнутой, ни отключённой: предложено и запрещено разом читается как
+  поломка.
+
+  Створка свёрнута: комплект заводят раз в год, а читают его с этого экрана каждый раз.
+  Раскрыта она там, где ей есть что делать, — при отказе, потому что причина, спрятанная под
+  заголовком, — причина, которой никто не видит.
+
+  Отправка ничего не называет в `submitted`: это створка самой карточки, единственная, что
+  стоит на ней и у юрлица, и у физлица, — и всё, что не назвалось, есть она. То же правило,
+  по которому не называет себя правка реквизитов на странице документа.
+{% endcomment %}
+<details class="mt-2" data-entry="payment" {% if payment_entry.errors %}open{% endif %}>
+  <summary class="btn btn-sm btn-block btn-outline border-base-300 font-medium">Завести комплект</summary>
+
+  <form method="post" class="mt-3 space-y-2 rounded border border-base-300 bg-base-200/50 p-3">
+    {% csrf_token %}
+
+    {% comment %}
+      Причина отказа, не принадлежащая ни одному полю: своих у формы сегодня нет, но отказ без
+      места, где его напечатать, — отказ, пропавший молча.
+    {% endcomment %}
+    {% if payment_entry.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ payment_entry.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    {% comment %}
+      Поля печатаются своими виджетами, а классы приходят из разметки: Tailwind собирает
+      стили, читая `templates/`, и класс, живущий в питоне, не попал бы в них вовсе.
+
+      О лицензии банка не спрашивается ничего и спрашиваться не будет: справочник о ней
+      молчит, потому что BCMP неоткуда узнать, что её отозвали (ADR 0022).
+    {% endcomment %}
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ payment_entry.bank.label }}</legend>
+      {{ payment_entry.bank|styled:"select w-full" }}
+      {% if payment_entry.bank.errors %}
+        <p class="text-sm text-error">{{ payment_entry.bank.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ payment_entry.account.label }}</legend>
+      {{ payment_entry.account|styled:"input w-full" }}
+      {% if payment_entry.account.errors %}
+        <p class="text-sm text-error">{{ payment_entry.account.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ payment_entry.kbe.label }}</legend>
+      {{ payment_entry.kbe|styled:"input w-full" }}
+      {% if payment_entry.kbe.errors %}
+        <p class="text-sm text-error">{{ payment_entry.kbe.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    {% comment %}
+      Пометка «основной» — на самом комплекте, а не выбором на карточке: закрывая счёт,
+      переписывают комплект, а карточку не трогают вовсе. Что помеченный новый снимает пометку
+      с прежнего, сказано подсказкой самого поля и здесь не переписывается.
+    {% endcomment %}
+    <fieldset class="fieldset">
+      <label class="label cursor-pointer justify-start gap-2">
+        {{ payment_entry.is_primary|styled:"checkbox checkbox-sm" }}
+        <span>{{ payment_entry.is_primary.label }}</span>
+      </label>
+      {# Подсказка приходит с самого поля: правило о пометке записано там, где оно и исполняется. #}
+      <p class="label">{{ payment_entry.is_primary.help_text }}</p>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary btn-sm">Завести комплект</button>
+  </form>
+</details>

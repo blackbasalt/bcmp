@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -20,7 +21,9 @@ from .party_page import (
     occasions_said,
     particulars,
     payment_details_of,
+    stands_for_herself,
 )
+from .record_keeping import BirthdayForm, ContactPersonForm, PaymentDetailsForm
 from .shelf_search import ShelfSearch
 
 
@@ -213,8 +216,13 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
     чужих данных выходит неотличимым от отсутствия (ADR 0006).
 
     Блока «Роли» на экране нет вовсе, пока `PartyRole` держит ноль строк и не имеет читателя:
-    всегда пустой блок учил бы читателя, что у Сторон ролей не бывает. Створок заведения,
-    правки и удаления этим тикетом тоже не появляется — они следующего.
+    всегда пустой блок учил бы читателя, что у Сторон ролей не бывает.
+
+    Три створки стоят в блоках, которые они пополняют, и отправляются на адрес самого экрана:
+    комплект платёжных реквизитов, контактное лицо и день рождения физлица — то, что висит на
+    карточке и что её организация ведёт всегда (ADR 0021). Общая половина Стороны ими не
+    трогается: её правка замирает, когда Сторону знает кто-то ещё, и это другое правило с
+    другим радиусом (ADR 0028).
     """
 
     template_name = "parties/party_detail.html"
@@ -263,4 +271,114 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
         context["documents"] = documents_issued_by(
             self.object, Document.objects.visible_to(self.request.user)
         )
+        # Створки достаются только тому, кто вправе вести данные этой организации: действия,
+        # в котором сотруднику откажут, ему и не предлагают — показанная форма, отклоняющая
+        # отправку, читается как сломанный экран (ADR 0005). Отказ приносит свою, уже
+        # заполненную, так что пустая ставится только на её место.
+        if not self.administers_the_record:
+            context["payment_entry"] = None
+            context["contact_entry"] = None
+            context["birthday_entry"] = None
+        else:
+            context.setdefault("payment_entry", PaymentDetailsForm(record=self.object))
+            # Ничего, а не форма, если Сторона физлицо, — той же половиной правила, какой
+            # решается сам блок контактных лиц: «не бывает» и «не заведено» отвечаются на этом
+            # экране одинаково, и створка над отсутствующим блоком сказала бы второе.
+            context.setdefault(
+                "contact_entry",
+                None
+                if stands_for_herself(self.object.party)
+                else ContactPersonForm(record=self.object),
+            )
+            # И вторая половина того же правила: день рождения ведут там, где его некому
+            # отдать, — на карточке физлица. У юрлица створки нет вовсе, потому что его дни
+            # рождения принадлежат его людям и заводятся в блоке контактных лиц.
+            context.setdefault(
+                "birthday_entry",
+                BirthdayForm(instance=self.object)
+                if stands_for_herself(self.object.party)
+                else None,
+            )
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Ведение карточки — отправки по адресу самого экрана, на котором стоят створки.
+
+        Один адрес, потому что все они стоят на этой карточке и с неё же читаются: отказ
+        возвращается на тот экран, с которого форму отправляли, вместе со Стороной вокруг
+        него (ADR 0005). Тот же порядок, что у страницы документа с её пятью отправками.
+        """
+        self.object = self.get_object()
+        if not self.administers_the_record:
+            # 403, а не 404: экран этой карточки сотруднику показан, и «её нет» было бы
+            # неправдой о том, что уже перед ним. Чужая карточка отвечает 404 выше, и
+            # отвечает им записи по той же причине, по какой чтению (ADR 0006, ADR 0005).
+            raise PermissionDenied("Вести учётную карточку может администратор организации.")
+        # Створка комплекта реквизитов себя не называет: она стоит на всякой карточке, у
+        # юрлица и у физлица, и всё, что не назвалось, есть она. Остальные называют — то же
+        # правило, по которому страница документа различает свои пять отправок.
+        submitted = request.POST.get("submitted")
+        if submitted == "contact":
+            return self.enter_a_contact_person(request)
+        if submitted == "birthday":
+            return self.mark_the_birthday(request)
+        return self.enter_payment_details(request)
+
+    def enter_payment_details(self, request):
+        """Завести комплект платёжных реквизитов — счёт рядом с прежним, а не вместо него.
+
+        Отказ возвращает тот же экран с причиной на форме и набранным в ней, а заведённое
+        подтверждается перезагруженным экраном: комплект стоит в своём блоке, и сказать о нём
+        словами было бы нечего.
+        """
+        form = PaymentDetailsForm(request.POST, record=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(payment_entry=form))
+        form.save()
+        return redirect("parties:party_detail", self.object.pk)
+
+    def enter_a_contact_person(self, request):
+        """Завести контактное лицо — человека внутри Стороны, а не вторую Сторону.
+
+        У физлица створки нет, и отправка мимо неё отвечает 404: не «нельзя», а «такого не
+        бывает» — представителя физлицу не заводят вовсе (ADR 0025), и 403 сказал бы, что
+        право на это существует и кому-то принадлежит. Тем же кодом отвечает карточка помещения
+        отправке, называющей чужую аренду: набранный руками адрес и промах створки не стоят
+        двух разных экранов.
+        """
+        if stands_for_herself(self.object.party):
+            raise Http404("Контактных лиц у физлица не бывает.")
+        form = ContactPersonForm(request.POST, record=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(contact_entry=form))
+        form.save()
+        return redirect("parties:party_detail", self.object.pk)
+
+    def mark_the_birthday(self, request):
+        """Записать день рождения физлица — единственное, что ведут на самой карточке.
+
+        У юрлица створки нет, и отправка мимо неё отвечает 404 — тем же ответом и по тому же
+        доводу, что и контактное лицо на физлице: не «нельзя», а «такого не бывает».
+        """
+        if not stands_for_herself(self.object.party):
+            raise Http404("День рождения юрлица — это дни рождения его людей.")
+        form = BirthdayForm(request.POST, instance=self.object)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(birthday_entry=form))
+        form.save()
+        return redirect("parties:party_detail", self.object.pk)
+
+    @cached_property
+    def administers_the_record(self):
+        """Ведёт ли этот сотрудник данные организации, чья это карточка (ADR 0005).
+
+        Уже названной организации, а не какой-нибудь: чья карточка перед читателем, сказано
+        адресом, и вопрос «ведёт ли он хоть что-нибудь», которым обходится полка, предложил бы
+        здесь администратору одного клиента створки над данными другого. Тот же вопрос, каким
+        страница документа проверяет право на свою бумагу.
+        """
+        return (
+            Org.objects.administered_by(self.request.user)
+            .filter(pk=self.object.org_id)
+            .exists()
+        )

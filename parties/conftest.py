@@ -102,3 +102,27 @@ def kaspi(db):
     return DictBank.objects.create(
         code="CASPKZKA", name='АО "Kaspi Bank"', short_name="Kaspi Bank"
     )
+
+
+@pytest.fixture
+def our_record(downtown, alpha, make_record):
+    """Карточка ТОО «Альфа» у DownTown Management — та, о которой читают и которую ведут.
+
+    Стоит здесь, а не у одного из тестов: экран Стороны читают одни тесты, а створки на нём
+    отправляют другие, и второе определение той же карточки развело бы прочитанное с
+    заведённым.
+    """
+    return make_record(downtown, alpha)
+
+
+@pytest.fixture
+def halyk(db):
+    """Второй банк — тот, при котором счёт открывают, закрывая счёт в первом.
+
+    Два банка, а не один: комплект, заведённый рядом с прежним, проверяется тем, что от
+    прежнего отличается, и два счёта в одном банке оставили бы «банк не затёрся» утверждением
+    ни о чём.
+    """
+    return DictBank.objects.create(
+        code="HSBKKZKX", name='АО "Народный Банк Казахстана"', short_name="Halyk"
+    )

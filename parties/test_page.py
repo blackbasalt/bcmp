@@ -81,12 +81,6 @@ def rows_in(page, section, attribute):
 
 
 @pytest.fixture
-def our_record(downtown, alpha, make_record):
-    """Карточка ТОО «Альфа» у DownTown Management — то, что читает почти каждый тест здесь."""
-    return make_record(downtown, alpha)
-
-
-@pytest.fixture
 def page(client, member, our_record):
     """Экран карточки ТОО «Альфа», прочитанный сотрудником DownTown Management."""
     client.force_login(member)

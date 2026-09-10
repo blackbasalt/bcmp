@@ -60,6 +60,8 @@
             {% endfor %}
           </dd>
         </dl>
+
+        {% if birthday_entry %}{% include "parties/_birthday_entry.html" %}{% endif %}
       </div>
     </section>
 
@@ -88,8 +90,8 @@
                   {% endcomment %}
                   {% if details.is_primary %}<span class="badge badge-sm badge-primary badge-soft">основной</span>{% endif %}
                 </div>
-                {# БИК рядом с названием: «Каспи» и «Kaspi Bank» — один банк, и говорит об этом БИК, а не написание. #}
-                <p class="text-xs opacity-60">{{ details.bank.name }} · {{ details.bank.code|or_missing }}</p>
+                {# БИК рядом с названием, тем же написанием, каким банк назван в списке, из которого его выбирают. #}
+                <p class="text-xs opacity-60">{{ details.bank|bank_said }}</p>
                 <p class="text-xs opacity-60">КБе {{ details.kbe|or_missing }}</p>
               </li>
             {% endfor %}
@@ -99,9 +101,18 @@
             Пустой блок говорит о своей пустоте вслух и называет, кто действует: платёжные
             реквизиты ведёт сама организация, так что читателя отправляют к её администратору,
             а не в поддержку платформы (ADR 0021).
+
+            Самому администратору этого не говорят: створка стоит строкой ниже, и «их заводит
+            администратор организации» отправило бы его искать себя же.
           {% endcomment %}
-          <p class="text-sm opacity-70">Платёжные реквизиты не заведены — их заводит администратор организации.</p>
+          {% if payment_entry %}
+            <p class="text-sm opacity-70">Платёжные реквизиты не заведены.</p>
+          {% else %}
+            <p class="text-sm opacity-70">Платёжные реквизиты не заведены — их заводит администратор организации.</p>
+          {% endif %}
         {% endif %}
+
+        {% if payment_entry %}{% include "parties/_payment_entry.html" %}{% endif %}
       </div>
     </section>
 
@@ -133,8 +144,15 @@
               {% endfor %}
             </ul>
           {% else %}
-            <p class="text-sm opacity-70">Контактные лица не заведены — их заводит администратор организации.</p>
+            {# Тем же правилом, что и в блоке реквизитов выше: тому, у кого створка, себя не ищут. #}
+            {% if contact_entry %}
+              <p class="text-sm opacity-70">Контактные лица не заведены.</p>
+            {% else %}
+              <p class="text-sm opacity-70">Контактные лица не заведены — их заводит администратор организации.</p>
+            {% endif %}
           {% endif %}
+
+          {% if contact_entry %}{% include "parties/_contact_entry.html" %}{% endif %}
         </div>
       </section>
     {% endif %}
