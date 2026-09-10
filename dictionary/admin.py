@@ -15,7 +15,21 @@ admin.site.register(DictAssetRelationKind)
 admin.site.register(DictElementCategory)
 admin.site.register(DictConditionGrade)
 admin.site.register(DictDocumentRole)
-admin.site.register(DictBank)
+
+
+@admin.register(DictBank)
+class DictBankAdmin(admin.ModelAdmin):
+    """Банк ищут по БИК и по названию: платёжные реквизиты выбирают его из семисот строк.
+
+    Поиск здесь стоит не для удобства этой страницы, а потому что комплект платёжных
+    реквизитов ссылается на банк полем с автодополнением, а оно спрашивает поиск у той
+    админки, на которую указывает.
+    """
+
+    list_display = ("name", "code")
+    search_fields = ("name", "short_name", "code")
+
+
 admin.site.register(DictLineOfBusiness)
 admin.site.register(DictProfessionalHoliday)
 #admin.site.register()

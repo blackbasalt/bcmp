@@ -54,3 +54,36 @@ class OrgMembershipAdmin(admin.ModelAdmin):
 
 
 admin.site.register(PartyRole)
+
+
+class ContactsOfRecordInline(admin.TabularInline):
+    """Контактные лица — внутри карточки, потому что нигде больше они не существуют."""
+
+    model = ContactPerson
+    extra = 1
+
+
+class PaymentDetailsOfRecordInline(admin.TabularInline):
+    """Платёжные реквизиты — там же и по той же причине."""
+
+    model = PaymentDetails
+    extra = 1
+    # Банков в справочнике под восемьсот: их ищут, а не прокручивают.
+    autocomplete_fields = ("bank",)
+
+
+@admin.register(PartyRecord)
+class PartyRecordAdmin(admin.ModelAdmin):
+    """Пока полки Сторон нет, учётная карточка ведётся здесь.
+
+    Отказ во второй карточке на ту же пару — тот же, что получит скрипт: ограничение стоит
+    в базе, а форма называет его словами, а не роняет страницу. Названо оно поверх формы, а
+    не у поля: ни «Сторона», ни «Организация» по отдельности не виноваты — виновата пара.
+    """
+
+    list_display = ("party", "org", "born_on")
+    list_filter = ("org",)
+    search_fields = ("party__name", "party__bin_iin")
+    # Сторону выбирают из реестра всей системы, а не из списка: их 699.
+    autocomplete_fields = ("party", "org")
+    inlines = [ContactsOfRecordInline, PaymentDetailsOfRecordInline]
