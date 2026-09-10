@@ -1,8 +1,8 @@
-"""How the раздел «Стороны» reads on screen: how much of the полка is shown, and what a
-Сторона rents.
+"""How the раздел «Стороны» reads on screen: how much of the полка is shown, what a Сторона
+rents, and when her ближайший повод falls.
 
-Both are phrases rather than figures put beside a table. «Показано 12 из 637 Сторон» answers
-a question; «12 / 637» is a quantity the reader has to guess at — the same device as
+All three are phrases rather than figures put beside a table. «Показано 12 из 637 Сторон»
+answers a question; «12 / 637» is a quantity the reader has to guess at — the same device as
 «Показано 47 из 583 помещений» beneath the полка помещений and «нанесено 47 из 82» beneath a
 план.
 
@@ -13,6 +13,8 @@ neither is the other's rule with the words swapped, and each says so where it is
 """
 
 from building_passport.passport_display import NBSP
+
+from .occasions import Occasion
 
 #: Сторона, не арендующая ни одного помещения: a bare dash, and deliberately not
 #: `or_missing`'s «— нет данных». 637 of the 699 Стороны are поставщики who rent nothing at
@@ -76,3 +78,27 @@ def rooms_rented(count: int) -> str:
     else:
         rooms = "помещений"
     return f"{count}{NBSP}{rooms}"
+
+
+def nearest_occasion(occasion: Occasion | None) -> str:
+    """«09.08.2026 · День строителя» — what one row says under «Ближайший повод».
+
+    The день first and the name after it: the column is sorted by how soon, and it is read
+    down the table by an eye hunting for what to prepare for first — the name answers a
+    question the date has already raised.
+
+    The year is printed though a повод recurs every year: the ближайший повод asked about in
+    December falls in January of the next one, and «05.01» would keep quiet about exactly
+    what the reader needs to know.
+
+    Whose повод it is stands after a dash and only where it is anybody's: a профессиональный
+    has no person behind it, and a физлицо's день рождения needs none — her name is already
+    the first cell of the row. A bare dash where there is no повод at all, and `NOTHING`
+    rather than `or_missing`'s «нет данных» for the reason the «Арендует» cell above uses it:
+    637 of the 699 Стороны are поставщики nobody has written a день рождения for, and that is
+    an answer rather than a gap in the record.
+    """
+    if occasion is None:
+        return NOTHING
+    whose = f" — {occasion.whose}" if occasion.whose else ""
+    return f"{occasion.on:%d.%m.%Y}{NBSP}· {occasion.name}{whose}"

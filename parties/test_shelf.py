@@ -19,7 +19,7 @@ worked around — it is what a полка карточек is (ADR 0020) — hen
 """
 
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -28,6 +28,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from building_passport.models import Space
+from dictionary.models import DictProfessionalHoliday
+from parties.models import ContactPerson
 
 pytestmark = pytest.mark.django_db
 
@@ -573,3 +575,312 @@ def test_the_shelf_carries_no_way_to_change_anything(shelf_page, alpha):
 def test_the_page_carries_no_leftover_template_comments(shelf_page):
     """Django does not treat a multi-line `{# … #}` as a comment and prints it on screen."""
     assert "{#" not in shelf_page
+
+
+# Ближайший повод
+
+
+def occasion_cell(page, party):
+    """What the «Ближайший повод» column says about one Сторона."""
+    return cell_under(page, party, "Ближайший повод")
+
+
+def occasion_date(page, party):
+    """The день the column names, read back off the screen as a date.
+
+    Read out of the cell rather than asserted as a string: what the rule resolves to is a
+    day, and a test comparing «09.08.2026» to «09.08.2026» would pass just as well against a
+    year printed by hand.
+    """
+    return date(*(int(part) for part in reversed(occasion_cell(page, party).split()[0].split("."))))
+
+
+def second_sunday_of_august(year):
+    """The second Sunday of August, counted by walking the month rather than by arithmetic.
+
+    Deliberately a different route to the answer than `occasions` takes: a helper that
+    resolved the rule the same way would agree with the code under test whatever either of
+    them did.
+    """
+    sundays = [day for day in august(year) if day.isoweekday() == 7]
+    return sundays[1]
+
+
+def last_sunday_of_august(year):
+    """The last Sunday of August — «последнее» and not «пятое»: August carries four Sundays
+    in some years and five in others."""
+    return [day for day in august(year) if day.isoweekday() == 7][-1]
+
+
+def august(year):
+    """Every day of an August — the month both weekday rules above are read out of."""
+    return [date(year, 8, number) for number in range(1, 32)]
+
+
+def nearest(day_of, today):
+    """The next occurrence of a yearly rule at or after today — this year's or next year's.
+
+    The «ближайший» half of the question and not the «в дату какого года» half: which year
+    the day falls in is what the assertion is about, so the test says out loud which one it
+    expects rather than asking the code.
+    """
+    return day_of(today.year) if day_of(today.year) >= today else day_of(today.year + 1)
+
+
+def birthday_on(day):
+    """A день рождения falling on this day of the year, born long enough ago to be nobody's
+    business: what a повод is made of is the число and the месяц, and never the год."""
+    return day.replace(year=1980)
+
+
+def test_a_contact_persons_birthday_becomes_an_occasion(
+    client, member, downtown, alpha, make_record, make_contact, today
+):
+    """«Кому звонить» и «кого поздравить» — один список: the день рождения of a контактное
+    лицо is the личный повод of a юрлицо, because a юрлицо has no birthday of its own."""
+    record = make_record(downtown, alpha)
+    make_contact(record, "Иванов Иван", born_on=birthday_on(today + timedelta(days=3)))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == today + timedelta(days=3)
+    assert "Иванов Иван" in occasion_cell(page, alpha)
+
+
+def test_a_natural_persons_birthday_on_the_record_becomes_an_occasion(
+    client, member, downtown, petrov, make_record, today
+):
+    """У физлица контактных лиц нет (ADR 0025), and the личный повод still has to exist —
+    so it hangs on the карточка itself, where it is personal data of one организация
+    (ADR 0023)."""
+    make_record(downtown, petrov, born_on=birthday_on(today + timedelta(days=5)))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, petrov) == today + timedelta(days=5)
+    assert "День рождения" in occasion_cell(page, petrov)
+
+
+def test_a_professional_occasion_is_derived_from_the_line_of_business(
+    client, member, downtown, alpha, construction, make_record, make_holiday
+):
+    """Derived from the сфера деятельности and never typed in: «День строителя» entered at
+    three hundred арендаторов is three hundred copies of one date, and they would drift
+    apart (ADR 0023)."""
+    alpha.line_of_business = construction
+    alpha.save()
+    make_record(downtown, alpha)
+    make_holiday(construction, "День строителя", month=8, week_of_month=2, weekday=7)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "День строителя" in occasion_cell(page, alpha)
+
+
+def test_a_weekday_rule_resolves_into_the_year_being_asked_about(
+    client, member, downtown, alpha, construction, make_record, make_holiday, today
+):
+    """«Второе воскресенье августа» is a rule and not a date: no year goes quietly unfilled,
+    which is the whole of ADR 0027."""
+    alpha.line_of_business = construction
+    alpha.save()
+    make_record(downtown, alpha)
+    make_holiday(construction, "День строителя", month=8, week_of_month=2, weekday=7)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == nearest(second_sunday_of_august, today)
+
+
+def test_the_last_weekday_of_a_month_is_not_the_fourth_one(
+    client, member, downtown, alpha, construction, make_record, make_holiday, today
+):
+    """День шахтёра — последнее воскресенье августа, and August has five Sundays in some
+    years: folding «последнее» into «четвёртое» would move the day by a week in half of
+    them."""
+    alpha.line_of_business = construction
+    alpha.save()
+    make_record(downtown, alpha)
+    make_holiday(construction, "День шахтёра", month=8, week_of_month=-1, weekday=7)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == nearest(last_sunday_of_august, today)
+
+
+def test_a_day_and_month_rule_resolves_into_the_year_being_asked_about(
+    client, member, downtown, alpha, construction, make_record, make_holiday, today
+):
+    """The other of the two forms: «двенадцатое апреля» carries no year either."""
+    alpha.line_of_business = construction
+    alpha.save()
+    make_record(downtown, alpha)
+    make_holiday(construction, "День работников науки", day=12, month=4)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == nearest(lambda year: date(year, 4, 12), today)
+
+
+def test_the_derived_occasion_is_stored_nowhere(
+    client, member, downtown, alpha, construction, make_record, make_holiday
+):
+    """Нигде не хранится: the праздник stays one row of the справочник however many Стороны
+    it is shown against, and reading the полка writes nothing down (ADR 0023).
+
+    Counted over every table the повод could have been written into rather than asserted of
+    a `Occasion` table that does not exist: an assertion naming an absent model would go on
+    passing on the day somebody adds it.
+    """
+    alpha.line_of_business = construction
+    alpha.save()
+    make_record(downtown, alpha)
+    make_holiday(construction, "День строителя", month=8, week_of_month=2, weekday=7)
+    client.force_login(member)
+    before = {model: model.objects.count() for model in (DictProfessionalHoliday, ContactPerson)}
+
+    _, page = shelf(client)
+
+    assert "День строителя" in occasion_cell(page, alpha)
+    assert {model: model.objects.count() for model in before} == before
+
+
+def test_the_nearest_of_several_occasions_is_the_one_the_column_names(
+    client, member, downtown, alpha, construction, make_record, make_contact, make_holiday, today
+):
+    """Один повод в колонке, и это ближайший: «кого поздравить» is a question about the next
+    few days, and a row naming the furthest of three would answer a different one."""
+    alpha.line_of_business = construction
+    alpha.save()
+    record = make_record(downtown, alpha)
+    make_contact(record, "Дальний Дмитрий", born_on=birthday_on(today + timedelta(days=40)))
+    make_contact(record, "Ближний Борис", born_on=birthday_on(today + timedelta(days=2)))
+    make_holiday(construction, "День строителя", month=8, week_of_month=2, weekday=7)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == today + timedelta(days=2)
+    assert "Ближний Борис" in occasion_cell(page, alpha)
+
+
+def test_an_occasion_today_is_the_nearest_one(
+    client, member, downtown, alpha, make_record, make_contact, today
+):
+    """Сегодняшний день рождения ещё не прошёл: «кого поздравить» asked on the morning of
+    the day itself must not answer with next year."""
+    record = make_record(downtown, alpha)
+    make_contact(record, "Иванов Иван", born_on=birthday_on(today))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_date(page, alpha) == today
+
+
+def test_a_birthday_on_the_twenty_ninth_of_february_is_a_occasion_every_year(
+    client, member, downtown, alpha, make_record, make_contact
+):
+    """Родившегося двадцать девятого февраля поздравляют раз в год, как всех: a повод that
+    vanished from the list in three years out of four would read as «дня рождения нет», and
+    the повод is a день в году, повторяющийся и бессрочный."""
+    make_contact(make_record(downtown, alpha), "Високосов Виктор", born_on=date(1980, 2, 29))
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_cell(page, alpha) != "—"
+    assert occasion_date(page, alpha).month == 2
+
+
+def test_a_party_with_no_occasion_at_all_shows_a_dash(shelf_page, alpha):
+    """Ни контактных лиц, ни сферы деятельности — и это ответ, а не пробел: 637 of the 699
+    Стороны are поставщики nobody has written a день рождения for."""
+    assert occasion_cell(shelf_page, alpha) == "—"
+
+
+def test_a_line_of_business_with_no_holiday_is_no_occasion(
+    client, member, downtown, alpha, catering, make_record
+):
+    """Отрасль без праздника — обычное дело, а не пробел: общепит сидит в БЦ этажами, and
+    the перечень РК has no day for it."""
+    alpha.line_of_business = catering
+    alpha.save()
+    make_record(downtown, alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_cell(page, alpha) == "—"
+
+
+def test_a_contact_with_no_birthday_is_no_occasion(
+    client, member, downtown, alpha, make_record, make_contact
+):
+    """«Кому звонить» и «кого поздравить» — один список, and an инженер whose день рождения
+    nobody knows does not fall out of it — he simply is not a повод."""
+    make_contact(make_record(downtown, alpha), "Иванов Иван")
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_cell(page, alpha) == "—"
+
+
+def test_a_contact_of_another_organisation_is_not_an_occasion_of_my_row(
+    client, member, central, downtown, alpha, make_record, make_contact, today
+):
+    """Личный повод лежит в учётной карточке (ADR 0020): the mobile and the birthday another
+    управляющая компания was given must not surface on my полка because we know the same
+    юрлицо."""
+    make_record(downtown, alpha)
+    make_contact(
+        make_record(central, alpha), "Чужой Человек", born_on=birthday_on(today + timedelta(days=1))
+    )
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert occasion_cell(page, alpha) == "—"
+    assert "Чужой Человек" not in page
+
+
+def test_the_occasion_column_costs_no_query_per_row(
+    client, member, downtown, alpha, construction, make_party, make_record,
+    make_contact, make_holiday, django_assert_num_queries,
+):
+    """Одним запросом на всю полку, а не по строке — the device `tenants_of_each_room` is:
+    the полка carries 637 rows, and a question asked per row is asked 637 times.
+
+    The полка counted first already carries both kinds of повод — a контактное лицо and a
+    сфера деятельности with a праздник on it — so that what the twenty rows added afterwards
+    are measured against is a screen doing all the work, and not one that had nothing to look
+    up yet.
+    """
+    make_holiday(construction, "День строителя", month=8, week_of_month=2, weekday=7)
+    alpha.line_of_business = construction
+    alpha.save()
+    make_contact(make_record(downtown, alpha), "Иванов Иван", born_on=date(1980, 3, 4))
+    client.force_login(member)
+    # Read once before counting: the first request of a session pays for what the column is
+    # not about — the session row — and what is asked here is what a row costs.
+    shelf(client)
+    with CaptureQueriesContext(connection) as few_rows:
+        shelf(client)
+
+    for number in range(20):
+        party = make_party(
+            f"ТОО «Соседи-{number}»", f"9901400{number:05d}", line_of_business=construction
+        )
+        make_contact(make_record(downtown, party), f"Сосед-{number}", born_on=date(1980, 3, 4))
+
+    with django_assert_num_queries(len(few_rows)):
+        _, page = shelf(client)
+
+    assert len(parties_on(page)) == 21

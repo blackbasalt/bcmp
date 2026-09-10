@@ -5,6 +5,7 @@ from django.views.generic import ListView
 
 from leases.occupancy import rooms_of_each_record
 
+from . import occasions
 from .models import Org, PartyRecord
 from .party_display import parties_shown
 from .shelf_search import ShelfSearch
@@ -72,6 +73,15 @@ class PartyListView(LoginRequiredMixin, ListView):
         # Counted rather than asked of the database again: `len` fills the queryset's cache,
         # which the table then reads.
         shown = len(records)
+        # The ближайший повод of every row, worked out once for the whole полка and hung on
+        # the rows the table is about to print. One reading for the screen: the same rows the
+        # count line is worked out over, so what the column says and what is on screen cannot
+        # differ. Not an annotation like «Арендует» beside it — «второе воскресенье августа»
+        # is resolved in python and not by a query (ADR 0027) — but the same promise: two
+        # queries for the whole полка and none per row.
+        nearest = occasions.nearest_for_each_record(records, self.today)
+        for record in records:
+            record.nearest_occasion = nearest.get(record.pk)
         # How big the whole полка is, asked once and used twice: it is the second figure of
         # the count line, and it is also what tells an empty полка from one an отбор emptied.
         # Which of the two the screen is looking at cannot be read off the отбор — a полка

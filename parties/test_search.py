@@ -1,4 +1,4 @@
-"""Finding a Сторона among hundreds — the отбор and its five conditions.
+"""Finding a Сторона among hundreds — the отбор and its six conditions.
 
 The seam is the same as everywhere else in this section: the HTTP boundary of `/parties/`.
 What is asked of the полка is asked in the address, and what is checked is which Стороны
@@ -15,9 +15,14 @@ deliberately: the отбор is the one thing on this screen that takes a value 
 and puts it into a query, so «отбором нельзя дотянуться до чужого» has to be asserted of the
 conditions themselves (ADR 0001, ADR 0020).
 
-Two of the five — «только арендаторы» and «БЦ» — are answered through an аренда in force
+Two of the six — «только арендаторы» and «БЦ» — are answered through an аренда in force
 today, and they are checked here rather than in `leases`: what is asserted is which Стороны
 came back on the screen, and «действующая на день» is checked once, where the rule lives.
+
+The «повод» condition is checked here for the same reason and against the same seam:
+`occasions` has no tests of its own — the two screens that read it check it — and this is one
+of the two. What the column says about one row is asserted in `test_shelf`; what each of the
+three windows leaves on the полка is asserted here.
 """
 
 import re
@@ -27,8 +32,9 @@ import pytest
 from django.urls import reverse
 
 from building_passport.models import Space
+from parties.models import PartyRecord
 
-from .test_shelf import count_line, folded, parties_on, stated
+from .test_shelf import birthday_on, count_line, folded, parties_on, stated
 
 pytestmark = pytest.mark.django_db
 
@@ -495,12 +501,14 @@ def test_the_bar_holds_on_to_every_condition_that_was_asked(
         client,
         line_of_business=str(construction.pk),
         kind="person",
+        occasion="month",
         tenants_only="1",
         building=str(tokyo.pk),
     )
 
     assert f'value="{construction.pk}" selected' in folded(page)
     assert 'value="person" selected' in folded(page)
+    assert 'value="month" selected' in folded(page)
     assert f'value="{tokyo.pk}" selected' in folded(page)
     assert re.search(r'name="tenants_only"[^>]*checked', folded(page))
 
@@ -567,3 +575,176 @@ def test_there_is_no_supplier_condition(client, member, registry, first_floor, m
 
     assert len(parties_on(page)) == 3
     assert "Поставщик" not in page
+
+
+# Повод
+
+
+@pytest.fixture
+def birthday(downtown, make_contact):
+    """A личный повод on a Сторона: her контактное лицо's день рождения, on a chosen day.
+
+    A factory over the fixtures already staged rather than a set of ready-made поводы: every
+    condition here is told by which Стороны it leaves standing, and how far off each повод is
+    is the whole of what a test stages.
+    """
+
+    def _birthday(party, day):
+        make_contact(
+            PartyRecord.objects.get(party=party, org=downtown),
+            f"Контактное лицо {party.name}",
+            born_on=birthday_on(day),
+        )
+
+    return _birthday
+
+
+def sunday_of_this_week(today):
+    """Воскресенье текущей недели, found by walking forward a day at a time.
+
+    Deliberately a different route than `occasions` takes: a helper doing the same
+    arithmetic would agree with the code under test whatever either of them did.
+    """
+    day = today
+    while day.isoweekday() != 7:
+        day += timedelta(days=1)
+    return day
+
+
+def last_day_of_this_month(today):
+    """Последнее число текущего месяца, found by walking forward until the month turns."""
+    day = today
+    while (day + timedelta(days=1)).month == day.month:
+        day += timedelta(days=1)
+    return day
+
+
+def test_the_condition_narrows_the_shelf_to_this_week(client, member, registry, birthday, today):
+    """«Кого поздравить на этой неделе» is a condition of the отбор and not a screen of its
+    own: the question the УК's relationship with its арендаторы is made of, put to the полка
+    that already holds the rows it is about.
+
+    Staged on the boundary itself — the Sunday and the Monday after it — because that is
+    what the word means: «на этой неделе» is the calendar week and not seven days rolling,
+    and a повод on Monday of the next one is not this week's however few days away it is.
+    """
+    edge = sunday_of_this_week(today)
+    birthday(registry["alpha"], edge)
+    birthday(registry["petrov"], edge + timedelta(days=1))
+    client.force_login(member)
+
+    _, page = asked(client, occasion="week")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_the_condition_narrows_the_shelf_to_this_month(client, member, registry, birthday, today):
+    """The second of the three values: a поздравление is prepared ahead, and «на этой
+    неделе» answers too late for anything that has to be ordered.
+
+    Staged on the boundary for the reason the week is: «в этом месяце» is the calendar month,
+    so the first of the next one falls out of it even when it is tomorrow.
+    """
+    edge = last_day_of_this_month(today)
+    birthday(registry["alpha"], edge)
+    birthday(registry["petrov"], edge + timedelta(days=1))
+    client.force_login(member)
+
+    _, page = asked(client, occasion="month")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_the_condition_narrows_the_shelf_to_the_next_ninety_days(
+    client, member, registry, birthday, today
+):
+    """The furthest of the three: a quarter ahead is as far as «кого поздравить» is still a
+    question about the near future, and further than that it stops being one.
+
+    This one is a window and not a calendar boundary — ninety days forward are the same
+    ninety wherever they are counted from, while «этот квартал» means nothing on the thirty
+    first of March — so the boundary staged is the ninetieth day and the ninety first.
+    """
+    birthday(registry["alpha"], today + timedelta(days=90))
+    birthday(registry["petrov"], today + timedelta(days=91))
+    client.force_login(member)
+
+    _, page = asked(client, occasion="90-days")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_a_party_with_no_occasion_falls_out_of_the_condition(
+    client, member, registry, birthday, today
+):
+    """637 of the 699 Стороны are поставщики nobody has written a день рождения for: «кого
+    поздравить» says nothing about them, and that is an answer rather than a gap."""
+    birthday(registry["alpha"], today)
+    client.force_login(member)
+
+    _, page = asked(client, occasion="90-days")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_a_derived_occasion_answers_the_condition_too(
+    client, member, registry, construction, make_holiday, today
+):
+    """A выведенный повод is stored nowhere (ADR 0023) and answers the condition beside a
+    stored one: both are a day of the year a поздравление is prepared for, so both are asked
+    by one отбор rather than by two."""
+    registry["alpha"].line_of_business = construction
+    registry["alpha"].save()
+    make_holiday(construction, "День строителя", day=today.day, month=today.month)
+    client.force_login(member)
+
+    _, page = asked(client, occasion="week")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_the_occasion_condition_reaches_no_further_than_the_readers_own_records(
+    client, member, central, registry, birthday, downtown, make_record, make_contact, today
+):
+    """A личный повод lives in the учётная карточка and the condition over it reaches no
+    further (ADR 0020): the same юрлицо known to two управляющие компании carries two поводы,
+    and each of them belongs to one of the two."""
+    make_contact(
+        make_record(central, registry["fasteners"]),
+        "Чужой Человек",
+        born_on=birthday_on(today),
+    )
+    birthday(registry["alpha"], today)
+    client.force_login(member)
+
+    _, page = asked(client, occasion="week")
+
+    assert parties_on(page) == [str(registry["alpha"].pk)]
+
+
+def test_there_is_no_free_number_of_days(client, member, registry, birthday, today):
+    """Three values and not a free number of days: a free one would invite 0 and 3650.
+
+    Asserted of the answer and not of the markup: a bar that merely stopped drawing the box
+    while the condition still worked would leave it reachable from the address, and an отбор
+    reachable from the address is an отбор.
+    """
+    birthday(registry["alpha"], today)
+    client.force_login(member)
+
+    _, ignored = asked(client, occasion_days="30")
+    _, refused = asked(client, occasion="30")
+
+    assert len(parties_on(ignored)) == 3
+    assert parties_on(refused) == []
+
+
+def test_an_occasion_that_is_not_one_narrows_the_shelf_to_nothing(client, member, registry):
+    """An отбор that did not read narrows to nothing rather than being dropped, and the
+    screen says why (ADR 0014)."""
+    client.force_login(member)
+
+    _, page = asked(client, occasion="в этом году")
+
+    assert parties_on(page) == []
+    assert "В адресе указан повод" in stated(page)

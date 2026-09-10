@@ -1,10 +1,10 @@
 """Finding a Сторона among hundreds — what is asked of the полка, and how it narrows.
 
-Five conditions of one отбор, asked together and at one address: a text to find, a сфера
-деятельности, юрлицо or физлицо, «только арендаторы», and a БЦ. They travel in the address
-rather than in a submission, so a narrowed полка can be reloaded, kept open in a tab and
-sent to a colleague — and so that clearing the отбор is the address without it, which is the
-полка itself.
+Six conditions of one отбор, asked together and at one address: a text to find, a сфера
+деятельности, юрлицо or физлицо, a повод coming up, «только арендаторы», and a БЦ. They
+travel in the address rather than in a submission, so a narrowed полка can be reloaded, kept
+open in a tab and sent to a colleague — and so that clearing the отбор is the address without
+it, which is the полка itself.
 
 Название and БИН are one box and not two. They are one question — «кто это» — asked with
 whatever the reader has in front of them: a name heard on the phone, or a БИН copied out of
@@ -15,7 +15,7 @@ The search reaches название and БИН and no further. A word typed to f
 also answer with every Сторона whose сфера деятельности happens to contain it; сфера has a
 condition of its own on the way, and it is asked when it is meant.
 
-Two of the five are not about the Сторона at all but about an аренда standing today —
+Two of the six are not about the Сторона at all but about an аренда standing today —
 «только арендаторы» and «БЦ» — and neither works out «действующая на день» here. Both ask
 `leases.occupancy`, which the карточка помещения and the «Арендатор» column are read through
 as well: a second place deciding who is in force today would be a second answer to one
@@ -28,6 +28,13 @@ There is deliberately no «поставщики» condition beside «тольк�
 «не арендатор», which the предметная область does not agree with: a Сторона can be both at
 once — an арендатор who also services our lifts — and a бывший арендатор is neither. Whom we
 pay is the question `PartyRole` will answer when it has rows and a reader.
+
+«Повод» is the one condition that does not become SQL: «второе воскресенье августа» is a
+rule and not a date (ADR 0027), so it is resolved in python and the полка is narrowed to the
+карточки it left. Which поводы a карточка has and what each of the three windows means are
+asked of `occasions` and worked out nowhere here — the same module the column «Ближайший
+повод» is read through, so that the отбор cannot narrow by one reading while the row prints
+another. Three values and no free number of days: a free one would invite 0 and 3650.
 
 Every condition is checked before it is used, and one that checks out to nothing narrows the
 полка to nothing rather than being dropped (ADR 0014) — that is `bcmp.shelf`'s doing and not
@@ -48,6 +55,7 @@ from dictionary.models import DictLineOfBusiness
 from documents.building_choice import BuildingChoice
 from leases import occupancy
 
+from . import occasions
 from .models import Party
 
 
@@ -79,9 +87,9 @@ def matching(text):
 class ShelfSearch(shelf.Search):
     """The отбор as it was asked: what to find, of what сфера, юрлицо or физлицо, and where.
 
-    One form for all five conditions rather than one each. They are a single question —
-    «наши строители-арендаторы в Tokyo» — and answered one at a time they would leave the
-    screen deciding for itself how the five combine.
+    One form for all six conditions rather than one each. They are a single question —
+    «наши строители-арендаторы в Tokyo, кого поздравить на этой неделе» — and answered one at
+    a time they would leave the screen deciding for itself how the six combine.
     """
 
     q = forms.CharField(
@@ -144,6 +152,24 @@ class ShelfSearch(shelf.Search):
         # being told something went wrong.
         error_messages={"invalid_choice": "В адресе указано не юрлицо и не физлицо."},
     )
+    occasion = forms.ChoiceField(
+        required=False,
+        # «Повод» and not «Кого поздравить»: the condition names what the полка is narrowed
+        # by, not the question it is narrowed for — the same way «Сфера деятельности» beside
+        # it names the field and not «все наши строители». The question itself is the three
+        # values read aloud.
+        label="Повод",
+        # Three values and no free number of days: a free one would invite 0 and 3650, and
+        # the screen would answer about nothing and about everybody by turns. What each of
+        # the three means is `occasions`' to say, where the повод itself lives: spelled out
+        # here they would be a second answer to a question the экран Стороны asks that module.
+        choices=[("", "Когда угодно"), *occasions.WINDOWS],
+        # An unreadable condition narrows the полка to nothing, and the screen has to say
+        # why. Left to Django's own wording the reader is told «Выберите корректный вариант»
+        # about a list they never touched: the value came from the address, not from the
+        # select, and the select stands on «Когда угодно» while it says so.
+        error_messages={"invalid_choice": "В адресе указан повод, которого нет в списке."},
+    )
     tenants_only = forms.BooleanField(
         required=False,
         label="Только арендаторы",
@@ -181,7 +207,7 @@ class ShelfSearch(shelf.Search):
         """The учётные карточки that answer the отбор, out of the ones the reader may see.
 
         Which карточки reach here at all — whose they are — is decided by the chokepoint
-        before `narrow` is called (ADR 0020); the five conditions can only take rows away
+        before `narrow` is called (ADR 0020); the six conditions can only take rows away
         from that answer.
         """
         asked = self.cleaned_data
@@ -203,4 +229,18 @@ class ShelfSearch(shelf.Search):
             # to a building at all: a поставщик falls out of this condition entirely, and
             # that is the honest answer rather than a gap.
             records = records.filter(occupancy.renting_on(self.day, building))
+        if window := asked["occasion"]:
+            # Keys and not a condition, because it is worked out in python and not by the
+            # database: «второе воскресенье августа» is a rule and not a date (ADR 0027), and
+            # no comparison of dates says it in both SQLite and PostgreSQL. What each of the
+            # three windows means and which повод of a карточка is the nearest are asked of
+            # `occasions`, which the column «Ближайший повод» is read through as well — two
+            # places working out the nearest повод would one day narrow the полка by one
+            # reading while the row printed the other.
+            #
+            # Last of the six, and the only condition the order matters to: it reads the rows
+            # to fold their поводы, so the fewer the five conditions above have left, the
+            # fewer it reads. The answer does not depend on the order — conditions only take
+            # rows away, in whatever order they are put — and the reading does.
+            records = records.filter(pk__in=occasions.falling_within(records, self.day, window))
         return records

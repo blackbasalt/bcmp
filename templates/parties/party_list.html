@@ -50,6 +50,13 @@
                   arrangement as «Арендатор» and «3 арендатора» on the полка помещений.
                 {% endcomment %}
                 <th>Арендует</th>
+                {% comment %}
+                  «Ближайший повод» stands last: every column before it says who the
+                  Сторона is and what she holds of ours, and this one says what to prepare
+                  for. One повод and not a list — the column asks «кого поздравить в ближайшее
+                  время», and three dates in a cell would answer a different question.
+                {% endcomment %}
+                <th>Ближайший повод</th>
               </tr>
             </thead>
             <tbody>
@@ -82,6 +89,15 @@
                     Стороны are поставщики, and that is an answer rather than a gap.
                   {% endcomment %}
                   <td class="whitespace-nowrap">{{ record|rents }}</td>
+                  {% comment %}
+                    The профессиональный повод is derived from the сфера деятельности and
+                    stored nowhere (ADR 0023), the личный is read off the учётная карточка —
+                    and in the cell they are told apart by nothing, because they are one kind
+                    of повод. A bare dash where there is none: 637 of the 699 Стороны are
+                    поставщики nobody has written a день рождения for, and that is an answer
+                    rather than a gap in the record.
+                  {% endcomment %}
+                  <td>{{ record|occasion }}</td>
                 </tr>
               {% endfor %}
             </tbody>

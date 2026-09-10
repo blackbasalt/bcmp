@@ -7,7 +7,7 @@ The same arrangement as `passport`, `documents` and `rooms`.
 
 from django import template
 
-from ..party_display import rooms_rented
+from ..party_display import nearest_occasion, rooms_rented
 
 register = template.Library()
 
@@ -22,3 +22,14 @@ def rents(record):
     describes.
     """
     return rooms_rented(record.rooms_rented)
+
+
+@register.filter
+def occasion(record):
+    """What the «Ближайший повод» column says about one учётная карточка.
+
+    A filter and not a column assembled beside the queryset, for the reason `rents` is one:
+    the повод is already on the row — the screen put it there once for the whole полка — and
+    a value built next to the rows would be a second thing to keep in step with them.
+    """
+    return nearest_occasion(record.nearest_occasion)

@@ -9,8 +9,8 @@ the сфера деятельности a row names.
 
 import pytest
 
-from dictionary.models import DictLineOfBusiness
-from parties.models import Party, PartyRecord
+from dictionary.models import DictLineOfBusiness, DictProfessionalHoliday
+from parties.models import ContactPerson, Party, PartyRecord
 
 
 @pytest.fixture
@@ -57,3 +57,35 @@ def catering(db):
     that answers with everybody who has any сфера at all.
     """
     return DictLineOfBusiness.objects.create(name="Общепит", short_name="Общепит")
+
+
+@pytest.fixture
+def make_contact(db):
+    """A контактное лицо on a учётная карточка — the person whose день рождения is a повод.
+
+    A factory rather than a ready-made человек: what almost every occasion test stages is
+    whose карточка the birthday hangs on and what day of the year it falls on, and both
+    change from test to test.
+    """
+
+    def _make_contact(record, full_name, **fields):
+        return ContactPerson.objects.create(record=record, full_name=full_name, **fields)
+
+    return _make_contact
+
+
+@pytest.fixture
+def make_holiday(db):
+    """A профессиональный праздник in the справочник — a rule and not a date (ADR 0027).
+
+    Either form is staged through the same factory, because the справочник holds them in one
+    row: `day` and `month`, or `week_of_month`, `weekday` and `month`. Which of the two a
+    test means is said by the keywords it passes, exactly as the `CheckConstraint` reads it.
+    """
+
+    def _make_holiday(line_of_business, name, **rule):
+        return DictProfessionalHoliday.objects.create(
+            line_of_business=line_of_business, name=name, short_name=name, **rule
+        )
+
+    return _make_holiday
