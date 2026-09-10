@@ -1,0 +1,123 @@
+{% comment %}
+  Створка заведения Стороны — то, чем администратор организации заменяет звонок в поддержку
+  (ADR 0021). Она стоит на полке и отправляется на её же адрес: Сторону заводят там, где о ней
+  читают, и отказ возвращается сюда, рядом с той полкой, которую он должен был пополнить.
+
+  `data-entry` — договор экрана: он показывает, предложено ли заведение. Сотруднику без флага
+  администратора эта разметка не достаётся вовсе — ни свёрнутой, ни отключённой: предложено и
+  запрещено разом читается как поломка.
+
+  Створка раскрыта там, где ей есть что делать: над пустой полкой — это то место, где
+  отсутствие Сторон замечают, — и при отказе, потому что причина, спрятанная под заголовком, —
+  причина, которой никто не видит.
+
+  Полка, опустошённая отбором, пустой полкой не является, и створка над ней стоит закрытой:
+  тот, кто сузил полку до ничего, ищет Сторону, а не заводит её. Решается это размером
+  ненасуженной полки, а не тем, что пришло в ответ, — тем же правилом, по которому раздел
+  выбирает между двумя своими пустыми экранами.
+{% endcomment %}
+<details class="mb-4 rounded-lg border border-base-300 bg-base-100 p-3" data-entry="parties"
+         {% if not whole or entry.errors %}open{% endif %}>
+  <summary class="cursor-pointer text-sm font-medium">Завести Сторону</summary>
+
+  <form method="post" class="mt-3 space-y-3">
+    {% csrf_token %}
+
+    {% comment %}
+      Причина отказа, не принадлежащая ни одному полю. Своих у этой формы сегодня нет, но
+      отказ без места, где его напечатать, — отказ, пропавший молча.
+    {% endcomment %}
+    {% if entry.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ entry.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.name.label }}</legend>
+      {% comment %}
+        Значение печатается обратно в поле: отказ о БИН не должен стоить набранного названия,
+        а форма, перерисованная пустой, стоила бы его целиком.
+      {% endcomment %}
+      <input type="text" name="{{ entry.name.html_name }}"
+             value="{{ entry.name.value|default_if_none:'' }}"
+             maxlength="{{ entry.name.field.max_length }}"
+             required class="input w-full">
+      {% if entry.name.errors %}
+        <p class="text-sm text-error">{{ entry.name.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.bin_iin.label }}</legend>
+      {% comment %}
+        Подсказка приходит с самого поля и здесь не переписывается: почему БИН обязателен,
+        сказано там, где эта обязательность и объявлена, — два её изложения разошлись бы, и
+        разошедшимся оказалось бы то, которое читает заполняющий форму.
+      {% endcomment %}
+      <input type="text" name="{{ entry.bin_iin.html_name }}"
+             value="{{ entry.bin_iin.value|default_if_none:'' }}"
+             maxlength="{{ entry.bin_iin.field.max_length }}"
+             required class="input w-full">
+      {% if entry.bin_iin.errors %}
+        <p class="text-sm text-error">{{ entry.bin_iin.errors|join:" " }}</p>
+      {% endif %}
+      <p class="label">{{ entry.bin_iin.help_text }}</p>
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.kind.label }}</legend>
+      {% comment %}
+        Варианты печатаются разметкой по списку самого поля, вместе с пустым первым: заголовки
+        родов — «Юрлицо» и «Физлицо» — живут в `party_display`, откуда их берут и обе колонки
+        раздела, и вписанные сюда руками стали бы третьим их написанием.
+      {% endcomment %}
+      <select name="{{ entry.kind.html_name }}" required class="select w-full">
+        {% for value, label in entry.kind.field.choices %}
+          <option value="{{ value }}" {% if entry.kind.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if entry.kind.errors %}
+        <p class="text-sm text-error">{{ entry.kind.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.line_of_business.label }}</legend>
+      {% comment %}
+        Без `required`: сфера необязательна, и почему — сказано на самом поле. Пустой вариант
+        приходит оттуда же строкой «Сфера неизвестна», так что список ничем не отличает
+        «не выбрано» от «неизвестно»: это одно и то же.
+      {% endcomment %}
+      <select name="{{ entry.line_of_business.html_name }}" class="select w-full">
+        {% for value, label in entry.line_of_business.field.choices %}
+          <option value="{{ value }}" {% if entry.line_of_business.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if entry.line_of_business.errors %}
+        <p class="text-sm text-error">{{ entry.line_of_business.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    {% comment %}
+      Поля может не быть вовсе — форма заводит его только тому, кто ведёт больше одной
+      организации, и довод стоит в ней же. Отсюда и условие на само поле, а не на список его
+      вариантов: наличие поля — единственное, чем разметка узнаёт, задан ли вопрос вообще.
+    {% endcomment %}
+    {% if entry.org %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ entry.org.label }}</legend>
+        <select name="{{ entry.org.html_name }}" required class="select w-full">
+          {% for value, label in entry.org.field.choices %}
+            <option value="{{ value }}" {% if entry.org.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if entry.org.errors %}
+          <p class="text-sm text-error">{{ entry.org.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary btn-sm">Завести</button>
+  </form>
+</details>

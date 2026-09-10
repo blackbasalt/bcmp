@@ -7,6 +7,15 @@
 
 {% block content %}
   {% comment %}
+    Створка заведения стоит над отбором и над полкой: заведённая Сторона уходит на свой
+    собственный экран, так что читать её здесь не придётся, — а место над отбором она занимает
+    потому, что заводят Сторону, уже не найдя её, и рука идёт снизу вверх.
+
+    Сотруднику без флага администратора створки нет вовсе (ADR 0005).
+  {% endcomment %}
+  {% if entry %}{% include "parties/_party_entry.html" %}{% endif %}
+
+  {% comment %}
     The question stands above the table: it is asked of what is below it and answered by it.
     On a полка with no Сторонами there is nothing to narrow, and the bar is not shown — but
     it stays on a полка that a question emptied, because that is where the question has to be

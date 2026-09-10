@@ -1,9 +1,13 @@
 """How the раздел «Стороны» reads on screen: how much of the полка is shown, what a Сторона
-rents, what she is — юрлицо or физлицо — and when her поводы fall.
+rents, what she is — юрлицо or физлицо — when her поводы fall, and what is said to whoever has
+just entered a Сторона somebody had entered before them.
 
-Both screens of the раздел read through this one file. The полка names the ближайший повод in
-a column and the экран lists them all, and a повод written out in two places would eventually
-read as two different поводы on two screens of one раздел.
+Everything the раздел says in words reads through this one file. The полка names the ближайший
+повод in a column and the экран lists them all, and a повод written out in two places would
+eventually read as two different поводы on two screens of one раздел. Заведение says nothing
+about a повод, and stands here for the other half of the same reason: «Юрлицо» in the отказ and
+«Юрлицо» in the шапке are one word, and a form that spelled its own would be the second place
+to be corrected when the word changes.
 
 What is written out here is a phrase rather than a figure put beside a table. «Показано 12 из
 637 Сторон» answers a question; «12 / 637» is a quantity the reader has to guess at — the same
@@ -16,10 +20,19 @@ Agreement with the numeral is worked out here rather than assembled in the marku
 neither is the other's rule with the words swapped, and each says so where it is written.
 """
 
+from typing import TYPE_CHECKING
+
+from django.contrib import messages
+
 from building_passport.passport_display import NBSP
 
 from .models import Party
 from .occasions import Occasion
+
+if TYPE_CHECKING:
+    # Под `TYPE_CHECKING`, потому что импорт кольцевой: форма заведения берёт отсюда `KINDS`,
+    # чтобы юрлицо называлось на ней тем же словом, что и на обоих экранах раздела.
+    from .party_entry import Entered
 
 #: Сторона, не арендующая ни одного помещения: a bare dash, and deliberately not
 #: `or_missing`'s «— нет данных». 637 of the 699 Стороны are поставщики who rent nothing at
@@ -154,3 +167,31 @@ def nearest_occasion(occasion: Occasion | None) -> str:
     рождения for, and that is an answer rather than a gap in the record.
     """
     return NOTHING if occasion is None else occasion_said(occasion)
+
+
+def entry_said(entered: "Entered") -> tuple[int, str] | None:
+    """Что сказано после отправки формы заведения — или ничего, потому что сказать нечего.
+
+    Заведённая Сторона словами не подтверждается: следом открывается её экран, и
+    перезагруженный экран и есть подтверждение — та же договорённость, по какой
+    перезагруженная полка подтверждает загруженную пачку (ADR 0005). Словами говорится ровно
+    то, чего на экране не прочесть.
+
+    Занятый БИН как раз из этого: администратор набрал название, род и сферу, а увидит чужие,
+    потому что общая половина осталась как была (ADR 0028), — и, не сказав ему почему, экран
+    выглядел бы так, будто набранное потеряли. Сказанного при этом ровно один бит: что Сторона
+    с этим БИН уже заведена. Ни кем, ни с каких пор, ни что о ней записано, — и потому обе
+    фразы называют одну лишь Сторону (ADR 0021).
+
+    Две фразы, а не одна: карточка, которой не было, и карточка, которая была, — два разных
+    исхода одной отправки, и «уже заведена» о Стороне, стоящей на моей же полке, отправило бы
+    администратора искать, кто её завёл, вместо того чтобы дочитать до конца.
+    """
+    if entered.party_entered:
+        return None
+    if entered.record_entered:
+        return messages.INFO, (
+            "Сторона с этим БИН/ИИН уже заведена. Учётная карточка на неё добавлена, "
+            "а название, род и сфера деятельности остались как были."
+        )
+    return messages.INFO, "Сторона с этим БИН/ИИН уже заведена и стоит на вашей полке."

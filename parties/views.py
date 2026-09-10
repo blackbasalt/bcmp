@@ -1,4 +1,7 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
@@ -8,7 +11,8 @@ from leases.occupancy import rooms_of_each_record
 
 from . import occasions
 from .models import Org, PartyRecord
-from .party_display import parties_shown
+from .party_display import entry_said, parties_shown
+from .party_entry import PartyEntryForm
 from .party_page import (
     contacts_of,
     documents_issued_by,
@@ -46,6 +50,12 @@ class PartyListView(LoginRequiredMixin, ListView):
     организация keeps a карточка on her, and not because she has an аренда or a роль. The
     rule that derives the полка from связи gives the УК an empty screen while 637 of those
     Стороны are its own поставщики — 0 rows in `PartyRole`, 35 аренды, 699 Сторон (ADR 0020).
+
+    Створка заведения стоит здесь и отправляется на этот же адрес: Сторону заводят там, где о
+    ней читают, и отказ возвращается на экран, с которого форму отправляли, — то же
+    устройство, что пакетная загрузка на полке документов и загрузка плана на экране этажа
+    (ADR 0005). Заведённая Сторона на этот экран не возвращается: следом открывается её
+    собственный (ADR 0021).
     """
 
     template_name = "parties/party_list.html"
@@ -125,7 +135,48 @@ class PartyListView(LoginRequiredMixin, ListView):
         # The reason is `naming_the_organisation`'s, above, and it is asked there rather than
         # here because the экран Стороны asks the very same question of the very same reader.
         context["organisation_named"] = naming_the_organisation(self.request.user)
+        # Створка достаётся только тому, кто вправе заводить: действия, которое сотруднику не
+        # выполнить, ему и не предлагают — показанная форма, отклоняющая отправку, читается
+        # как сломанный экран (ADR 0005). Отказ приносит свою, уже заполненную, так что пустая
+        # ставится только на её место.
+        if not self.administers_anything:
+            context["entry"] = None
+        else:
+            context.setdefault("entry", PartyEntryForm(user=self.request.user))
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Заведение Стороны: тот же адрес, что и у раздела, — створка стоит на нём.
+
+        Отказ возвращает тот же экран с причиной на форме, а заведение уводит на экран
+        заведённой Стороны: перезагруженный экран и есть подтверждение, а то единственное, чего
+        на нём не прочесть — что БИН был занят, — сказано словами над ним.
+        """
+        if not self.administers_anything:
+            # 403, а не 404: раздел этому сотруднику показан, и «его нет» было бы неправдой о
+            # том, что уже на экране. Скрывают чужие данные, а не собственную нехватку прав
+            # (ADR 0005).
+            raise PermissionDenied("Заводить Стороны может администратор организации.")
+        form = PartyEntryForm(request.POST, user=request.user)
+        if not form.is_valid():
+            self.object_list = self.get_queryset()
+            return self.render_to_response(self.get_context_data(entry=form))
+        entered = form.save()
+        said = entry_said(entered)
+        if said is not None:
+            messages.add_message(request, *said)
+        return redirect("parties:party_detail", entered.record.pk)
+
+    @cached_property
+    def administers_anything(self):
+        """Ведёт ли этот сотрудник данные хоть какой-нибудь организации (ADR 0005).
+
+        Тот же вопрос, что задаётся на записи: показанная форма и принятый запрос обязаны
+        отвечать на него одинаково, иначе экран предлагает то, в чём потом отказывает. Какой
+        именно организации достанется карточка, решает сама форма — здесь только о том, есть
+        ли створка вообще.
+        """
+        return Org.objects.administered_by(self.request.user).exists()
 
     @cached_property
     def today(self):
