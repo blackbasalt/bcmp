@@ -19,11 +19,9 @@ and let nothing.
 """
 
 from datetime import date
-from decimal import Decimal
 
 import pytest
 
-from building_passport.models import Space
 from building_passport.space_kind import COMMON, LEASABLE, kind_of
 from leases.models import Lease
 from parties.models import Party
@@ -120,36 +118,16 @@ def test_no_lease_in_the_file_ends_before_it_begins():
 
 
 @pytest.fixture
-def manhattan_from_seed(downtown):
-    """Manhattan out of `space.csv` — the same помещения the working base lives from."""
-    pending = [
-        row
-        for row in load_real_data.rows("space.csv")
-        if row["code"] == "man" or row["building"] == "man"
-    ]
-    spaces = {}
-    while pending:
-        deferred = []
-        for row in pending:
-            parent = spaces.get(row["parent"])
-            if parent is None and row["code"] != "man":
-                deferred.append(row)
-                continue
-            spaces[row["code"]] = Space.objects.create(
-                org=downtown,
-                parent=parent,
-                building=spaces.get("man"),
-                type=row["type"],
-                code=row["code"],
-                name=row["name"],
-                floor_number=int(row["floor_number"]) if row["floor_number"] else None,
-                area_m2=Decimal(row["area_m2"]) if row["area_m2"] else None,
-                is_common=row["is_common"] == "TRUE" if row["is_common"] else None,
-                is_leasable=row["is_leasable"] == "TRUE" if row["is_leasable"] else None,
-            )
-        assert len(deferred) < len(pending), "помещение ссылается на несуществующего родителя"
-        pending = deferred
-    return spaces
+def manhattan_from_seed(downtown, build_spaces, export_rows):
+    """Manhattan out of `space.csv` — the same помещения the working base lives from.
+
+    Ставится общей сборкой (`scripts/conftest.py`): настоящий посев рядом собирает из того
+    же файла все пять БЦ, и две сборки одного `space.csv` разошлись бы молча.
+    """
+    return build_spaces(
+        downtown,
+        [row for row in export_rows if row["code"] == "man" or row["building"] == "man"],
+    )
 
 
 @pytest.fixture

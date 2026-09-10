@@ -224,3 +224,17 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     # SECURE_SSL_REDIRECT is deliberately left off: nginx already redirects, and
     # SECURE_PROXY_SSL_HEADER means Django sees every proxied request as https.
+
+# Посевы разговаривают журналом, а не `print`: отчёт о том, сколько строк аренд посев
+# пропустил и скольких Сторон ему не хватило, — это число, которое сверяют с ожидаемым
+# (ADR 0026). Без этой настройки корневой логгер обработчика не имеет, INFO не проходит
+# порог `lastResort`, и отчёт не видел бы никто.
+#
+# Только `scripts`: `disable_existing_loggers` выключен, поэтому всё, что Django настраивает
+# себе сам, остаётся как было, и SQL в консоль не льётся.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"scripts": {"handlers": ["console"], "level": "INFO"}},
+}

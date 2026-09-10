@@ -1,14 +1,28 @@
-"""Посев рабочей базы: настоящие Стороны, помещения и паспорта — и наполнение аренд.
+"""Посев рабочей базы: настоящие Стороны, помещения, паспорта и аренды — и наполнение.
 
-The first four blocks load what the УК actually handed over. The fifth is наполнение: a
-dozen fictional арендаторы sitting in Manhattan, without which «сдано X из Y», the находки
-and the отбор «свободно» have nothing to be looked at on before the УК enters anything.
+The first blocks load what the УК actually handed over. The last one is наполнение: a dozen
+fictional арендаторы sitting in Manhattan, without which «сдано X из Y», the находки and the
+отбор «свободно» have nothing to be looked at on before the УК enters anything.
+
+Стороны и аренды посев сносить перестал: он опознаёт своё по тому, чем его зовёт сама
+выгрузка — БИН у Стороны, пара «помещение + арендатор» у аренды, — и заводит поверх себя.
+Сплошное `Party.objects.all().delete()`, стоявшее здесь прежде, сносило вместе со своим и
+заведённое УК в админке (ADR 0026).
+
+Помещения — ещё нет: `run()` по-прежнему начинает их блок со сплошного
+`Space.objects.all().delete()`, а `Lease.space` — `CASCADE`, так что полный прогон посева
+уносит и аренды УК. Заменить снос заведением поверх себя тут нечем: `Space.code` не
+уникален, и ключа, по которому посев узнал бы свою же строку, у помещения пока нет. Это
+отдельное решение и отдельный тикет; правило ADR 0026 до тех пор держится на `load_parties`
+и `load_leases`, вызванных сами по себе.
 
     uv run python manage.py runscript load_real_data
 """
 
 import csv
-from datetime import timedelta
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
@@ -29,6 +43,145 @@ from .load_dict_data import DATA, rows
 #: its own leavings when it clears them, so a repeat run replaces them instead of laying a
 #: second наполнение on top.
 FILLING_MARK = "наполнение:"
+
+#: Кем ведётся база, из которой приехала строка выгрузки, — и БИН той организации, если она
+#: в системе есть. Колонка `date_base` зовёт базу её названием, а система знает организации
+#: по БИН, и мостик между двумя именованиями стоит здесь строкой, а не выводится сличением
+#: названий: «ТОО «DOWNTOWN MANAGEMENT»» и «DownTown Management ТОО» — одно и то же, и
+#: сличение, которое сегодня их сводит, завтра сведёт не то.
+#:
+#: Баз в выгрузке три, а строка тут одна: организаций для «Asset-Asia ТОО» и
+#: «ТОО «CO-PROSTRANSTVO»» в системе нет, и 62 их Стороны заливаются без учётной карточки —
+#: находимы поиском, ни на чьей полке (ADR 0020). Asset-Asia при этом стоит арендодателем на
+#: четырнадцати строках аренд, и это роль на аренде, а не основание завести организацию.
+DOWNTOWN_BASE = "ТОО «DOWNTOWN MANAGEMENT»"
+BASES = {DOWNTOWN_BASE: "180540035878"}
+
+#: Пометки рода в колонке `type` выгрузки, за которыми стоит человек, а не организация.
+#: Их две, а не одна: ИП — это человек, и загрузчик, знавший только «ФЛ», записывал всех
+#: пятерых организациями. Род спрашивает экран Стороны, и от него зависит, есть ли блок
+#: контактных лиц и где висит день рождения (ADR 0025).
+PERSONAL_FORMS = {"ФЛ", "ИП"}
+
+
+@dataclass(frozen=True)
+class LeaseReport:
+    """Чем посев отчитывается об арендах: сколько завёл, сколько пропустил и кого не нашёл.
+
+    Величиной, которую забирает вызвавший, а не строками в консоли (ADR 0026): пропуск
+    двухсот тридцати пяти строк — это то, что читают числом и сверяют с ожидаемым, а
+    консоль посева и без того полна.
+
+    `missing` считает Стороны, а не строки: сорок два арендатора, которых в реестре нет, —
+    это одна недостающая выгрузка арендаторов, и знать надо её размер.
+    """
+
+    entered: int
+    skipped: int
+    missing: int
+
+
+def day_of(value):
+    """Дата таблицы УК — `01/01/26`, месяц первым. Пустая клетка остаётся пустой.
+
+    Даты здесь настоящие и оттого абсолютные, в отличие от сроков наполнения: те держатся
+    смещениями, чтобы прошлые аренды не переставали быть прошлыми, а эти приехали из
+    договоров, и сдвигать их значило бы их сочинять.
+    """
+    return datetime.strptime(value, "%m/%d/%y").date() if value else None
+
+
+def load_parties():
+    """699 Сторон выгрузки и учётные карточки той организации, чья это выгрузка.
+
+    Колонка `date_base` называет, чья каждая строка, и посев её больше не выбрасывает: 637
+    строк «ТОО «DOWNTOWN MANAGEMENT»» получают учётную карточку этой организации и тем
+    попадают на её полку. Полку нельзя вывести из связей с БЦ — `PartyRole` пуст, аренд
+    тридцать пять, и правило «показывать связанных» дало бы управляющей компании пустой
+    экран при 637 её собственных поставщиках (ADR 0020).
+
+    Названием становится `clean_name`, а не `name`: ОПФ уже стоит в нём суффиксом, и
+    отдельным полем не заводится (ADR 0025).
+
+    Опознаются Стороны по БИН — он уникален, все 699 строк его несут, и одно юрлицо есть
+    одна строка. Оттого посеву и не нужно ничего сносить: он заводит своё поверх себя, а
+    Сторону, заведённую УК помимо выгрузки, не трогает вовсе.
+    """
+    export = rows("party.csv")
+
+    parties = {}
+    for row in export:
+        parties[row["inn_bin"]], _ = Party.objects.update_or_create(
+            bin_iin=row["inn_bin"],
+            defaults={
+                "kind": (
+                    Party.Kind.PERSON
+                    if row["type"].strip() in PERSONAL_FORMS
+                    else Party.Kind.COMPANY
+                ),
+                "name": row["clean_name"].strip(),
+            },
+        )
+
+    # Организация заводится после Сторон и из них же: `Org` — тонкий слой над Стороной, и
+    # управляющая компания стоит в собственной выгрузке такой же строкой, как её поставщики.
+    orgs = {}
+    for base, bin_iin in BASES.items():
+        orgs[base], _ = Org.objects.get_or_create(party=parties[bin_iin])
+
+    for row in export:
+        org = orgs.get(row["date_base"])
+        if org is None:
+            continue
+        PartyRecord.objects.get_or_create(party=parties[row["inn_bin"]], org=org)
+
+
+def load_leases(day=None):
+    """Аренды из таблицы УК: заводится та строка, чей арендатор в реестре Сторон есть.
+
+    Аренда, чьего арендатора там нет, не заводится, и Стороны ради неё не выдумывается:
+    имён арендаторов в выгрузке нет вовсе, только БИН, и 42 Стороны с именем-БИНом дали бы
+    полку из строк вида «030841005109», отвечающую на «кто сидит в каб305» бессмысленно, но
+    уверенно. Пустой Tokyo честнее заполненного неправдой (ADR 0026). Цена названа заранее:
+    из 271 строки заводится 36, и Tokyo с Boston остаются без единой аренды.
+
+    Заводится всё обычным путём, через `Lease.objects`, то есть через ту же проверку
+    периода, что и админка с формой, — довод целиком в `fill_leases`.
+
+    Своё посев узнаёт по паре «помещение + арендатор» — по ней в таблице УК ровно одна
+    строка — и заводит поверх себя. Аренду, заведённую УК в админке, он не трогает: то же
+    правило, ради которого наполнение держит `FILLING_MARK`.
+    """
+    day = day or timezone.localdate()
+    registry = {party.bin_iin: party for party in Party.objects.exclude(bin_iin=None)}
+
+    entered = 0
+    skipped = 0
+    missing = set()
+    for row in rows("lease_data.csv"):
+        tenant = registry.get(row["tenant"])
+        if tenant is None:
+            skipped += 1
+            missing.add(row["tenant"])
+            continue
+
+        Lease.objects.update_or_create(
+            space=Space.objects.get(code=row["space"]),
+            tenant=tenant,
+            defaults={
+                "landlord": registry[row["landlord"]] if row["landlord"] else None,
+                "area_m2": Decimal(row["area_m2"]) if row["area_m2"] else None,
+                # Днём посева, а не выдуманной датой: четырнадцать помещений Geneva сданы, а
+                # срока таблица УК не назвала. Арендатор сидит там сегодня, и день, с
+                # которого это известно, — тот, в который строка приехала; пустой конец и
+                # без того читается «по сей день».
+                "valid_from": day_of(row["valid_from"]) or day,
+                "valid_to": day_of(row["valid_to"]),
+            },
+        )
+        entered += 1
+
+    return LeaseReport(entered=entered, skipped=skipped, missing=len(missing))
 
 
 def term(row, day):
@@ -96,25 +249,8 @@ def fill_leases(day=None):
 
 
 def run():
-    with (DATA / "party.csv").open() as file:
-        reader = csv.reader(file)
-        next(reader)
-
-        Party.objects.all().delete()
-
-        for row in reader:
-            kind="company"
-            if row[3]=="ФЛ":
-                kind = "person"
-            c, _ = Party.objects.get_or_create(
-                    kind=kind,
-                    name=row[2],
-                    bin_iin=row[4],
-                    )
-        dt = Party.objects.get(bin_iin="180540035878")
-        o,_ = Org.objects.get_or_create(
-            party = dt,
-                )
+    load_parties()
+    dt = Party.objects.get(bin_iin=BASES[DOWNTOWN_BASE])
 
     with (DATA / "user.csv").open() as file:
         reader = csv.reader(file)
@@ -254,5 +390,16 @@ def run():
                     designer_party=designer,
                     builder_party=builder,
                     )
+
+    # Отчёт уходит в журнал, а не в консоль: пропуск двухсот тридцати пяти строк — это
+    # число, которое сверяют с ожидаемым, а `print` посреди посева читает только тот, кто
+    # смотрит в терминал ровно в эту секунду (ADR 0026).
+    report = load_leases()
+    logging.getLogger(__name__).info(
+        "аренды из таблицы УК: заведено %s, пропущено %s, Сторон не хватило %s",
+        report.entered,
+        report.skipped,
+        report.missing,
+    )
 
     fill_leases()
