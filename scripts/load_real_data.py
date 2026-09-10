@@ -10,7 +10,6 @@ and the отбор «свободно» have nothing to be looked at on before t
 import csv
 from datetime import timedelta
 from decimal import Decimal
-from pathlib import Path
 
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -20,7 +19,9 @@ from building_passport.models import *
 from leases.models import Lease
 from parties.models import *
 
-DATA = Path(__file__).parent / "populate_data"
+# Читается тем же чтением, что и словари: посев берёт свои файлы из той же папки и той же
+# строкой, и второе чтение однажды разошлось бы с первым в кодировке или в диалекте.
+from .load_dict_data import DATA, rows
 
 #: What marks a fictional Сторона. It stands in `external_id` — the field that already says
 #: where a row came from — rather than in a flag of its own: a second place saying «это
@@ -28,12 +29,6 @@ DATA = Path(__file__).parent / "populate_data"
 #: its own leavings when it clears them, so a repeat run replaces them instead of laying a
 #: second наполнение on top.
 FILLING_MARK = "наполнение:"
-
-
-def rows(name):
-    """Строки посевного файла. Читают их и посев, и тесты — одним чтением на всех."""
-    with (DATA / name).open(encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
 
 
 def term(row, day):

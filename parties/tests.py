@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.urls import reverse
 
-from parties.models import Org, OrgMembership
+from dictionary.models import DictLineOfBusiness
+from parties.models import Org, OrgMembership, Party
 
 pytestmark = pytest.mark.django_db
 
@@ -70,3 +71,40 @@ def test_the_user_page_in_admin_carries_the_memberships_of_that_user(client):
 
     assert page.status_code == 200
     assert "memberships-0-org" in page.content.decode()
+
+
+def test_the_line_of_business_of_a_party_is_optional(db):
+    """699 Сторон уже заведены и ни у одной сфера не проставлена: полка, требующая её
+    заполнить, не показала бы ни одной."""
+    party = Party.objects.create(
+        kind=Party.Kind.COMPANY, name="ТОО «Альфа»", bin_iin="050340008889"
+    )
+
+    assert party.line_of_business is None
+
+
+def test_the_line_of_business_is_chosen_on_the_party_in_the_admin(client, db):
+    """Сфера живёт на самой Стороне, а не в учётной карточке: публичный факт без двух версий,
+    у которого 637 частных мнений разошлись бы ни за чем (ADR 0020)."""
+    client.force_login(User.objects.create_superuser("administrator"))
+    construction = DictLineOfBusiness.objects.create(
+        slug="construction", name="Строительство", short_name="Строительство"
+    )
+    party = Party.objects.create(
+        kind=Party.Kind.COMPANY, name="Центр крепежных систем ТОО", bin_iin="060140004821"
+    )
+
+    saved = client.post(
+        reverse("admin:parties_party_change", args=[party.pk]),
+        {
+            "kind": party.kind,
+            "name": party.name,
+            "bin_iin": party.bin_iin,
+            "contacts": "{}",
+            "line_of_business": construction.pk,
+        },
+    )
+
+    assert saved.status_code == 302
+    party.refresh_from_db()
+    assert party.line_of_business == construction

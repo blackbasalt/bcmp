@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.models import User
 from django.db import models
 
+from dictionary.models import DictLineOfBusiness
+
 # Create your models here.
 class CommonModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
@@ -27,6 +29,22 @@ class Party(CommonModel):
     name = models.CharField(max_length=255)
     bin_iin = models.CharField(unique=True, max_length=32, blank=True, null=True)
     contacts = models.JSONField(default=dict, blank=True, db_default={})
+    #: Чем Сторона занимается — единственное, что организация записывает не в учётную
+    #: карточку, а на саму Сторону. Публичный факт без двух версий: 637 частных мнений о том,
+    #: чем занимается «Центр крепежных систем», разошлись бы ни за чем и сломали бы вывод
+    #: профессионального повода, ради которого справочник и заведён (ADR 0020, ADR 0023).
+    #:
+    #: Необязательное: 699 Сторон уже заведены и ни у одной сферы не проставлено, а полка,
+    #: требующая её заполнить, не показала бы ни одной. `PROTECT` — убрать из справочника
+    #: отрасль, на которую кто-то ссылается, значит стереть сферу у Стороны молча.
+    line_of_business = models.ForeignKey(
+        DictLineOfBusiness,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="parties",
+        verbose_name="сфера деятельности",
+    )
     external_id = models.CharField(max_length=1024, unique=True, null=True, blank=True)
 
     def __str__(self):
