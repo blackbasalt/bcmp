@@ -11,19 +11,21 @@ from documents.models import Document
 from leases.occupancy import rooms_of_each_record
 
 from . import occasions
-from .models import Org, PartyRecord
-from .party_display import entry_said, parties_shown
+from .models import Org, PartyRecord, stands_for_herself
+from .party_display import entry_said, parties_shown, record_deleted
 from .party_entry import PartyEntryForm
 from .party_page import (
+    Deletion,
     contacts_of,
     documents_issued_by,
     leases_of,
     occasions_said,
     particulars,
     payment_details_of,
-    stands_for_herself,
+    taken_with,
 )
 from .record_keeping import BirthdayForm, ContactPersonForm, PaymentDetailsForm
+from .shared_half import SharedHalf, SharedHalfForm, known_by_others
 from .shelf_search import ShelfSearch
 
 
@@ -258,7 +260,7 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
         # Поводы — тем же правилом, каким полка считает свою колонку. «Сегодня» спрашивается
         # у часов один раз: на экране один список, и второе чтение часов было бы вторым днём,
         # о котором говорит одна и та же страница.
-        context["occasions"] = occasions_said(self.object, timezone.localdate())
+        context["occasions"] = occasions_said(self.object, self.today)
         # Ничего, а не пустой список, если Сторона физлицо: у неё блока контактных лиц нет
         # вовсе, и решается это в `party_page`, где стоит и вторая половина того же правила —
         # день рождения физлица в шапке.
@@ -279,7 +281,19 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
             context["payment_entry"] = None
             context["contact_entry"] = None
             context["birthday_entry"] = None
+            # Об общей половине такому сотруднику не говорится вовсе — ни формой, ни строкой
+            # о том, почему её нет: объяснять отсутствие того, чего ему не полагается, значит
+            # рассказывать о чужом праве.
+            context["shared_half"] = None
+            # Удаление такому сотруднику не называется вовсе: показанный вопрос с отказом на
+            # ответе читался бы как неисправность формы (ADR 0013).
+            context["deletion"] = None
         else:
+            # Общая половина: форма, пока карточка на эту Сторону одна, и одно лишь
+            # объяснение, когда их стало две. Радиус правки решает, кому она принадлежит, и
+            # спрашивается он обо всей системе, а не о том, что видно читателю (ADR 0028).
+            context.setdefault("shared_half", self.shared_half)
+            context.setdefault("deletion", Deletion(confirming=False))
             context.setdefault("payment_entry", PaymentDetailsForm(record=self.object))
             # Ничего, а не форма, если Сторона физлицо, — той же половиной правила, какой
             # решается сам блок контактных лиц: «не бывает» и «не заведено» отвечаются на этом
@@ -318,11 +332,43 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
         # юрлица и у физлица, и всё, что не назвалось, есть она. Остальные называют — то же
         # правило, по которому страница документа различает свои пять отправок.
         submitted = request.POST.get("submitted")
+        if submitted == "shared-half":
+            return self.edit_the_shared_half(request)
         if submitted == "contact":
             return self.enter_a_contact_person(request)
         if submitted == "birthday":
             return self.mark_the_birthday(request)
+        if submitted == "deletion":
+            return self.ask_about_deletion()
+        if submitted == "deletion-confirmed":
+            return self.delete_the_record(request)
         return self.enter_payment_details(request)
+
+    def edit_the_shared_half(self, request):
+        """Править название, БИН, род и сферу — пока карточка на эту Сторону одна.
+
+        Замёрзшая половина отклоняется на отправке, а не только не показывается: экран,
+        решающий это разметкой, отдал бы правку всякому, кто набрал адрес руками, — и всё
+        остальное в разделе решается на запросе по той же причине (ADR 0005).
+
+        403, а не 404: Сторона этому сотруднику показана, и «её нет» было бы неправдой о том,
+        что уже перед ним. Право на эту правку существует — оно принадлежит администратору
+        платформы, — и ответ говорит именно это (ADR 0028).
+        """
+        if self.shared_half.frozen:
+            raise PermissionDenied(
+                "Эту Сторону знает не только ваша организация: название, БИН/ИИН, вид и "
+                "сферу деятельности меняет администратор платформы."
+            )
+        form = SharedHalfForm(request.POST, instance=self.object.party)
+        if not form.is_valid():
+            return self.render_to_response(
+                self.get_context_data(shared_half=SharedHalf(form))
+            )
+        form.save()
+        # Словами не подтверждается: перезагруженный экран несёт новое название и в шапке, и
+        # в заголовке страницы, и в хлебной крошке — сказать о правке было бы нечего.
+        return redirect("parties:party_detail", self.object.pk)
 
     def enter_payment_details(self, request):
         """Завести комплект платёжных реквизитов — счёт рядом с прежним, а не вместо него.
@@ -367,6 +413,64 @@ class PartyDetailView(LoginRequiredMixin, DetailView):
             return self.render_to_response(self.get_context_data(birthday_entry=form))
         form.save()
         return redirect("parties:party_detail", self.object.pk)
+
+    def ask_about_deletion(self):
+        """Вопрос, заданный на экране самой карточки и не разрушающий ничего.
+
+        Задаёт его приложение, а не браузер. Всё остальное на этом экране решается на запросе,
+        а не тем, что предложено на экране, и подтверждение — того же рода: то, которое жило бы
+        в скрипте, исчезло бы вместе с несработавшим скриптом, и нажатие за ним удалило бы
+        карточку, о которой никого не спросили (ADR 0013).
+
+        Два нажатия в разных местах, и до второго добираются через перезагруженную страницу, —
+        это и делает промах невозможным, а не формулировка фразы между ними.
+        """
+        return self.render_to_response(
+            self.get_context_data(
+                deletion=Deletion(confirming=True, taken=taken_with(self.object, self.today))
+            )
+        )
+
+    def delete_the_record(self, request):
+        """Уничтожить карточку и всё, что существовало только как её часть.
+
+        Уходит знание о Стороне, а не Сторона: удалённая строка реестра освободила бы БИН, и
+        вторая организация завела бы юрлицо без прошлого при том, что на прежнее ссылаются
+        аренды, документы «Кем выдан» и `responsible_party` инженерных систем (ADR 0028).
+
+        Что ушло, выясняется до удаления, а не после: платёжные реквизиты и контактные лица
+        уходят каскадом, и потом фразе было бы нечего считать.
+
+        Читатель попадает на полку, потому что экран, с которого он удалял, ушёл вместе с
+        карточкой. Удалённая дважды — второй щелчок двойного — не находит карточки и
+        отвечается `get_object` так же, как отвечается всё отсутствующее (ADR 0006).
+        """
+        taken = taken_with(self.object, self.today)
+        name = self.object.party.name
+        self.object.delete()
+        messages.success(request, record_deleted(name, taken))
+        return redirect("parties:party_list")
+
+    @cached_property
+    def today(self):
+        """День, о котором говорит экран, взятый один раз на весь запрос.
+
+        Одно чтение «сегодня»: поводы шапки и поводы, названные вопросом об удалении, — один
+        список, и два обращения к часам мгновением друг за другом могли бы разойтись через
+        полночь, назвав на одной странице два разных дня.
+        """
+        return timezone.localdate()
+
+    @cached_property
+    def shared_half(self):
+        """Общая половина, как её застал этот запрос: форма или замирание.
+
+        Спрашивается один раз: экран решает по ней, что показать, а отправка — что принять, и
+        два вопроса об одном радиусе были бы двумя ответами.
+        """
+        if known_by_others(self.object):
+            return SharedHalf()
+        return SharedHalf(SharedHalfForm(instance=self.object.party))
 
     @cached_property
     def administers_the_record(self):

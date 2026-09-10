@@ -1,0 +1,72 @@
+{% load passport %}
+{% comment %}
+  Правка общей половины Стороны — в блоке о самой Стороне, под её шапкой: правят там, где
+  читают, и отправляется форма по адресу самого экрана, так что отказу есть куда вернуться
+  (ADR 0005).
+
+  Створка стоит только там, где правка принадлежит этой организации, — пока карточка на
+  Сторону есть у неё одной. Замёрзшую половину эта разметка не показывает вовсе: экран на её
+  месте говорит словами, почему общее замерло, и форма, которая потом откажет, читалась бы
+  как поломка (ADR 0028).
+
+  `data-entry` — тот же договор, каким названы створки ведения карточки: он говорит, что
+  предложено. Створка свёрнута: название и БИН правят раз в жизни Стороны, а читают их с
+  этого экрана каждый раз. Раскрыта она при отказе — причина, спрятанная под заголовком,
+  причина, которой никто не видит.
+{% endcomment %}
+<details class="mt-2" data-entry="shared-half" {% if shared_half.form.errors %}open{% endif %}>
+  <summary class="btn btn-sm btn-block btn-outline border-base-300 font-medium">Править Сторону</summary>
+
+  <form method="post" class="mt-3 space-y-2 rounded border border-base-300 bg-base-200/50 p-3">
+    {% csrf_token %}
+    <input type="hidden" name="submitted" value="shared-half">
+
+    {% if shared_half.form.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ shared_half.form.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ shared_half.form.name.label }}</legend>
+      {{ shared_half.form.name|styled:"input w-full" }}
+      {% if shared_half.form.name.errors %}
+        <p class="text-sm text-error">{{ shared_half.form.name.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ shared_half.form.bin_iin.label }}</legend>
+      {{ shared_half.form.bin_iin|styled:"input w-full" }}
+      {% if shared_half.form.bin_iin.errors %}
+        <p class="text-sm text-error">{{ shared_half.form.bin_iin.errors|join:" " }}</p>
+      {% endif %}
+      {# Подсказка приходит с самого поля: почему номер обязателен обоим родам, записано там, где обязательность и объявлена. #}
+      <p class="label">{{ shared_half.form.bin_iin.help_text }}</p>
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ shared_half.form.kind.label }}</legend>
+      {{ shared_half.form.kind|styled:"select w-full" }}
+      {% if shared_half.form.kind.errors %}
+        <p class="text-sm text-error">{{ shared_half.form.kind.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ shared_half.form.line_of_business.label }}</legend>
+      {{ shared_half.form.line_of_business|styled:"select w-full" }}
+      {% if shared_half.form.line_of_business.errors %}
+        <p class="text-sm text-error">{{ shared_half.form.line_of_business.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    {% comment %}
+      Сказано вслух, что правится общее: этими четырьмя столбцами Сторона названа на всю
+      систему, и правка их — не запись в свою карточку, а изменение реестра.
+    {% endcomment %}
+    <p class="label">Это общие сведения о Стороне — одни на всю систему.</p>
+
+    <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+  </form>
+</details>

@@ -55,10 +55,9 @@ def parties_shown(shown: int, whole: int) -> str:
 
     «из» takes the genitive, so there are two forms here and not three — «из 1 Стороны», «из
     2 Сторон», «из 5 Сторон». It is the rule `room_display.rooms_shown` follows and not the
-    one `document_display.agreeing_with` states; it is spelled out again rather than imported
-    from помещения because a Сторона and a помещение share a grammar and nothing else, and an
-    import between the two разделы for the sake of three lines would be the first thing to
-    look wrong when either of them moves.
+    one `agreeing_with` states below; it is spelled out here rather than asked of that one
+    because the two are different rules and not one rule with different words — whoever
+    unified them would have to invent a fourth form for a case that has three.
 
     The rows are counted and named Сторонами though the полка is a полка учётных карточек: a
     Сторона two of the reader's clients both know is two rows, and the line describes what is
@@ -66,6 +65,28 @@ def parties_shown(shown: int, whole: int) -> str:
     """
     parties = "Стороны" if whole % 10 == 1 and whole % 100 != 11 else "Сторон"
     return f"Показано {shown} из {whole}{NBSP}{parties}"
+
+
+def agreeing_with(count: int, one: str, few: str, many: str) -> str:
+    """Форма слова при числе: 1 повод, 2 повода, 5 поводов.
+
+    Одиннадцать — не «одиннадцать повод»: вторая цифра числа отменяет первую, поэтому десятки
+    проверяются прежде единиц.
+
+    Написано здесь, а не взято у документов, по тому же доводу, по какому здесь написана
+    запись даты: у Стороны и у документа общая одна лишь грамматика, и импорт между двумя
+    разделами ради семи строк первым покажется лишним, когда любой из двух тронется с места.
+    Правило `parties_shown` этим не пользуется и пользоваться не может: там числительным
+    правит «из», родительный падеж, и трёх форм не бывает — две.
+    """
+    if 11 <= count % 100 <= 14:
+        return many
+    ones = count % 10
+    if ones == 1:
+        return one
+    if 2 <= ones <= 4:
+        return few
+    return many
 
 
 def rooms_rented(count: int) -> str:
@@ -76,10 +97,9 @@ def rooms_rented(count: int) -> str:
     tells that nesting from the other one (ADR 0015, ADR 0019). A помещение cannot be counted
     twice — it is one row of the полка помещений and one помещение here.
 
-    Three forms and not two, because this numeral governs a nominative: it is the rule
-    `document_display.agreeing_with` states, and not `parties_shown`'s above, where «из»
-    takes the genitive and the forms collapse to two. Whoever unifies the two will break this
-    one without breaking the other.
+    Three forms and not two, because this numeral governs a nominative: it is `agreeing_with`
+    above, and not `parties_shown`'s rule above it, where «из» takes the genitive and the forms
+    collapse to two. Whoever unifies the two will break this one without breaking the other.
 
     The phrase the ticket reads by — «Арендует 5 помещений» — is the heading and the cell
     together, as «Арендатор» and «3 арендатора» already are on the полка помещений: the
@@ -87,15 +107,7 @@ def rooms_rented(count: int) -> str:
     """
     if not count:
         return NOTHING
-    if 11 <= count % 100 <= 14:
-        rooms = "помещений"
-    elif count % 10 == 1:
-        rooms = "помещение"
-    elif 2 <= count % 10 <= 4:
-        rooms = "помещения"
-    else:
-        rooms = "помещений"
-    return f"{count}{NBSP}{rooms}"
+    return f"{count}{NBSP}{agreeing_with(count, 'помещение', 'помещения', 'помещений')}"
 
 
 #: Как называется род Стороны на экране: юрлицо и физлицо, и ни одного третьего слова.
@@ -210,3 +222,57 @@ def entry_said(entered: "Entered") -> tuple[int, str] | None:
             "а название, род и сфера деятельности остались как были."
         )
     return messages.INFO, "Сторона с этим БИН/ИИН уже заведена и стоит на вашей полке."
+
+
+def payment_details_taken(count: int) -> str:
+    """«2 комплекта платёжных реквизитов» — что уносит удаление учётной карточки.
+
+    Комплектами, а не счетами: счёт в тенге и счёт в валюте живут в одном комплекте с банком
+    и КБе, и «2 счёта» назвало бы не то, что будет уничтожено.
+    """
+    sets = agreeing_with(count, "комплект", "комплекта", "комплектов")
+    return f"{count}{NBSP}{sets} платёжных реквизитов"
+
+
+def contacts_taken(count: int) -> str:
+    """«3 контактных лица» — люди внутри Стороны, уходящие вместе с карточкой.
+
+    Уходят они, а не Сторона и не сами люди: контактное лицо живёт в учётной карточке и
+    нигде больше, и второй управляющей компании, знакомой с тем же юрлицом, его никогда не
+    показывали (ADR 0020).
+    """
+    people = agreeing_with(count, "контактное лицо", "контактных лица", "контактных лиц")
+    return f"{count}{NBSP}{people}"
+
+
+def occasions_taken(count: int) -> str:
+    """«4 повода» — дни рождения, которых после удаления карточки не останется нигде.
+
+    Считаются хранимые, и только они: профессиональный праздник выводится из сферы
+    деятельности Стороны, а Сторона остаётся в реестре (ADR 0023, ADR 0028) — названный
+    уничтоженным, он пообещал бы разрушение, которого не произойдёт. Что именно сюда входит,
+    решает `occasions.stored_occasions_of`, где записан и этот довод.
+    """
+    return f"{count}{NBSP}{agreeing_with(count, 'повод', 'повода', 'поводов')}"
+
+
+def record_deleted(name: str, taken) -> str:
+    """Что сказано после удаления карточки — на полке, куда попадает читатель.
+
+    Сторона названа, потому что экран, с которого удаляли, ушёл вместе с карточкой: полка
+    выглядит почти как прежде, одной строкой короче, и ничто на ней не говорит, какой именно
+    строки не стало.
+
+    Что ушло, говорится снова, а не оставляется вопросу: вопрос — это экран до, и одно
+    «удалена» оставило бы удалившего гадать, лежат ли ещё где-нибудь его контактные лица. Тот
+    же список, что держал вопрос, слово в слово: собранный здесь во второй раз, он был бы
+    вторым изложением того, что уносит удаление, и однажды обещание разошлось бы с отчётом.
+
+    И сказано, что Сторона осталась: удаляют карточку, а строка реестра остаётся, потому что
+    освобождённый БИН дал бы второй организации юрлицо без прошлого (ADR 0028). Прочитавший
+    «удалена» и не прочитавший этого пошёл бы заводить её заново.
+    """
+    deleted = f"Учётная карточка на «{name}» удалена."
+    if taken:
+        deleted = f"{deleted} Вместе с ней удалены: {', '.join(one.said for one in taken)}."
+    return f"{deleted} Сама Сторона осталась в реестре."
