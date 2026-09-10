@@ -1,0 +1,214 @@
+{% extends "shell.html" %}
+{% load parties passport lease %}
+
+{% block title %}{{ record.party.name }} — BCMP{% endblock %}
+{% block page_title %}{{ record.party.name }}{% endblock %}
+
+{% comment %}
+  Дорога назад — хлебной крошкой в шапке: Стороны читают одну за другой, и возврат должен
+  оказаться под рукой прежде, чем страница дочитана до конца.
+{% endcomment %}
+{% block breadcrumbs %}
+  <li><a href="{% url 'parties:party_list' %}">Стороны</a></li>
+  <li>{{ record.party.name }}</li>
+{% endblock %}
+
+{% block content %}
+  {% comment %}
+    Пять блоков, и ни одного лишнего. Каждый несёт `data-section` — договор экрана о том,
+    какие блоки на нём стоят, — и имена выбраны так, чтобы не совпасть ни с одним разделом
+    меню: `data-section` там значит пункт меню (ADR 0016), меню стоит на каждом экране, и
+    два смысла одного слова на одной странице однажды прочитают в неверном. Блок узнаётся по
+    элементу `<section>`, пункт меню — по `<a>`.
+
+    Блока «Роли» здесь нет вовсе, пока `PartyRole` держит ноль строк и не имеет читателя:
+    всегда пустой блок учил бы читателя, что у Сторон ролей не бывает.
+  {% endcomment %}
+  <div class="grid gap-4 lg:grid-cols-2">
+    <section class="card bg-base-100 shadow-sm" data-section="party">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Сторона</h2>
+
+        {% comment %}
+          Шапка приходит из представления уже собранной и уже отформатированной: пустое поле
+          показывается прочерком тем же правилом, что и везде в проекте, а `data-field`
+          называет поле, которому принадлежит значение, — перевёрстка не уносит его из
+          досягаемости.
+        {% endcomment %}
+        <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          {% for field in particulars %}
+            <dt class="opacity-60">{{ field.label }}</dt>
+            <dd data-field="{{ field.name }}">{{ field.value|or_missing }}</dd>
+          {% endfor %}
+
+          {% comment %}
+            Поводы — здесь, а не шестым блоком: повод не сущность при Стороне, а прочтение
+            того, что уже сказано выше, — сферы деятельности и дней рождения, — и блок под
+            него завёл бы на экране раздел там, где на самом деле одна строка.
+
+            Списком, а не одним ближайшим: экран держит одну карточку и может позволить себе
+            перечислить. Прочерк там, где поздравлять некого, — и `NOTHING`, а не «нет
+            данных»: 637 из 699 Сторон — поставщики, которым дня рождения никто не заводил, и
+            это ответ, а не пробел в записи.
+          {% endcomment %}
+          <dt class="opacity-60">Поводы</dt>
+          <dd data-field="occasions">
+            {% for said in occasions %}
+              <span class="block whitespace-nowrap">{{ said }}</span>
+            {% empty %}
+              {% nothing %}
+            {% endfor %}
+          </dd>
+        </dl>
+      </div>
+    </section>
+
+    {% comment %}
+      Куда платить: банк с его БИК, счёт и КБе, основной комплект первым — обычный случай
+      отвечается, ничего не разворачивая. Порядок держит сама модель, а не разметка: он
+      значит то же самое и в админке, где комплекты заводят.
+
+      Закрытый комплект не затирается новым, а остаётся рядом, поэтому список и есть список:
+      платёжка, выписанная позавчера, должна сходиться с тем, что на экране.
+    {% endcomment %}
+    <section class="card bg-base-100 shadow-sm" data-section="payment">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Платёжные реквизиты</h2>
+        {% if payment_details %}
+          <ul class="divide-y divide-base-300 text-sm">
+            {% for details in payment_details %}
+              {# `data-payment` — договор блока: комплект называется своим ключом, и его строка читается, не разбирая вёрстки. #}
+              <li data-payment="{{ details.pk }}" class="py-2 first:pt-0 last:pb-0">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+                  <span class="font-medium text-neutral">{{ details.account }}</span>
+                  {% comment %}
+                    Основной помечен словом, а не одним лишь местом в списке: первым он стоит
+                    и тогда, когда основного не отметили вовсе, и порядок сам по себе о
+                    пометке не говорит.
+                  {% endcomment %}
+                  {% if details.is_primary %}<span class="badge badge-sm badge-primary badge-soft">основной</span>{% endif %}
+                </div>
+                {# БИК рядом с названием: «Каспи» и «Kaspi Bank» — один банк, и говорит об этом БИК, а не написание. #}
+                <p class="text-xs opacity-60">{{ details.bank.name }} · {{ details.bank.code|or_missing }}</p>
+                <p class="text-xs opacity-60">КБе {{ details.kbe|or_missing }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% comment %}
+            Пустой блок говорит о своей пустоте вслух и называет, кто действует: платёжные
+            реквизиты ведёт сама организация, так что читателя отправляют к её администратору,
+            а не в поддержку платформы (ADR 0021).
+          {% endcomment %}
+          <p class="text-sm opacity-70">Платёжные реквизиты не заведены — их заводит администратор организации.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% comment %}
+      «Кому звонить» и «кого поздравить» — один список: разложенные по двум, они заставили бы
+      искать одного и того же человека дважды.
+
+      У физлица блока нет вовсе — не пустого, а именно никакого: физлицо не делают своим же
+      представителем (ADR 0025), и пустой список сказал бы «не заведено» там, где верно «не
+      бывает». Его собственный день рождения стоит в шапке.
+    {% endcomment %}
+    {% if contacts is not None %}
+      <section class="card bg-base-100 shadow-sm" data-section="contacts">
+        <div class="card-body gap-3">
+          <h2 class="card-title text-lg">Контактные лица</h2>
+          {% if contacts %}
+            <ul class="divide-y divide-base-300 text-sm">
+              {% for contact in contacts %}
+                {# `data-contact` — договор блока: человек называется своим ключом, как комплект реквизитов выше. #}
+                <li data-contact="{{ contact.pk }}" class="py-2 first:pt-0 last:pb-0">
+                  <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+                    <span class="font-medium text-neutral">{{ contact.full_name }}</span>
+                    <span class="opacity-60">{{ contact.position|or_missing }}</span>
+                  </div>
+                  <p class="text-xs opacity-60">{{ contact.phone|or_missing }} · {{ contact.email|or_missing }}</p>
+                  {# День рождения — тем же написанием, что и в шапке и в поводе: три места на одном экране, и разойтись им нечем. #}
+                  <p class="text-xs opacity-60">День рождения: {{ contact.born_on|day|or_missing }}</p>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm opacity-70">Контактные лица не заведены — их заводит администратор организации.</p>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% comment %}
+      Аренды Стороны — «где сидит ТОО «Альфа»», отвеченное с её стороны отношения: помещение,
+      БЦ, метры и срок.
+
+      Итога под ними нет и не будет: сложить арендуемые площади значит посчитать дважды
+      помещение, стоящее внутри другого, а какое из двух вложений перед нами, по строке не
+      видно (ADR 0015, ADR 0019). Число, раздутое на неизвестную величину, хуже
+      отсутствующего, потому что его процитируют.
+    {% endcomment %}
+    <section class="card bg-base-100 shadow-sm" data-section="leases">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Аренды</h2>
+        {% if leases %}
+          <ul class="divide-y divide-base-300 text-sm">
+            {% for lease in leases %}
+              {% comment %}
+                `data-lease` — тот же договор, что и у строки аренды на карточке помещения:
+                одна аренда, два экрана, и разного они говорить не должны.
+
+                Сама строка написана здесь заново, а не включена из `leases/_lease_row.html`:
+                та отвечает на вопрос «кто здесь сидит», и потому называет арендатора со
+                ставкой и несёт при себе створки правки, — эта отвечает на «где сидит она», и
+                называет помещение с его БЦ. Общего у них не содержание, а только вёрстка
+                строки; включённая, она принесла бы с собой `row.lease`, `row.form` и правку,
+                которой на этом экране нет.
+              {% endcomment %}
+              <li data-lease="{{ lease.pk }}" class="py-2 first:pt-0 last:pb-0">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+                  {# Помещение названо тем же правилом, что и везде в проекте: код стоит вместо названия там, где названия нет. #}
+                  <span class="font-medium text-neutral">{{ lease.space|space_label }}</span>
+                  <span class="opacity-60">{{ lease.area_m2|lease_area|or_missing }}</span>
+                </div>
+                <p class="text-xs opacity-60">{{ lease.space.building|space_label }}</p>
+                {# Срок пишется правилом самой аренды: пустое «по» читается «по сей день». #}
+                <p class="text-xs opacity-60">{{ lease|lease_term }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {% comment %}
+            637 из 699 Сторон — поставщики, не арендующие ничего: это ответ, а не пробел, и
+            сказан он словами, а не прочерком, который читался бы как незаполненное поле.
+          {% endcomment %}
+          <p class="text-sm opacity-70">Ничего не арендует.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% comment %}
+      Бумажный след, достижимый от Стороны: документы, где она стоит «Кем выдан». Каждая
+      строка ведёт на экран документа — что это за бумага, отвечает она сама, а здесь сказано
+      лишь, что бумага есть.
+    {% endcomment %}
+    <section class="card bg-base-100 shadow-sm" data-section="issued">
+      <div class="card-body gap-3">
+        <h2 class="card-title text-lg">Документы</h2>
+        {% if documents %}
+          <ul class="divide-y divide-base-300 text-sm">
+            {% for document in documents %}
+              {# `data-document` — тот же договор, что и у строки полки документов. #}
+              <li data-document="{{ document.pk }}" class="py-2 first:pt-0 last:pb-0">
+                {# Одно название и ссылка: что это за бумага — вид, номер, срок — отвечает её собственный экран, куда строка и ведёт. #}
+                <a class="link" href="{% url 'documents:document_detail' document.pk %}">{{ document.title }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm opacity-70">Документов, выданных этой Стороной, не заведено.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

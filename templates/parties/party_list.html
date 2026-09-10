@@ -69,7 +69,17 @@
                 {% endcomment %}
                 <tr data-party="{{ record.party_id }}">
                   {% if organisation_named %}<td class="opacity-60">{{ record.org.name }}</td>{% endif %}
-                  <td>{{ record.party.name }}</td>
+                  {% comment %}
+                    Название ведёт на экран Стороны: полка отвечает «с кем мы имеем дело», а
+                    экран — «что мы о ней знаем». Ведёт именно название, а не вся строка:
+                    строку читают глазами по колонкам, и ссылка во всю ширину
+                    открывалась бы от попадания в любую из них.
+
+                    Адрес называет учётную карточку, а не Сторону, — то, что на экране, висит
+                    на паре (ADR 0020), — и потому две карточки одной Стороны ведут на два
+                    разных экрана, различённые колонкой «Организация».
+                  {% endcomment %}
+                  <td><a class="link" href="{% url 'parties:party_detail' record.pk %}">{{ record.party.name }}</a></td>
                   {% comment %}
                     The ОПФ is not a column of its own: it is already the suffix of the
                     название, and a second account of it would be a second thing to keep in

@@ -7,9 +7,14 @@ The same arrangement as `passport`, `documents` and `rooms`.
 
 from django import template
 
-from ..party_display import nearest_occasion, rooms_rented
+from ..party_display import NOTHING, day, nearest_occasion, rooms_rented
 
 register = template.Library()
+
+#: Дата, как её читают в этом разделе. Регистрируется, а не пишется фильтром `date` в
+#: разметке: строка контактного лица печатает день рождения сама, а шапка и повод приходят
+#: уже написанными, и написание у всех трёх должно быть одно.
+register.filter(day)
 
 
 @register.filter
@@ -33,3 +38,15 @@ def occasion(record):
     a value built next to the rows would be a second thing to keep in step with them.
     """
     return nearest_occasion(record.nearest_occasion)
+
+
+@register.simple_tag
+def nothing():
+    """Прочерк там, где ответ — «ничего», а не «неизвестно».
+
+    Тегом, а не строкой в разметке: тот же прочерк стоит в двух колонках полки, и написанный
+    в шаблоне отдельно он однажды разошёлся бы с ними. И именно он, а не `or_missing`'s «нет
+    данных»: 637 из 699 Сторон — поставщики, которым дня рождения никто не заводил, и это
+    ответ, а не пробел в записи.
+    """
+    return NOTHING

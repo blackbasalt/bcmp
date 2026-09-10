@@ -1,14 +1,13 @@
 """Учётная карточка: пара «Сторона + организация» и привратник изоляции.
 
 The seam is the model layer, as it was for `Space.objects.visible_to` when the паспорт had
-no screens yet (`building_passport/test_scoping.py`): полка Сторон and экран Стороны arrive
-in the tickets after this one, and until they do the chokepoint has no HTTP boundary to be
-read off. The second seam is the Django admin, where платёжные реквизиты and контактные
-лица are maintained meanwhile — the same place an аренда was entered from before the
-карточка помещения carried a form.
+no screens yet (`building_passport/test_scoping.py`): полка Сторон and экран Стороны arrived
+in the tickets after this one, and what those two read is checked at their own HTTP boundary,
+in `test_shelf.py` and `test_page.py`. The second seam is the Django admin, where платёжные
+реквизиты and контактные лица are maintained meanwhile — the same place an аренда was
+entered from before the карточка помещения carried a form.
 
-What is worth pinning down before the screens arrive is what would be silently wrong
-afterwards: a second карточка on one pair, a день рождения that reaches the second
+What is pinned down here is what would be silently wrong on the screens above: a second карточка on one pair, a день рождения that reaches the second
 управляющая компания (ADR 0023), the телефоны Стороны kept in two places at once, and a
 привратник that lets a reader of one client see another's.
 
@@ -25,18 +24,9 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.urls import reverse
 
-from dictionary.models import DictBank
 from parties.models import ContactPerson, Party, PartyRecord, PaymentDetails
 
 pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture
-def kaspi(db):
-    """Банк, в котором лежит счёт, — из справочника, чтобы «Каспи» и «Kaspi Bank» были одним."""
-    return DictBank.objects.create(
-        code="CASPKZKA", name='АО "Kaspi Bank"', short_name="Kaspi Bank"
-    )
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ the сфера деятельности a row names.
 
 import pytest
 
-from dictionary.models import DictLineOfBusiness, DictProfessionalHoliday
+from dictionary.models import DictBank, DictLineOfBusiness, DictProfessionalHoliday
 from parties.models import ContactPerson, Party, PartyRecord
 
 
@@ -89,3 +89,16 @@ def make_holiday(db):
         )
 
     return _make_holiday
+
+
+@pytest.fixture
+def kaspi(db):
+    """Банк, в котором лежит счёт, — из справочника, чтобы «Каспи» и «Kaspi Bank» были одним.
+
+    Стоит здесь, а не у одного из тестов: комплект платёжных реквизитов заводят и модельные
+    тесты карточки, и экран Стороны, который его печатает, и второе определение того же
+    банка развело бы БИК на экране с БИК в базе.
+    """
+    return DictBank.objects.create(
+        code="CASPKZKA", name='АО "Kaspi Bank"', short_name="Kaspi Bank"
+    )

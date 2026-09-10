@@ -1,14 +1,38 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from django.utils.functional import cached_property
-from django.views.generic import ListView
+from django.views.generic import DetailView, ListView
 
+from documents.models import Document
 from leases.occupancy import rooms_of_each_record
 
 from . import occasions
 from .models import Org, PartyRecord
 from .party_display import parties_shown
+from .party_page import (
+    contacts_of,
+    documents_issued_by,
+    leases_of,
+    occasions_said,
+    particulars,
+    payment_details_of,
+)
 from .shelf_search import ShelfSearch
+
+
+def naming_the_organisation(user) -> bool:
+    """Нужно ли называть организацию на экранах раздела — вопрос о читателе, а не о данных.
+
+    Ведущий одного клиента получил бы колонку и строку, повторяющие на каждом экране то, что
+    он и так знает; ведущий двух спрашивает «чья это карточка» о каждой строке — и спрашивает
+    тем чаще, чем меньше у второго клиента загружено.
+
+    Один раз на весь раздел, потому что читают это оба его экрана: полка — колонкой, экран
+    Стороны — строкой шапки, — и два места, считающих, сколько у читателя клиентов, были бы
+    двумя ответами на один вопрос. Сами организации спрашиваются у `Org.objects.handled_by`,
+    где и живёт довод о том, чьи они.
+    """
+    return Org.objects.handled_by(user).count() > 1
 
 
 class PartyListView(LoginRequiredMixin, ListView):
@@ -98,11 +122,9 @@ class PartyListView(LoginRequiredMixin, ListView):
         context["search"] = self.search
         # The организация is named for whoever handles more than one client: for them the
         # полка is shared, and "whose карточка is this" is a question they ask of every row.
-        # Asked about the reader and not about what is shown — the same condition the полки
-        # документов and помещений use, and for the same reason: the column has to hold on
-        # even when the second client has nothing loaded, which is exactly when whoever
-        # handles two of them most needs to know whose полка they are looking at.
-        context["organisation_named"] = Org.objects.handled_by(self.request.user).count() > 1
+        # The reason is `naming_the_organisation`'s, above, and it is asked there rather than
+        # here because the экран Стороны asks the very same question of the very same reader.
+        context["organisation_named"] = naming_the_organisation(self.request.user)
         return context
 
     @cached_property
@@ -124,3 +146,70 @@ class PartyListView(LoginRequiredMixin, ListView):
         decided once for the whole screen, above.
         """
         return ShelfSearch(self.request.GET, user=self.request.user, day=self.today)
+
+
+class PartyDetailView(LoginRequiredMixin, DetailView):
+    """Экран Стороны — то, что организация знает об одной Стороне, пятью блоками.
+
+    То, что мы о ней знаем, получает собственный экран, а не рейку на чужой странице: до
+    этого тикета Сторона появлялась только полем в чужой строке — именем в колонке «Кем
+    выдан», названием на паспорте БЦ, арендатором на аренде.
+
+    Экран стоит на учётной карточке, а не на Стороне (ADR 0020): платёжные реквизиты,
+    контактные лица, поводы, аренды и документы висят на паре «Сторона + организация», и
+    Сторона, которую знают два клиента одного читателя, дала бы один адрес с двумя ответами.
+    Отсюда же и 404 на чужую карточку: привратник просто не находит строки, и отсутствие
+    чужих данных выходит неотличимым от отсутствия (ADR 0006).
+
+    Блока «Роли» на экране нет вовсе, пока `PartyRole` держит ноль строк и не имеет читателя:
+    всегда пустой блок учил бы читателя, что у Сторон ролей не бывает. Створок заведения,
+    правки и удаления этим тикетом тоже не появляется — они следующего.
+    """
+
+    template_name = "parties/party_detail.html"
+    context_object_name = "record"
+
+    def get_queryset(self):
+        """Чужая карточка отвечает 404, а не 403, — привратник учётных карточек (ADR 0020).
+
+        Ответ не должен подтверждать, что карточка существует: отличив «нельзя» от «нет
+        такой», читатель узнал бы, с кем работает другой клиент платформы.
+
+        Сторона и организация едут в том же запросе, что и карточка: обе названы на экране, а
+        спрошенные разметкой — это два запроса на каждый разворот.
+
+        Контактные лица берутся наперёд, потому что их читают дважды: блок под шапкой
+        перечисляет людей, а поводы складывают их дни рождения с профессиональным праздником.
+        Два чтения одного списка — два запроса, из которых второй ничего нового не узнаёт.
+        """
+        return (
+            PartyRecord.objects.visible_to(self.request.user)
+            .select_related("party__line_of_business", "org__party")
+            .prefetch_related("contacts")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["particulars"] = particulars(
+            self.object,
+            # Тем же условием, каким полка заводит свою колонку «Организация»: один вопрос —
+            # один ответ, и задан он там, где написан довод.
+            naming_the_organisation=naming_the_organisation(self.request.user),
+        )
+        # Поводы — тем же правилом, каким полка считает свою колонку. «Сегодня» спрашивается
+        # у часов один раз: на экране один список, и второе чтение часов было бы вторым днём,
+        # о котором говорит одна и та же страница.
+        context["occasions"] = occasions_said(self.object, timezone.localdate())
+        # Ничего, а не пустой список, если Сторона физлицо: у неё блока контактных лиц нет
+        # вовсе, и решается это в `party_page`, где стоит и вторая половина того же правила —
+        # день рождения физлица в шапке.
+        context["contacts"] = contacts_of(self.object)
+        context["payment_details"] = payment_details_of(self.object)
+        context["leases"] = leases_of(self.object)
+        # Документы берутся через свой привратник и сужаются картой: документ виден по своей
+        # организации, а не по Стороне, к которой привязан (ADR 0006), так что оба вопроса
+        # задаются порознь — один о бумаге, другой о том, чья это карточка.
+        context["documents"] = documents_issued_by(
+            self.object, Document.objects.visible_to(self.request.user)
+        )
+        return context

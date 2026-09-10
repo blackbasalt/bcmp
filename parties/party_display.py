@@ -1,10 +1,14 @@
 """How the раздел «Стороны» reads on screen: how much of the полка is shown, what a Сторона
-rents, and when her ближайший повод falls.
+rents, what she is — юрлицо or физлицо — and when her поводы fall.
 
-All three are phrases rather than figures put beside a table. «Показано 12 из 637 Сторон»
-answers a question; «12 / 637» is a quantity the reader has to guess at — the same device as
-«Показано 47 из 583 помещений» beneath the полка помещений and «нанесено 47 из 82» beneath a
-план.
+Both screens of the раздел read through this one file. The полка names the ближайший повод in
+a column and the экран lists them all, and a повод written out in two places would eventually
+read as two different поводы on two screens of one раздел.
+
+What is written out here is a phrase rather than a figure put beside a table. «Показано 12 из
+637 Сторон» answers a question; «12 / 637» is a quantity the reader has to guess at — the same
+device as «Показано 47 из 583 помещений» beneath the полка помещений and «нанесено 47 из 82»
+beneath a план.
 
 Agreement with the numeral is worked out here rather than assembled in the markup: «из 1
 Сторон» reads as a glitch on the screen, not as a single Сторона. Two numerals stand in this
@@ -14,6 +18,7 @@ neither is the other's rule with the words swapped, and each says so where it is
 
 from building_passport.passport_display import NBSP
 
+from .models import Party
 from .occasions import Occasion
 
 #: Сторона, не арендующая ни одного помещения: a bare dash, and deliberately not
@@ -80,25 +85,72 @@ def rooms_rented(count: int) -> str:
     return f"{count}{NBSP}{rooms}"
 
 
-def nearest_occasion(occasion: Occasion | None) -> str:
-    """«09.08.2026 · День строителя» — what one row says under «Ближайший повод».
+#: Как называется род Стороны на экране: юрлицо и физлицо, и ни одного третьего слова.
+#:
+#: Не `get_kind_display()`, хотя выбор и заведён на модели: там юрлицо названо
+#: «Организация», а на этих экранах «Организация» — арендатор платформы, чья карточка перед
+#: читателем (`CONTEXT.md`). Одно слово в двух значениях на одном экране прочитают в том,
+#: которое стоит рядом, — и шапка сказала бы, что ТОО «Альфа» есть клиент BCMP. Слово меняется
+#: здесь, а не в `choices`, потому что в админке рядом с «Физлицо» стоит и «Организация»
+#: понятная: там оно значит ровно то, что значит, и переписывать его нечем.
+KINDS = {
+    Party.Kind.COMPANY: "Юрлицо",
+    Party.Kind.PERSON: "Физлицо",
+}
 
-    The день first and the name after it: the column is sorted by how soon, and it is read
-    down the table by an eye hunting for what to prepare for first — the name answers a
-    question the date has already raised.
 
-    The year is printed though a повод recurs every year: the ближайший повод asked about in
-    December falls in January of the next one, and «05.01» would keep quiet about exactly
-    what the reader needs to know.
+def day(value) -> str | None:
+    """Дата, как её читают в этом разделе: 14.03.1980.
 
-    Whose повод it is stands after a dash and only where it is anybody's: a профессиональный
-    has no person behind it, and a физлицо's день рождения needs none — her name is already
-    the first cell of the row. A bare dash where there is no повод at all, and `NOTHING`
-    rather than `or_missing`'s «нет данных» for the reason the «Арендует» cell above uses it:
-    637 of the 699 Стороны are поставщики nobody has written a день рождения for, and that is
-    an answer rather than a gap in the record.
+    Написана здесь, а не взята у документов, по тому же доводу, по какому согласование
+    числительного написано здесь дважды: у Стороны и у документа общая одна лишь запись даты,
+    и импорт между двумя разделами ради одной строки первым покажется лишним, когда любой из
+    двух тронется с места. Что действительно важно — чтобы день рождения в шапке и день
+    рождения в строке контактного лица были написаны одинаково, а это одно правило и есть.
+
+    Незаполненная дата остаётся None: прочерк над ней — дело `or_missing`, одним правилом на
+    весь проект.
     """
-    if occasion is None:
-        return NOTHING
+    return f"{value:%d.%m.%Y}" if value else None
+
+
+def kind_said(party) -> str | None:
+    """«Юрлицо» или «Физлицо» — то, чем Сторона названа в шапке своего экрана.
+
+    Пустое значение остаётся пустым: род заведён не у всякой из 699 Сторон, а прочерк
+    ставит `or_missing` — одним правилом на весь проект.
+    """
+    return KINDS.get(party.kind)
+
+
+def occasion_said(occasion: Occasion) -> str:
+    """«09.08.2026 · День строителя» — один повод, как его читают на обоих экранах.
+
+    Одно написание на колонку полки и на строку шапки: полка называет ближайший повод, экран
+    перечисляет все, и повод, написанный на двух экранах по-разному, читался бы как два
+    разных повода.
+
+    Дата первой, а название за ней: список читают сверху вниз глазом, ищущим, к чему готовиться
+    раньше, — название отвечает на вопрос, который дата уже подняла. Год печатается, хотя
+    повод и годовой: спрошенный в декабре ближайший приходится на январь следующего, и «05.01»
+    промолчало бы ровно о том, что читателю и нужно.
+
+    Чей повод — после тире и только там, где он чей-то: у профессионального человека за ним
+    нет, а у дня рождения физлица он не нужен — её имя уже стоит в шапке.
+    """
     whose = f" — {occasion.whose}" if occasion.whose else ""
-    return f"{occasion.on:%d.%m.%Y}{NBSP}· {occasion.name}{whose}"
+    return f"{day(occasion.on)}{NBSP}· {occasion.name}{whose}"
+
+
+def nearest_occasion(occasion: Occasion | None) -> str:
+    """What one row of the полка says under «Ближайший повод» — a повод, or a bare dash.
+
+    Only the empty case is decided here; how a повод itself is written is `occasion_said`'s,
+    because the экран Стороны writes it the same way and two accounts of it would read as two
+    different поводы.
+
+    `NOTHING` rather than `or_missing`'s «нет данных», for the reason the «Арендует» cell
+    beside it uses it: 637 of the 699 Стороны are поставщики nobody has written a день
+    рождения for, and that is an answer rather than a gap in the record.
+    """
+    return NOTHING if occasion is None else occasion_said(occasion)

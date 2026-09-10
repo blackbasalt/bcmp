@@ -77,11 +77,10 @@ def rows_for(page, party):
 def cells_on(page):
     """The same rows, cell by cell: key → the list of cells as they stand.
 
-    The text and not the markup: the rows of this полка carry neither a link nor a form —
-    that is `row_markup`'s assertion — so there is nothing in a cell that its text does not
-    say. The полка помещений keeps a `raw` reading of its cells because a название there
-    leads to the экран этажа; a parameter kept here for the day one of these cells does the
-    same would be a knob nothing turns.
+    The text and not the markup: what is asked of a cell here is what it says, and the one
+    cell that carries anything else — the название, which leads to the экран Стороны — is
+    read for its address by `test_a_row_of_the_shelf_leads_to_the_screen` and not by a `raw`
+    reading nothing else would use. What a row must *not* carry is `row_markup`'s assertion.
     """
     return {
         row["key"]: [stated(cell["text"]) for cell in CELL.finditer(row["cells"])]
