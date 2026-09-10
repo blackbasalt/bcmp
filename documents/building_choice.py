@@ -1,12 +1,13 @@
 """How a БЦ stands on a form — what it is called and in what order.
 
-Three forms offer buildings, and no longer all of them in this section: the upload chooses
+Four forms offer buildings, and no longer all of them in this section: the upload chooses
 the one a batch is attached to, the отбор of the полка документов narrows the shelf to one,
-and the отбор of the полка помещений does the same for помещения. Which buildings each may
-offer is their own business and differs — the upload offers those the employee may write
-to, an отбор those they may see — but what a building is called and in what order the list
-stands is one rule for all three. A reader who moves between the полки must not meet the
-same list ordered two ways and read it as two different sets of buildings.
+the отбор of the полка помещений does the same for помещения, and the отбор of the полка
+Сторон asks which БЦ a Сторона sits in. Which buildings each may offer is their own business
+and differs — the upload offers those the employee may write to, an отбор those they may
+see — but what a building is called and in what order the list stands is one rule for all
+four. A reader who moves between the полки must not meet the same list ordered two ways and
+read it as two different sets of buildings.
 
 It lives apart from any of the forms because it belongs to none. Kept beside the upload it
 would make a read screen import the batch, the близнецы and the transaction that stores

@@ -1,9 +1,10 @@
 """The organisations, the building and the аренды the tests are staged on.
 
-There is one building for the whole suite: the floor and its spaces are needed both by the
-floor screen and by the plan, and there must not be two definitions of one and the same
-Manhattan. Where a test needs several of something — floors, spaces — the fixture hands
-out a factory rather than a ready-made object.
+The buildings are staged here for the whole suite: Manhattan's floor and its spaces are
+needed both by the floor screen and by the plan, and Tokyo by both полки that span the
+portfolio — and there must not be two definitions of one and the same building. Where a
+test needs several of something — floors, spaces — the fixture hands out a factory rather
+than a ready-made object.
 
 The Стороны that sit in помещения and the factory for an аренда stand here for the same
 reason `both_clients` does: the карточка помещения and the полка помещений both ask who
@@ -123,6 +124,21 @@ def make_floor(db):
         )
 
     return _make_floor
+
+
+@pytest.fixture
+def tokyo(downtown, make_building, make_floor):
+    """A second БЦ of the same client, with a third floor and nothing else.
+
+    Two screens ask a question that needs two buildings and there must not be two Tokyo:
+    the полка помещений is the first table to show two buildings' помещения at once
+    («санузлы Tokyo на третьем этаже»), and the полка Сторон asks the same question from
+    the other end — «кто сидит в Tokyo». Its name sorts after Manhattan's, so an order
+    running БЦ → этаж → код is observable.
+    """
+    building = make_building(downtown, "tok", "Tokyo")
+    make_floor(building, 3)
+    return building
 
 
 @pytest.fixture

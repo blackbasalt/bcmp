@@ -1,6 +1,6 @@
 {% comment %}
-  The question put to a полка of hundreds: for now a text to find, looked for in the
-  название and in the БИН/ИИН at once.
+  The question put to a полка of hundreds: a text to find, a сфера деятельности, юрлицо or
+  физлицо, «только арендаторы» and a БЦ.
 
   It travels by GET and stands at the section's own address, so a narrowed полка is a link:
   it reloads as it was, survives a tab left open overnight and can be sent to a colleague.
@@ -12,6 +12,18 @@
   answers nothing — and this markup is then absent altogether, not disabled: offered and
   useless at once reads as a breakage.
 
+  The bar is laid out in two parts, and the parting is by the shape of the control rather
+  than by what it asks about. Above stand the four conditions that take a value — a text, a
+  сфера, юрлицо or физлицо, a БЦ — on a twelve column grid, so that the boxes line up in
+  columns instead of drifting with the length of their captions. Below, under a rule, stands
+  the one that answers yes or no, and beside it the actions: a checkbox takes a line and not
+  a column, and in the grid above it would have raised its legend a line above every other
+  one, the way the полка помещений found out.
+
+  Which condition speaks about what does not follow that parting, and is not made to: «БЦ»
+  stands among the fields and asks about an аренда standing today exactly as «только
+  арендаторы» does.
+
   A bar of its own file and not one shared with the two existing ones: the полка документов
   asks three conditions and the полка помещений nine, and what they have in common is a
   `<form method="get">`. The docstring of `_room_search.html` says why the first two were not
@@ -19,8 +31,9 @@
 {% endcomment %}
 <form method="get" class="card mb-4 bg-base-100 shadow-sm" data-search="parties">
   <div class="card-body gap-4">
-    <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
-      <fieldset class="fieldset grow">
+
+    <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-12">
+      <fieldset class="fieldset sm:col-span-2 lg:col-span-3">
         <legend class="fieldset-legend">{{ search.q.label }}</legend>
         {% comment %}
           `type="search"` and not `type="text"`: the browser offers the clearing cross and
@@ -40,6 +53,74 @@
         {% if search.q.errors %}
           <p class="text-sm text-error">{{ search.q.errors|join:" " }}</p>
         {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-3">
+        <legend class="fieldset-legend">{{ search.line_of_business.label }}</legend>
+        <select name="{{ search.line_of_business.html_name }}" class="select w-full">
+          {% for value, label in search.line_of_business.field.choices %}
+            <option value="{{ value }}" {% if search.line_of_business.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.line_of_business.errors %}
+          <p class="text-sm text-error">{{ search.line_of_business.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-3">
+        <legend class="fieldset-legend">{{ search.kind.label }}</legend>
+        {% comment %}
+          A select of two values and not a pair of checkboxes: a Сторона is one of the two
+          and never both, and two boxes would offer the reader a state — neither ticked —
+          that means the same as both.
+        {% endcomment %}
+        <select name="{{ search.kind.html_name }}" class="select w-full">
+          {% for value, label in search.kind.field.choices %}
+            <option value="{{ value }}" {% if search.kind.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.kind.errors %}
+          <p class="text-sm text-error">{{ search.kind.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-3">
+        <legend class="fieldset-legend">{{ search.building.label }}</legend>
+        {% comment %}
+          Only the BCs this reader may see are on the list, and one named in the address
+          anyway is not accepted either: the отбор is checked against the buildings, not
+          against what the screen happened to print (ADR 0001).
+        {% endcomment %}
+        <select name="{{ search.building.html_name }}" class="select w-full">
+          {% for value, label in search.building.field.choices %}
+            <option value="{{ value }}" {% if search.building.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.building.errors %}
+          <p class="text-sm text-error">{{ search.building.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-x-8 gap-y-3 border-t border-base-300 pt-3">
+      {% comment %}
+        637 of the 699 Стороны are поставщики, and «наши арендаторы» is the question that
+        separates who pays us from whom we pay. There is deliberately no «поставщики» beside
+        it, and `parties/shelf_search.py` says why.
+
+        The legend is «Аренда» and not «Занятость»: занятость is what is said about a
+        помещение, and this control is about the Сторона standing in it. It covers this
+        checkbox alone and not the БЦ above, which asks the same question narrowed to a
+        building: the two are apart because the checkbox could not stand in the grid, and
+        the legend says no more than what is under it.
+      {% endcomment %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Аренда</legend>
+        <label class="fieldset-label cursor-pointer">
+          <input type="checkbox" name="{{ search.tenants_only.html_name }}" value="1"
+                 class="checkbox checkbox-sm" {% if search.tenants_only.value %}checked{% endif %}>
+          {{ search.tenants_only.label }}
+        </label>
       </fieldset>
 
       {% comment %}

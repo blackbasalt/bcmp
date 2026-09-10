@@ -46,3 +46,14 @@ def make_party(db):
 def construction(db):
     """A сфера деятельности — the one «все наши строители» is asked by."""
     return DictLineOfBusiness.objects.create(name="Строительство", short_name="Строительство")
+
+
+@pytest.fixture
+def catering(db):
+    """A second сфера, so that narrowing by one is telling it from another.
+
+    Общепит and not a second building trade: the отбор is checked by what it leaves off the
+    полка, and two сферы a reader could confuse would make a passing test out of a condition
+    that answers with everybody who has any сфера at all.
+    """
+    return DictLineOfBusiness.objects.create(name="Общепит", short_name="Общепит")

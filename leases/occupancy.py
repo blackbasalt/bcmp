@@ -4,7 +4,8 @@ Three screens ask about occupancy and must not each carry their own copy of it. 
 помещения holds one `Space` and wants the аренды standing on it today together with the two
 numbers; the полка помещений holds a queryset and wants the same rule as a condition to
 narrow it by and as columns to print beside hundreds of rows; the полка Сторон asks the same
-question from the other end — how many помещения each Сторона holds today. So the rule is
+question from the other end — how many помещения each Сторона holds today, whether she
+holds any at all, and whether any of them stands in the БЦ the reader named. So the rule is
 given out in every shape it is asked for here — the pattern `space_kind` established for вид
 and `plan_completeness` for полнота плана. Two copies would be two answers to one question,
 and the day they disagreed nobody would know which screen was lying.
@@ -236,6 +237,45 @@ def tenants_of_each_room(day) -> dict[str, BaseExpression]:
         # table is a value that changes under a reader for no reason.
         "tenant_here": Subquery(here.order_by("tenant__name").values("tenant__name")[:1]),
     }
+
+
+def renting_on(day, building=None) -> Exists:
+    """Учётные карточки Сторон, которые сегодня что-то у нас арендуют — «только
+    арендаторы», сказанное полке Сторон, и «кто сидит в Tokyo», когда назван БЦ.
+
+    A condition to hand to a queryset of учётные карточки: `records.filter(renting_on(день))`
+    and, with a building named, `records.filter(renting_on(день, building))`.
+
+    One function for the two conditions rather than two, because the second is the first
+    with a place named: «кто сидит в Tokyo» is «кто у нас арендует», narrowed to one БЦ.
+    Kept apart they would be two readings of «арендатор», and on the day they disagreed the
+    полка would answer «12 арендаторов» while «по БЦ» found thirteen. Together they also say
+    outright what naming a БЦ costs a поставщик: the аренда is what ties a Сторона to a
+    building, so one with no аренда falls out of the condition entirely — and that is the
+    honest answer, since a поставщик sits in no БЦ of ours.
+
+    An `EXISTS` over the Сторона's аренды and not a join. Joined, a Сторона holding two
+    помещения would answer twice for one карточка, and the полка would print her row twice
+    for renting twice.
+
+    The аренды are narrowed to the помещения of the карточка's own организация, exactly as
+    `rooms_of_each_record` narrows them. A Сторона is shared and her аренды are not: who
+    sees the помещение sees its аренды (ADR 0018), so a карточка of DownTown is an арендатор
+    by DownTown's помещения and says nothing about what the same юрлицо rents at another
+    client of the platform. This is the row's own half of the isolation and not a second
+    chokepoint: which карточки are asked at all is decided before it, by
+    `PartyRecord.objects.visible_to` (ADR 0020).
+
+    Nothing here reads the tree: an аренда of a вложенное помещение stands in its building
+    like any other, and which building that is is read off the помещение's own column rather
+    than walked up to (ADR 0019).
+    """
+    leases = Lease.objects.filter(tenant=OuterRef("party"), space__org=OuterRef("org")).filter(
+        in_force_on(day)
+    )
+    if building is not None:
+        leases = leases.filter(space__building=building)
+    return Exists(leases)
 
 
 def rooms_of_each_record(day) -> dict[str, BaseExpression]:

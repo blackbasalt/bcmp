@@ -107,5 +107,10 @@ class PartyListView(LoginRequiredMixin, ListView):
 
     @cached_property
     def search(self):
-        """What was asked of the полка — read once and used by both the rows and the bar."""
-        return ShelfSearch(self.request.GET)
+        """What was asked of the полка — read once and used by both the rows and the bar.
+
+        The reader and the день are handed in rather than reached for inside the отбор: which
+        БЦ may be offered is a question about who is asking (ADR 0001), and «сегодня» is
+        decided once for the whole screen, above.
+        """
+        return ShelfSearch(self.request.GET, user=self.request.user, day=self.today)
