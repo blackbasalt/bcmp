@@ -409,13 +409,17 @@ def test_what_was_typed_comes_back_only_alongside_a_search(entering, kab305):
 def test_a_party_that_is_not_found_is_offered_as_a_separate_step_and_is_not_created(
     entering, kab305, alpha
 ):
-    """Иначе реестр набьётся «ТОО Альфа», «Альфа ТОО» и «ТОО «Альфа»»."""
+    """Иначе реестр набьётся «ТОО Альфа», «Альфа ТОО» и «ТОО «Альфа»».
+
+    Куда же идти, сказано разделом, а не звонком в поддержку: Сторону заводит администратор
+    организации с тех пор, как у неё появилась учётная карточка (ADR 0021).
+    """
     before = Party.objects.count()
 
     _, page = search(entering, kab305, tenant_q="Гамма")
 
     assert offered(page, "tenant") == {}
-    assert "Сторону заводят отдельно" in stated(page)
+    assert "Сторону заводят в разделе «Стороны»" in stated(page)
     assert Party.objects.count() == before
 
 

@@ -20,7 +20,7 @@ from .document_display import (
     twin_removed,
     twin_report,
 )
-from .document_edit import DocumentParticularsForm
+from .document_edit import DocumentParticularsForm, carried_back
 from .document_page import Deletion, linked_buildings, particulars, taken_with
 from .models import Document, DocumentTwin
 from .shelf_search import ShelfSearch
@@ -188,7 +188,17 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
             # them, and an action they would be refused is not named on their screen either.
             context["deletion"] = None
         else:
-            context.setdefault("edit", DocumentParticularsForm(instance=self.object))
+            # The поиск Стороны travels in the address and redraws the form, so what had
+            # already been typed comes back with it — and an address asking no поиск fills
+            # nothing in (`carried_back`).
+            context.setdefault(
+                "edit",
+                DocumentParticularsForm(
+                    instance=self.object,
+                    user=self.request.user,
+                    already_typed=carried_back(self.request.GET),
+                ),
+            )
             context.setdefault("attach", DocumentTwinForm(document=self.object))
             context.setdefault("deletion", Deletion(confirming=False))
         return context
@@ -226,7 +236,7 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
         back to it: the reloaded page is the confirmation, and what was entered is read
         where it was entered.
         """
-        form = DocumentParticularsForm(request.POST, instance=self.object)
+        form = DocumentParticularsForm(request.POST, instance=self.object, user=request.user)
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(edit=form))
         form.save()

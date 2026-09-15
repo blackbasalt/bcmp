@@ -13,7 +13,7 @@
   Nothing is required. A document is enriched over time, and a form insisting on all five
   at once would keep a known номер out until a дата выдачи is found for it.
 {% endcomment %}
-<section class="card bg-base-100 shadow-sm" data-edit="document">
+<section id="document-edit" class="card bg-base-100 shadow-sm" data-edit="document">
   <div class="card-body gap-3">
     <h2 class="card-title text-lg">Заполнить реквизиты</h2>
 
@@ -43,12 +43,83 @@
         {% endif %}
       </fieldset>
 
+      {% comment %}
+        «Кем выдан» — Сторона со своей учётной карточки, найденная поиском, а не пролистанная.
+
+        Написано здесь, а не взято из `leases/_party_choice.html`: тот поиск едет на адрес
+        карточки помещения и перерисовывает её целиком, этот — на адрес самого документа и
+        перерисовывает одну створку, и общий на двоих потребовал бы передавать в него и
+        адрес, и цель, и то, как называется набор. Общее у них — само чтение «искать по
+        названию и БИН, выбирать из найденного», и оно стоит в `PartyChoice`, а не в разметке.
+
+        Поиск едет параметром в адресе (`…/documents/<pk>/?issuer_q=пром`), как и всякий
+        отбор в этом проекте. `hx-include` отправляет вместе с ним всю форму, так что поиск
+        Стороны не стоит уже набранного номера; `hx-select` берёт из ответа эту же створку —
+        страница целиком перерисовываться не должна, читатель стоит на реквизитах рядом.
+        Токен в вопрос, заданный адресом, не едет: он принадлежит отправке.
+      {% endcomment %}
       <fieldset class="fieldset">
         <legend class="fieldset-legend">{{ edit.issuer_party.label }}</legend>
-        {# The parties are the system-wide directory the passport names an owner from. #}
-        {{ edit.issuer_party|styled:"select w-full" }}
+
+        {% comment %}
+          Коробка и кнопка — один элемент управления (`join`), а не два рядом с зазором:
+          искать Сторону — одно действие. Кнопка обычная, не `btn-primary`: главное действие
+          формы — «Сохранить», и две зелёные кнопки спорили бы за то, какую нажимать.
+
+          Четыре htmx-атрибута повторены на коробке и на кнопке, а не вынесены на обёртку:
+          `<div>` с `hx-get` сам становится htmx-элементом, и тогда любой щелчок по строке
+          отправлял бы поиск.
+        {% endcomment %}
+        <div class="join w-full">
+          {% comment %}
+            `type="search"` по той же причине, что и на полке: браузер даёт крестик очистки и
+            свою историю, а на телефоне клавиатура поднимается с «Найти». Enter ищет, но форму
+            не отправляет — Сторона ещё не выбрана, и отправка тем самым нажатием вернула бы
+            отказ о поле, до которого не дошли.
+          {% endcomment %}
+          <input type="search" name="{{ edit.issuer_q.html_name }}"
+                 value="{{ edit.issuer_q.value|default_if_none:'' }}"
+                 placeholder="Название или БИН" class="input join-item w-full"
+                 hx-get="{% url 'documents:document_detail' document.pk %}"
+                 hx-target="#document-edit" hx-select="#document-edit" hx-swap="outerHTML"
+                 hx-include="closest form" hx-params="not csrfmiddlewaretoken"
+                 hx-trigger="search, keyup[key=='Enter']"
+                 hx-on:keydown="if (event.key === 'Enter') event.preventDefault()">
+          <button type="button" class="btn join-item"
+                  hx-get="{% url 'documents:document_detail' document.pk %}"
+                  hx-target="#document-edit" hx-select="#document-edit" hx-swap="outerHTML"
+                  hx-include="closest form" hx-params="not csrfmiddlewaretoken">Найти</button>
+        </div>
+
+        {% comment %}
+          Варианты выписаны здесь, а не виджетом: на списке стоит то, что нашлось, а
+          отправить можно Сторону со своей учётной карточки — `PartyChoice` о том, почему
+          это два разных набора. Сторона названа с БИН/ИИН: им и отличают «ТОО «Альфа»» от
+          «ТОО «Альфа»».
+
+          «Не указан», а не «---------»: незаполненная Сторона — это состояние данных, и
+          сказано оно теми же словами, какими его говорит страница рядом.
+        {% endcomment %}
+        <select name="{{ edit.issuer_party.html_name }}" class="select w-full">
+          <option value="">Не указан</option>
+          {% for key, label in edit.issuer_party.field.offered %}
+            <option value="{{ key }}"
+                    {% if edit.issuer_party.value|stringformat:"s" == key|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
         {% if edit.issuer_party.errors %}
           <p class="text-sm text-error">{{ edit.issuer_party.errors|join:" " }}</p>
+        {% endif %}
+
+        {% comment %}
+          Не нашлось — и здесь же сказано, где искали и среди кого. Искали по названию и по
+          БИН/ИИН, а в подсказке поля на ширину колонки помещается только «Название или БИН»:
+          набравший ИИН иначе решит, что спросил не так. Искали среди Сторон своей учётной
+          карточки — а не по всему реестру, — и не сказать этого значит оставить читателя
+          искать заново то, чего на его полке нет (ADR 0020).
+        {% endcomment %}
+        {% if edit.nothing_found %}
+          <p class="label">Не нашлось среди ваших Сторон — ни по названию, ни по БИН/ИИН. Сторону заводят в разделе «Стороны», и только потом выбирают здесь.</p>
         {% endif %}
       </fieldset>
 

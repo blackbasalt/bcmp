@@ -21,7 +21,17 @@ Two readings are settled here:
 - **Поиск идёт по всем Сторонам.** The реестр is system-wide and the isolation stands on
   the помещение (ADR 0018): narrowed to the reader's own организация, a new арендатор
   nobody has met yet would be unfindable, which is the one case заведение аренды exists
-  for. Nothing about another client is disclosed by it — a Сторона belongs to no client.
+  for. Nothing about another client is disclosed by it either, and the reason is not that a
+  Сторона belongs to nobody: принадлежит клиенту учётная карточка, и всё, что организация
+  знает о Стороне — платёжные реквизиты, контактные лица, поводы, — лежит в ней и на этот
+  список не попадает (ADR 0020). Здесь стоит одно существование Стороны: название и БИН,
+  факты публичные и на всю систему одни.
+
+  Общесистемный — этот поиск, а не всякий. «Кем выдан» на форме документа выбирается из
+  Сторон своей учётной карточки и сужает набор само (`documents/document_edit.py`): «чьи
+  это подрядчики» — вопрос о знании, а не о существовании, и с тех пор как у него есть
+  ответ, поле его и задаёт. Общими у двух форм остались `matching` и `PartyChoice` — как
+  ищут и как выбирают из найденного, — а из чего выбирают, решает каждая сама.
 
 «Не нашлось — завести Сторону» is deliberately **not** here and not on the form: a Сторона
 is entered as a separate step, or the реестр of 699 rows fills with «ТОО Альфа», «Альфа
@@ -57,14 +67,16 @@ def found(text):
 
 
 class PartyChoice(forms.ModelChoiceField):
-    """Одна Сторона из общесистемного реестра — та, что нашлась, а не та, что в списке.
+    """Одна Сторона — та, что нашлась, а не та, что в списке.
 
     What may be **chosen** and what is **offered** are two different sets here, and that is
-    the point. The queryset stays the whole реестр, because that is what a submitted key is
-    checked against: narrowed to the matches of the поиск, a Сторона picked and then
-    searched away from the list would be refused as «недопустимый выбор» — a refusal about
-    the screen's own bookkeeping rather than about the аренда. What the list shows is set by
-    `offer`, and only the list moves when the поиск does.
+    the point. The queryset is what a submitted key is checked against, and how wide it is
+    the form decides rather than the field: заведение аренды checks against the whole реестр
+    for the reason stated above, «кем выдан» against the Стороны of the reader's учётная
+    карточка. Narrowed to the matches of the поиск instead — by either of them — a Сторона
+    picked and then searched away from the list would be refused as «недопустимый выбор»: a
+    refusal about the screen's own bookkeeping rather than about what was being entered.
+    What the list shows is set by `offer`, and only the list moves when the поиск does.
     """
 
     #: What the list stands on until a поиск has been made: nothing. Pairs of key and

@@ -16,6 +16,7 @@ import pytest
 from django.urls import reverse
 
 from documents.models import Document, DocumentLink
+from parties.models import Party, PartyRecord
 
 from .test_section import documents_on, make_document, rows_on, section, stated
 
@@ -417,3 +418,205 @@ def test_a_link_to_something_that_is_not_a_bc_opens_no_broken_address(
     _, page = page_of(client, document)
 
     assert reverse("building_passport:bc_detail", args=[first_floor.pk]) not in page
+
+
+# «Кем выдан» — Стороны своей учётной карточки
+
+
+#: Кого предлагает «Кем выдан» — по ключам. То же чтение, через которое читают форму аренды:
+#: подпись — это фраза, её перепишут, а ключ — договор.
+ISSUERS = re.compile(r'<select[^>]*name="issuer_party"[^>]*>(?P<options>.*?)</select>', re.DOTALL)
+OPTION = re.compile(
+    r'<option[^>]*value="(?P<key>[^"]*)"(?P<state>[^>]*)>(?P<label>.*?)</option>', re.DOTALL
+)
+
+
+def on_the_shelf_of(org, party):
+    """The учётная карточка — what puts a Сторона on an organisation's shelf at all (ADR 0020).
+
+    Staged here and not in `conftest`: every test of this field says which pair «Сторона +
+    организация» exists and which does not, and that is the thing being checked rather than
+    the staging around it.
+    """
+    return PartyRecord.objects.create(party=party, org=org)
+
+
+def their_party(org):
+    """Чужая Сторона: та же строка реестра, но карточка на неё — у другого клиента.
+
+    One «ТОО Чужпром» for both tests that need her: what the list leaves off and what the
+    отправка refuses are two readings of one rule, and two definitions of her would let the
+    two readings drift.
+    """
+    party = Party.objects.create(
+        kind=Party.Kind.COMPANY, name="ТОО Чужпром", bin_iin="991140000012"
+    )
+    on_the_shelf_of(org, party)
+    return party
+
+
+def issuers_offered(page):
+    """The Стороны the list stands on — what the поиск found, by key."""
+    offered = ISSUERS.search(page)
+    if offered is None:
+        return {}
+    return {
+        option["key"]: stated(option["label"])
+        for option in OPTION.finditer(offered["options"])
+        if option["key"]
+    }
+
+
+def issuer_standing(page):
+    """The Сторона the list comes up standing on — the one recorded on the документ."""
+    offered = ISSUERS.search(page)
+    for option in OPTION.finditer(offered["options"] if offered else ""):
+        if "selected" in option["state"]:
+            return option["key"]
+    return None
+
+
+def look_for(client, document, text, **already_typed):
+    """The поиск Стороны: a parameter on the документ's own address, redrawing the form."""
+    response = client.get(
+        reverse("documents:document_detail", args=[document.pk]),
+        {"issuer_q": text} | already_typed,
+    )
+    return response, response.content.decode()
+
+
+def test_the_list_offers_the_parties_of_the_readers_own_record(
+    client, administrator, downtown, central, issuer
+):
+    """«Чьи это подрядчики» now has a first answer, and it is the учётная карточка (ADR 0020).
+
+    Another client's «ТОО» is in the same реестр and answers the same поиск — and is not on
+    this form: what an организация knows about a Сторона is not shown to the second one.
+    """
+    their_party(central)
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    _, page = look_for(client, document, "ТОО")
+
+    assert set(issuers_offered(page)) == {str(issuer.pk)}
+
+
+def test_a_party_no_record_of_ours_names_is_not_offered(client, administrator, downtown, alpha):
+    """62 Стороны came in without anybody's карточка: no организация for them exists yet.
+
+    They stay in the реестр and stay findable while an аренда is entered (ADR 0020) — and
+    they are on nobody's form until such an организация appears.
+    """
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    _, page = look_for(client, document, "альфа")
+
+    assert issuers_offered(page) == {}
+
+
+def test_another_clients_party_is_refused_even_when_sent_straight_to_the_address(
+    client, administrator, downtown, central
+):
+    """It is not only the list that is narrowed: what is accepted is checked on the request."""
+    theirs = their_party(central)
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    response = fill_in(client, document, issuer_party=str(theirs.pk))
+
+    assert response.status_code == 200
+    # One wording for both readings of a key that was not accepted: whether the Сторона does
+    # not exist or is simply not on this shelf, telling them apart would tell this reader
+    # what the other client has (ADR 0006).
+    assert "Такой Стороны среди ваших нет" in response.content.decode()
+    document.refresh_from_db()
+    assert document.issuer_party_id is None
+
+
+def test_an_issuer_already_recorded_stays_on_its_own_form(
+    client, administrator, downtown, central
+):
+    """Сужение не должно стоить поля, на которое никто не жаловался.
+
+    Staged on the hardest reading of it: the Сторона recorded on the документ is one this
+    reader's карточки do not name at all — она с чужой полки, как бывает с тем, что оставила
+    загрузка. The form still comes up standing on her and sends her back unchanged; one that
+    came up having forgotten her would erase «кем выдан» with whoever came to fill in the
+    номер. Остаётся при этом проставленная Сторона, а не полка, с которой она пришла: на
+    поиск та полка по-прежнему не отвечает, и это стоит тестом выше.
+    """
+    theirs = their_party(central)
+    document = make_document(downtown, "Акт", issuer_party=theirs)
+    client.force_login(administrator)
+
+    _, page = page_of(client, document)
+
+    assert issuer_standing(page) == str(theirs.pk)
+
+    fill_in(client, document, doc_no="АКТ-12/2024", issuer_party=str(theirs.pk))
+
+    document.refresh_from_db()
+    assert document.issuer_party_id == theirs.pk
+
+
+def test_the_search_finds_by_name_and_by_bin_folding_the_case(
+    client, administrator, downtown, alpha
+):
+    """По названию и по БИН, и регистр по-русски свёрнут (ADR 0014).
+
+    «альфа» набрано строчными, а Сторона записана «ТОО «Альфа»»: `icontains` на SQLite
+    свернул бы регистр только для ASCII и не нашёл бы ничего.
+    """
+    on_the_shelf_of(downtown, alpha)
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    _, by_name = look_for(client, document, "альфа")
+    _, by_bin = look_for(client, document, alpha.bin_iin)
+
+    assert set(issuers_offered(by_name)) == {str(alpha.pk)}
+    assert set(issuers_offered(by_bin)) == {str(alpha.pk)}
+
+
+def test_nothing_is_offered_until_something_is_looked_for(
+    client, administrator, downtown, issuer
+):
+    """Список в 699 строк — это прокрутка, а не выбор: сначала ищут, потом выбирают."""
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    _, page = page_of(client, document)
+
+    assert issuers_offered(page) == {}
+
+
+def test_looking_for_an_issuer_does_not_cost_what_was_already_typed(
+    client, administrator, downtown, issuer
+):
+    """Поиск перерисовывает форму, и набранный до него номер должен вернуться вместе с ней."""
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    _, page = look_for(client, document, "ТОО", doc_no="АКТ-12/2024", issued_at="2024-03-14")
+
+    assert 'value="АКТ-12/2024"' in page
+    assert 'value="2024-03-14"' in page
+
+
+def test_an_address_that_asks_no_search_fills_nothing_in(client, administrator, downtown):
+    """Форму заполняет тот, кто вводит реквизиты, а не тот, кто прислал ссылку.
+
+    `…/documents/<pk>/?doc_no=АКТ-12/2024` otherwise opens the form with a номер nobody
+    typed, and a pre-filled field is saved without a glance — the very thing the загрузка
+    плана refuses to do (ADR 0004).
+    """
+    document = make_document(downtown, "Акт без реквизитов")
+    client.force_login(administrator)
+
+    response = client.get(
+        reverse("documents:document_detail", args=[document.pk]), {"doc_no": "АКТ-12/2024"}
+    )
+
+    assert 'value="АКТ-12/2024"' not in response.content.decode()
