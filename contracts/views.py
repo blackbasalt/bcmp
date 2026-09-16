@@ -1,5 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
 
@@ -8,7 +9,7 @@ from documents.models import Document
 from parties.models import Org
 
 from . import gaps
-from .contract_display import contracts_shown
+from .contract_display import contracts_shown, term_set_aside
 from .contract_page import leases_of, particulars
 from .shelf_search import ShelfSearch
 
@@ -24,6 +25,10 @@ class ContractListView(LoginRequiredMixin, ListView):
     Искалка, а не бланк: ничего здесь не заводят, не правят и не удаляют. Строка отвечает
     сама — название, номер, вид, контрагент и «Кончается», — а открывать договор незачем,
     пока не понадобилось большее.
+
+    Спрашивают у неё одним вопросом: поиск, вид, род, контрагент, «кончается» и БЦ, да ещё
+    два утверждения о самой записи. Вопрос живёт в адресе, поэтому суженная полка — ссылка,
+    а «Сбросить» — тот же адрес без него (`shelf_search`).
 
     И она считает то, чего у неё нет. «Показано 12 из 340 договоров · вид не заведён у 7 ·
     срок не заведён у 4» — тот же приём, что «нанесено 47 из 82» под планом и «площадь не
@@ -58,8 +63,8 @@ class ContractListView(LoginRequiredMixin, ListView):
         Порядок — алфавит названий: полку читают глазами, ища на ней договор, а порядок, в
         котором пачка легла в хранилище, не помогает никому. Сроком она не упорядочена
         нарочно — вперёд встали бы договоры, кончившиеся в 2019-м, то есть обязательства,
-        которых уже нет; «когда кончается» отвечает колонка, а скоро ответит и условие
-        отбора. Второй ключ — время загрузки: два договора с одним названием иначе
+        которых уже нет; «когда кончается» отвечают колонка и условие отбора, каждое о
+        своём. Второй ключ — время загрузки: два договора с одним названием иначе
         встали бы в порядке, который база меняет от запроса к запросу.
         """
         return (
@@ -100,6 +105,13 @@ class ContractListView(LoginRequiredMixin, ListView):
         # остальной вопрос остаётся стоять.
         context["without_kind_url"] = self.with_one_more(gaps.NO_KIND)
         context["without_term_url"] = self.with_one_more(gaps.NO_TERM)
+        # И то, чего сроковое условие взвесить не смогло, — фразой, а не числами порознь:
+        # бессрочный договор и договор с незаведённым сроком в «кончается» не попадают
+        # ни один, и
+        # молчание об этом прочиталось бы как «таких нет» (ADR 0031). Считается это по всей
+        # полке, суженной остальными семью условиями, а не по строкам на экране: строк на
+        # экране этих договоров нет — их-то условие и отложило в сторону.
+        context["term_set_aside"] = term_set_aside(**self.search.set_aside(self.shelf))
         # Отбор, вернувшийся на экран, с которого его набрали: разметка спрашивает у него,
         # спрашивали ли вообще о чём-нибудь.
         context["search"] = self.search
@@ -111,9 +123,19 @@ class ContractListView(LoginRequiredMixin, ListView):
         return context
 
     @cached_property
+    def today(self):
+        """День, о котором говорит экран, взятый один раз на весь запрос.
+
+        Сроковое условие и число отложенного им в сторону — два чтения одного «сегодня», и
+        два обращения к часам мгновением врозь могли бы разойтись через полночь: полка
+        показала бы строки одной недели, а отложила в сторону по другой.
+        """
+        return timezone.localdate()
+
+    @cached_property
     def search(self):
         """Что спросили у полки — прочитано один раз и прочитано и строками, и счётом."""
-        return ShelfSearch(self.request.GET)
+        return ShelfSearch(self.request.GET, user=self.request.user, day=self.today)
 
     def with_one_more(self, condition):
         """Адрес этого экрана с одним лишним взведённым условием.

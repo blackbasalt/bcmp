@@ -1,0 +1,183 @@
+{% comment %}
+  Вопрос, задаваемый полке в сотни строк: текст, который надо найти, вид, род, контрагент,
+  «кончается» и БЦ — и два утверждения о самой записи: «вид не заведён» и «срок не заведён».
+
+  Едет он методом GET и стоит на собственном адресе раздела, так что суженная полка — это
+  ссылка: она перезагружается такой, какой была, переживает вкладку, оставленную на ночь, и
+  отправляется коллеге. Сброс отбора есть адрес без него, оттого «Сбросить» — ссылка на
+  раздел, а не кнопка, отправляющая опустошённую форму.
+
+  `data-search` — договор экрана: он говорит, можно ли полку спрашивать вообще. Над полкой
+  без единого договора полосы нет — сужать нечего, и предложение сузить отвечало бы пустотой
+  на что угодно, — и разметки этой тогда нет вовсе, а не стоит она недоступной: предложенное
+  и бесполезное разом читается как поломка.
+
+  Полоса разложена надвое, и деление предметное. Наверху — шесть условий о самом договоре:
+  чем он называется, какого вида и рода, с кем подписан, когда кончается и в каком БЦ стоят
+  его аренды. Внизу, под чертой, — два утверждения о записи о нём, и рядом с ними действия.
+  Это галочки, они занимают строку, а не колонку, и в сетке наверху они же порвали бы общую
+  линию подписей: набор в две галочки высотой поднял бы свою легенду на строку выше всех
+  остальных — то, что полка помещений уже выяснила.
+
+  Четвёртая рукописная полоса, а не общая с тремя предыдущими: полка документов спрашивает
+  три условия, полка Сторон шесть, полка помещений девять, и общего у них — `<form
+  method="get">`. Довод, по которому не свели первые две, записан в `_room_search.html`, и
+  четвёртая его не ослабляет.
+{% endcomment %}
+<form method="get" class="card mb-4 bg-base-100 shadow-sm" data-search="contracts">
+  <div class="card-body gap-4">
+
+    <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-12">
+      <fieldset class="fieldset sm:col-span-2 lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.q.label }}</legend>
+        {% comment %}
+          `type="search"`, а не `type="text"`: браузер даёт крестик очистки и свою историю
+          того, что здесь искали, а на телефоне клавиатура поднимается с «Найти». Номер
+          назван в подсказке — пустая строка не намекает, что ищется и он.
+        {% endcomment %}
+        <input type="search" name="{{ search.q.html_name }}"
+               value="{{ search.q.value|default_if_none:'' }}"
+               placeholder="{{ search.q.field.widget.attrs.placeholder }}"
+               class="input w-full">
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.kind.label }}</legend>
+        <select name="{{ search.kind.html_name }}" class="select w-full">
+          {% for value, label in search.kind.field.choices %}
+            <option value="{{ value }}" {% if search.kind.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% comment %}
+          Условие, пришедшее из адреса и не прочитавшееся. Полка под ним пуста, и без этой
+          строки список стоял бы над ней на «Любой вид»: суженная до нуля тем, чего экран
+          не показывает.
+        {% endcomment %}
+        {% if search.kind.errors %}
+          <p class="text-sm text-error">{{ search.kind.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.genus.label }}</legend>
+        {% comment %}
+          Род стоит рядом с видом, а не вместо него: доходные и расходные — это те же пять
+          видов, собранные по сторонам, и спрашивают их вместе — «расходные, но не поставка».
+          Колонки «Род» в таблице нет, она повторяла бы соседнюю; здесь же род и получает
+          своё место (`contracts/genus.py`).
+        {% endcomment %}
+        <select name="{{ search.genus.html_name }}" class="select w-full">
+          {% for value, label in search.genus.field.choices %}
+            <option value="{{ value }}" {% if search.genus.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.genus.errors %}
+          <p class="text-sm text-error">{{ search.genus.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset sm:col-span-2 lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.counterparty.label }}</legend>
+        {% comment %}
+          В списке — Стороны, с которыми у читателя есть хоть один договор, и только они
+          (ADR 0006). Весь реестр в 699 строк был бы прокруткой вместо выбора, а чужой
+          контрагент в нём назвал бы, с кем работает другой клиент платформы.
+        {% endcomment %}
+        <select name="{{ search.counterparty.html_name }}" class="select w-full">
+          {% for value, label in search.counterparty.field.choices %}
+            <option value="{{ value }}" {% if search.counterparty.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.counterparty.errors %}
+          <p class="text-sm text-error">{{ search.counterparty.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.ending.label }}</legend>
+        {% comment %}
+          Три значения в списке и ни одного свободного числа дней, по доводу, записанному в
+          `contracts/shelf_search.py`. Реестр сроков и есть полка, отвечающая на вопрос: те
+          же строки, тот же счёт под ними и тот же адрес, который отправляют коллеге.
+        {% endcomment %}
+        <select name="{{ search.ending.html_name }}" class="select w-full">
+          {% for value, label in search.ending.field.choices %}
+            <option value="{{ value }}" {% if search.ending.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if search.ending.errors %}
+          <p class="text-sm text-error">{{ search.ending.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset class="fieldset lg:col-span-4">
+        <legend class="fieldset-legend">{{ search.building.label }}</legend>
+        {% comment %}
+          В списке только те БЦ, которые этому читателю видны, и названный в адресе вопреки
+          списку не принимается тоже: отбор проверяется по зданиям, а не по тому, что экран
+          напечатал (ADR 0001).
+        {% endcomment %}
+        <select name="{{ search.building.html_name }}" class="select w-full">
+          {% for value, label in search.building.field.choices %}
+            <option value="{{ value }}" {% if search.building.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% comment %}
+          Сказано прямо, и это не подпись для порядка: расходный договор здания не называет
+          вовсе (ADR 0033), поэтому условие «БЦ» сужает полку до одного вида — «Аренда
+          помещений»: эти договоры одни достают до БЦ, через свои аренды и их помещения.
+          Промолчи полоса, и читатель, сузивший полку до Manhattan, решил бы, что четыре
+          вида из пяти куда-то делись.
+
+          Назван здесь вид, а не «договоры аренды», хотя ADR 0033 пишет именно так: словарь
+          держит «договор аренды» в списке того, чем не называют аренду (CONTEXT.md,
+          «Аренда»), и на экране, где рядом стоит и список видов, и раздел про сами аренды,
+          это ровно то место, где одно прочли бы за другое. Вид назван тем же словом, каким
+          он назван в списке строкой выше и на самой модели.
+        {% endcomment %}
+        <p class="fieldset-label">Сужает полку до договоров вида «Аренда помещений»: расходный договор здания не называет.</p>
+        {% if search.building.errors %}
+          <p class="text-sm text-error">{{ search.building.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-x-8 gap-y-3 border-t border-base-300 pt-3">
+      {% comment %}
+        Два утверждения о записи, а не о договоре. Галочками, а не значениями в списках
+        наверху: видов пять и ровно пять, а «срок не заведён» — не срок. Оба они те самые
+        находки, которые строка счёта называет числом-ссылкой, и стоят они здесь затем,
+        чтобы нажавший «вид не заведён у 12» видел, чем полка сужена, и мог это снять.
+        Рядом, а не одно под другим: пара — одна строка полосы, а в столбик она сделала бы
+        полосу на голову выше, чем ей положено.
+      {% endcomment %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Не заведено</legend>
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <label class="fieldset-label cursor-pointer">
+            <input type="checkbox" name="{{ search.no_kind.html_name }}" value="1"
+                   class="checkbox checkbox-sm" {% if search.no_kind.value %}checked{% endif %}>
+            {{ search.no_kind.label }}
+          </label>
+          <label class="fieldset-label cursor-pointer">
+            <input type="checkbox" name="{{ search.no_term.html_name }}" value="1"
+                   class="checkbox checkbox-sm" {% if search.no_term.value %}checked{% endif %}>
+            {{ search.no_term.label }}
+          </label>
+        </div>
+      </fieldset>
+
+      {% comment %}
+        Действия держатся правого края той же строки, что и утверждения: «Найти» закрывает
+        полосу там, где кончается её чтение. `ms-auto`, а не распорка, — на узком экране
+        строка переносится, и кнопки просто занимают следующую, не оставляя дыры в вёрстке.
+      {% endcomment %}
+      <div class="ms-auto flex gap-2 pb-1">
+        <button type="submit" class="btn btn-primary btn-sm">Найти</button>
+        {% if search.asked %}
+          <a class="btn btn-ghost btn-sm" href="{% url 'contracts:contract_list' %}">Сбросить</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>

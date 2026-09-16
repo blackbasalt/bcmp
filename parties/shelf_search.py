@@ -49,7 +49,7 @@ import re
 from django import forms
 from django.db.models import Q
 
-from bcmp import shelf
+from bcmp import shelf, windows
 from building_passport.models import Space
 from dictionary.models import DictLineOfBusiness
 from documents.building_choice import BuildingChoice
@@ -161,9 +161,10 @@ class ShelfSearch(shelf.Search):
         label="Повод",
         # Three values and no free number of days: a free one would invite 0 and 3650, and
         # the screen would answer about nothing and about everybody by turns. What each of
-        # the three means is `occasions`' to say, where the повод itself lives: spelled out
-        # here they would be a second answer to a question the экран Стороны asks that module.
-        choices=[("", "Когда угодно"), *occasions.WINDOWS],
+        # the three means is `bcmp.windows`' to say, and not this раздел's: the полка
+        # договоров offers the same three words, and «на этой неделе» must not end on a
+        # Sunday here and on the next Wednesday there.
+        choices=[("", "Когда угодно"), *windows.WINDOWS],
         # An unreadable condition narrows the полка to nothing, and the screen has to say
         # why. Left to Django's own wording the reader is told «Выберите корректный вариант»
         # about a list they never touched: the value came from the address, not from the
