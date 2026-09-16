@@ -1,0 +1,47 @@
+{% comment %}
+  Створка правки условий — та половина договора, которую узнают позже скана.
+
+  Вид узнают позже бумаги, срок уточняют по допнику, автопролонгацию замечают, перечитывая
+  договор: обогащается он со временем, и потому здесь не обязательно ни одно поле. Створка
+  стоит на экране договора и отправляется на его же адрес — правят там, где читают, и отказ
+  возвращается сюда, рядом с шапкой, которую он должен был поправить (ADR 0005).
+
+  `data-edit` — договор экрана: он показывает, предложена ли правка. Сотруднику без флага
+  администратора эта разметка не достаётся вовсе: экран остаётся экраном, а не бланком.
+
+  Название, номер и скан здесь не спрашиваются: это реквизиты документа, и правят их на его
+  странице. Два места, где меняют номер одной бумаги, были бы двумя правдами о нём
+  (ADR 0030).
+{% endcomment %}
+<section class="card bg-base-100 shadow-sm" data-edit="contract">
+  <div class="card-body gap-3">
+    <h2 class="card-title text-lg">Править условия</h2>
+
+    <form method="post" class="space-y-3">
+      {% csrf_token %}
+
+      {% comment %}
+        Причина отказа, не принадлежащая ни одному полю: бессрочность и дата конца спорят
+        парой, и назначить виноватой одну её половину значило бы назвать ошибкой ровно то,
+        что читатель, может быть, и хотел оставить (ADR 0031).
+      {% endcomment %}
+      {% if edit.non_field_errors %}
+        <div class="alert alert-error" role="alert">
+          <span>{{ edit.non_field_errors|join:" " }}</span>
+        </div>
+      {% endif %}
+
+      {% comment %}
+        Поиск едет параметром на адрес самого договора (`…/contracts/<ключ>/?counterparty_q=пром`)
+        и перерисовывает одну створку контрагента: экран вокруг неё читатель не покидал, и
+        шапка над ней говорит о договоре, которого правка ещё не коснулась.
+      {% endcomment %}
+      {% url 'contracts:contract_detail' contract.pk as terms_address %}
+      {% include "contracts/_counterparty_choice.html" with field=edit.counterparty query=edit.counterparty_q nothing_found=edit.nothing_found slot="contract-counterparty" address=terms_address %}
+
+      {% include "contracts/_contract_conditions.html" with form=edit %}
+
+      <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+    </form>
+  </div>
+</section>

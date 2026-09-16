@@ -1,0 +1,69 @@
+{% load passport %}
+{% comment %}
+  Условия договора — вид и срок, одинаково на створке заведения и на створке правки.
+
+  Один кусок на обе, потому что спрашивают они одно и то же: заведение и правка — две
+  половины одной работы над договором, и разошедшись, они дали бы договор, заведённый одной
+  створкой и неправимый другой. Включается с `form=` — тем, чья это форма, — и больше ничего
+  о ней не знает. Контрагент стоит рядом отдельным куском: ему нужны поиск, свой адрес и своё
+  имя в разметке, и параметризовать этим весь набор условий значило бы тащить их сюда.
+
+  Вид может пустовать, и пустой вариант назван теми же словами, какими незаведённый вид
+  считает строка счёта под полкой: это обычное состояние договора, а не дыра в списке — пачка
+  сканов попадает на полку раньше, чем кому-нибудь проставят вид (ADR 0035). Снять его
+  обратно в «не заведён» можно тем же списком: проставленный по ошибке, он снимается там же,
+  где проставлен.
+
+  Срок — тремя полями на три состояния (ADR 0031): дата, бессрочность и всё, что осталось, —
+  «срок не заведён». Спрошенные врозь, эти три рано или поздно спросились бы по-разному.
+
+  Дата и бессрочность стоят рядом и в таком порядке нарочно: сперва то, что заводят почти
+  всегда, следом оговорка о договоре, у которого конца нет вовсе. Сказать их можно только
+  порознь — пара, взведённая разом, отвергается формой, и почему, сказано там же.
+
+  Автопролонгация — приписка к любому из трёх, а не четвёртое из них: она о том, что будет,
+  когда срок кончится, а не о том, когда он кончается.
+
+  Поля рисуются своими виджетами: дата обязана вернуться с отказом в том написании, какое
+  читает `type="date"`, а галочка — взведённой, если её взводили. Напечатанные руками, они
+  пришли бы обратно пустыми и были бы сохранены прочь тем, кто открыл форму ради другого.
+{% endcomment %}
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">{{ form.kind.label }}</legend>
+  <select name="{{ form.kind.html_name }}" class="select w-full">
+    {% for value, label in form.kind.field.choices %}<option value="{{ value }}" {% if form.kind.value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  {% if form.kind.errors %}
+    <p class="text-sm text-error">{{ form.kind.errors|join:" " }}</p>
+  {% endif %}
+</fieldset>
+
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">{{ form.valid_until.label }}</legend>
+  {{ form.valid_until|styled:"input w-full" }}
+  {% if form.valid_until.errors %}
+    <p class="text-sm text-error">{{ form.valid_until.errors|join:" " }}</p>
+  {% endif %}
+</fieldset>
+
+<fieldset class="fieldset">
+  <label class="label cursor-pointer justify-start gap-2">
+    {{ form.is_perpetual|styled:"checkbox checkbox-sm" }}
+    <span>{{ form.is_perpetual.label }}</span>
+  </label>
+  {% if form.is_perpetual.errors %}
+    <p class="text-sm text-error">{{ form.is_perpetual.errors|join:" " }}</p>
+  {% endif %}
+  <p class="label">{{ form.is_perpetual.help_text }}</p>
+</fieldset>
+
+<fieldset class="fieldset">
+  <label class="label cursor-pointer justify-start gap-2">
+    {{ form.auto_prolongs|styled:"checkbox checkbox-sm" }}
+    <span>{{ form.auto_prolongs.label }}</span>
+  </label>
+  {% if form.auto_prolongs.errors %}
+    <p class="text-sm text-error">{{ form.auto_prolongs.errors|join:" " }}</p>
+  {% endif %}
+  <p class="label">{{ form.auto_prolongs.help_text }}</p>
+</fieldset>

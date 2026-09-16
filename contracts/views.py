@@ -1,4 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -10,6 +12,7 @@ from parties.models import Org
 
 from . import gaps
 from .contract_display import contracts_shown, term_set_aside
+from .contract_form import ENTRY, ContractCorrectionForm, ContractEntryForm, carried_back
 from .contract_page import leases_of, particulars
 from .shelf_search import ShelfSearch
 
@@ -22,9 +25,14 @@ class ContractListView(LoginRequiredMixin, ListView):
     `Document.valid_until` лежал без единого читателя, а `Lease.contract_no` был свободным
     текстом на восемнадцати вымышленных строках.
 
-    Искалка, а не бланк: ничего здесь не заводят, не правят и не удаляют. Строка отвечает
-    сама — название, номер, вид, контрагент и «Кончается», — а открывать договор незачем,
-    пока не понадобилось большее.
+    Прежде всего искалка: строка отвечает сама — название, номер, вид, контрагент и
+    «Кончается», — а открывать договор незачем, пока не понадобилось большее. Правят и
+    удаляют не здесь, а на экране самого договора.
+
+    Створка заведения стоит на этой полке и отправляется на её же адрес: договор заводят
+    там, где о договорах читают, и отказ возвращается на экран, с которого форму отправляли
+    (ADR 0005). Сотруднику без флага администратора её не показывают вовсе, а заведённый
+    договор на полку не возвращается — следом открывается его собственный экран.
 
     Спрашивают у неё одним вопросом: поиск, вид, род, контрагент, «кончается» и БЦ, да ещё
     два утверждения о самой записи. Вопрос живёт в адресе, поэтому суженная полка — ссылка,
@@ -120,7 +128,57 @@ class ContractListView(LoginRequiredMixin, ListView):
         # показанном — колонка, зависящая от данных, пропала бы ровно тогда, когда у второго
         # клиента ещё ничего не загружено, а это и есть случай, когда называть надо.
         context["organisation_named"] = Org.objects.handled_by(self.request.user).count() > 1
+        # Створка достаётся только тому, кто вправе заводить: действия, которого сотруднику
+        # не выполнить, ему и не предлагают — показанная форма, отклоняющая отправку,
+        # читается как сломанный экран (ADR 0005). Отказ приносит свою, уже заполненную, так
+        # что пустая ставится только на её место.
+        if not self.administers_anything:
+            context["entry"] = None
+        else:
+            # Поиск Стороны едет в адресе этой же полки и шлёт с собой всю форму, из неё же
+            # форма и собирается обратно — а адрес, поиска не спрашивающий, не заполняет
+            # ничего (`carried_back`). Приставка разводит створку с отбором: оба спрашивают и
+            # вид, и контрагента, и делят один адрес.
+            context.setdefault(
+                "entry",
+                ContractEntryForm(
+                    user=self.request.user,
+                    prefix=ENTRY,
+                    already_typed=carried_back(self.request.GET, ENTRY),
+                ),
+            )
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Заведение договора: тот же адрес, что и у раздела, — створка стоит на нём.
+
+        Отказ возвращает тот же экран с причиной на форме и набранным в ней, а заведение
+        уводит на экран заведённого договора: там дозаполняют то, чего форма не спросила, и
+        он же служит подтверждением. Сказать словами было бы нечего — шапка нового экрана
+        несёт всё, что отправили.
+        """
+        if not self.administers_anything:
+            # 403, а не 404: раздел этому сотруднику показан, и «его нет» было бы неправдой о
+            # том, что уже на экране. Скрывают чужие данные, а не собственную нехватку прав
+            # (ADR 0005).
+            raise PermissionDenied("Заводить договоры может администратор организации.")
+        form = ContractEntryForm(
+            request.POST, request.FILES, user=request.user, prefix=ENTRY
+        )
+        if not form.is_valid():
+            self.object_list = self.get_queryset()
+            return self.render_to_response(self.get_context_data(entry=form))
+        return redirect("contracts:contract_detail", form.save().pk)
+
+    @cached_property
+    def administers_anything(self):
+        """Ведёт ли этот сотрудник данные хоть какой-нибудь организации (ADR 0005).
+
+        Тот же вопрос, что задаётся на записи: показанная форма и принятый запрос обязаны
+        отвечать на него одинаково, иначе экран предлагает то, в чём потом отказывает. Чья
+        это будет бумага, решает сама форма — здесь только о том, есть ли створка вообще.
+        """
+        return Org.objects.administered_by(self.request.user).exists()
 
     @cached_property
     def today(self):
@@ -155,6 +213,12 @@ class ContractDetailView(LoginRequiredMixin, DetailView):
     «что это за бумага» — реквизиты, близнец, связи, скан, — а этот экран отвечает «какое
     обязательство и до каких пор». Вопросы разные, и каждый экран ссылается на другой, как
     карточка БЦ ссылается на свои документы.
+
+    Створка правки стоит здесь же и отправляется на этот же адрес: вид узнают позже скана,
+    срок уточняют по допнику, автопролонгацию замечают, перечитывая бумагу, — и правят их
+    там, где читают, а отказ возвращается на экран с договором вокруг него (ADR 0005).
+    Сотруднику без флага администратора её не показывают вовсе: экран остаётся экраном, а не
+    бланком.
     """
 
     template_name = "contracts/contract_detail.html"
@@ -186,4 +250,55 @@ class ContractDetailView(LoginRequiredMixin, DetailView):
         # написан довод, — и там же, а не здесь, потому что «не заведено» и «не бывает» —
         # разные ответы, и два места, их различающие, однажды ответили бы по-разному.
         context["leases"] = leases_of(self.object)
+        # Створка достаётся только тому, кто вправе вести данные этой организации: действия,
+        # в котором сотруднику откажут, ему и не предлагают (ADR 0005). Отказ приносит свою,
+        # уже заполненную, так что пустая ставится только на её место.
+        if not self.administers_the_contract:
+            context["edit"] = None
+        else:
+            # Поиск Стороны едет в адресе самого договора и шлёт с собой всю форму, из неё же
+            # форма и собирается обратно — а адрес, поиска не спрашивающий, не заполняет
+            # ничего (`carried_back`). Приставки здесь нет: отбора на этом экране не стоит, и
+            # разводить имена не с чем.
+            context.setdefault(
+                "edit",
+                ContractCorrectionForm(
+                    contract=self.object,
+                    user=self.request.user,
+                    already_typed=carried_back(self.request.GET),
+                ),
+            )
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Правка условий: тот же адрес, что и у экрана, — створка стоит на нём.
+
+        Отказ возвращает тот же экран с причиной на форме и набранным в ней, а сохранённое
+        подтверждается перезагруженным экраном: все пять условий стоят в его шапке, и сказать
+        о правке словами было бы нечего.
+        """
+        self.object = self.get_object()
+        if not self.administers_the_contract:
+            # 403, а не 404: раздел этому сотруднику уже показали, и отвечать «этого нет»
+            # значило бы солгать о показанном. Чужой договор отвечает 404 выше, и отвечает им
+            # записи по той же причине, по какой чтению (ADR 0005, ADR 0006).
+            raise PermissionDenied("Вести условия договора может администратор организации.")
+        form = ContractCorrectionForm(request.POST, contract=self.object, user=request.user)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(edit=form))
+        form.save()
+        return redirect("contracts:contract_detail", self.object.pk)
+
+    @cached_property
+    def administers_the_contract(self):
+        """Ведёт ли этот сотрудник данные организации этого договора (ADR 0005).
+
+        Не «ведёт ли он хоть что-нибудь»: право принадлежит паре «сотрудник + организация», и
+        вопрос пошире отдал бы администратору одного клиента створку над бумагой другого.
+        Организацию называет сам договор — спрашивать её у формы здесь нечего.
+        """
+        return (
+            Org.objects.administered_by(self.request.user)
+            .filter(pk=self.object.org_id)
+            .exists()
+        )

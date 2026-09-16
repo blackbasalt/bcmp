@@ -342,6 +342,47 @@ def test_a_particular_filled_in_earlier_comes_back_into_the_form(
     assert 'value="2024-03-14"' in page
 
 
+def test_a_srok_is_refused_on_a_contract_that_is_marked_perpetual(
+    client, administrator, downtown
+):
+    """Состояний срока три, и два разом не бывает (ADR 0031). Бессрочность живёт на условиях
+    договора и правится на его собственном экране, но пустая клетка «Срок действия» стоит и
+    здесь — и заполненная она завела бы ровно тот спор, который полке приходится разрешать
+    при чтении. Отказ называет, что сделать прежде, и где, — как и отказ менять вид документа
+    у заполненных условий (ADR 0035).
+    """
+    perpetual = Document.objects.create(
+        org=downtown, kind=Document.Kind.CONTRACT, title="Договор на охрану"
+    )
+    terms = perpetual.attached_terms()
+    terms.is_perpetual = True
+    terms.save()
+    client.force_login(administrator)
+
+    response = fill_in(client, perpetual, valid_until="2027-02-01", doc_no="ОХР-2026/01")
+    perpetual.refresh_from_db()
+
+    assert response.status_code == 200
+    assert perpetual.valid_until is None
+    assert perpetual.doc_no is None
+    assert "бессрочным" in stated(response.content.decode())
+
+
+def test_a_srok_is_stored_on_a_contract_whose_perpetuity_is_not_marked(
+    client, administrator, downtown
+):
+    """Сама по себе строка условий сроку не мешает: отвергается спор, а не договор."""
+    contract = Document.objects.create(
+        org=downtown, kind=Document.Kind.CONTRACT, title="Договор на охрану"
+    )
+    client.force_login(administrator)
+
+    fill_in(client, contract, valid_until="2027-02-01")
+    contract.refresh_from_db()
+
+    assert contract.valid_until == date(2027, 2, 1)
+
+
 def test_a_srok_and_a_revision_are_stored_and_shown_and_do_nothing_else(
     client, administrator, downtown
 ):

@@ -398,9 +398,10 @@ def test_the_screen_says_no_sum(client, member, letting):
     assert "сумма" not in stated(page).lower()
 
 
-def test_the_screen_carries_no_way_to_change_anything(client, member, letting):
-    """Заведения, правки и удаления этим тикетом не появляется: экран отвечает «какое
-    обязательство и до каких пор», а каждая запись стоит в другом тикете."""
+def test_a_reader_is_shown_no_way_to_change_anything(client, member, letting):
+    """Сотруднику без флага администратора экран остаётся экраном, а не бланком: действия, в
+    котором ему откажут, ему и не предлагают (ADR 0005). Створка правки достаётся тому, кто
+    ведёт данные этой организации, и проверяется там, где стоит."""
     contract, _ = letting
     client.force_login(member)
 

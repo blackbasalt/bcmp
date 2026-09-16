@@ -1,0 +1,139 @@
+{% load passport %}
+{% comment %}
+  Створка заведения договора — то, чем администратор организации заменяет Django admin.
+  Она стоит на полке и отправляется на её же адрес: договор заводят там, где о договорах
+  читают, и отказ возвращается сюда, рядом с той полкой, которую он должен был пополнить
+  (ADR 0005).
+
+  `data-entry` — договор экрана: он показывает, предложено ли заведение. Сотруднику без
+  флага администратора эта разметка не достаётся вовсе — ни свёрнутой, ни отключённой:
+  предложено и запрещено разом читается как поломка.
+
+  Бумага и обязательство спрашиваются разом, и порядок тот же, в каком читают сам договор:
+  как называется, по какому номеру узнают, когда подписан, где лежит скан — и уже потом с
+  кем, какого вида и до каких пор.
+
+  Обязательно одно название. Остальное пустует нарочно: договор обогащается со временем, и
+  форма, требующая всего сразу, держала бы известный номер снаружи, пока ищут дату.
+
+  Створка раскрыта там, где ей есть что делать: над пустой полкой — это то место, где
+  отсутствие договоров замечают, — и при отказе, потому что причина, спрятанная под
+  заголовком, — причина, которой никто не видит. Полка, опустошённая отбором, пустой полкой
+  не является, и створка над ней стоит закрытой: сузивший полку до ничего ищет договор, а не
+  заводит его.
+{% endcomment %}
+<details class="mb-4 rounded-lg border border-base-300 bg-base-100 p-3" data-entry="contracts"
+         {% if not whole or entry.errors %}open{% endif %}>
+  <summary class="cursor-pointer text-sm font-medium">Завести договор</summary>
+
+  <form method="post" enctype="multipart/form-data" class="mt-3 space-y-3">
+    {% csrf_token %}
+
+    {% comment %}
+      Причина отказа, не принадлежащая ни одному полю: бессрочность и дата конца спорят
+      парой, и назначить виноватой одну её половину значило бы назвать ошибкой ровно то, что
+      читатель, может быть, и хотел оставить (ADR 0031).
+    {% endcomment %}
+    {% if entry.non_field_errors %}
+      <div class="alert alert-error" role="alert">
+        <span>{{ entry.non_field_errors|join:" " }}</span>
+      </div>
+    {% endif %}
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.title.label }}</legend>
+      {% comment %}
+        Значение печатается обратно в поле: отказ о сроке не должен стоить набранного
+        названия, а форма, перерисованная пустой, стоила бы её целиком.
+      {% endcomment %}
+      <input type="text" name="{{ entry.title.html_name }}"
+             value="{{ entry.title.value|default_if_none:'' }}"
+             maxlength="{{ entry.title.field.max_length }}"
+             required class="input w-full">
+      {% if entry.title.errors %}
+        <p class="text-sm text-error">{{ entry.title.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.doc_no.label }}</legend>
+      <input type="text" name="{{ entry.doc_no.html_name }}"
+             value="{{ entry.doc_no.value|default_if_none:'' }}"
+             maxlength="{{ entry.doc_no.field.max_length }}" class="input w-full">
+      {% if entry.doc_no.errors %}
+        <p class="text-sm text-error">{{ entry.doc_no.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    {% comment %}
+      Дата рисуется своим виджетом: набранная и вернувшаяся с отказом, она обязана прийти
+      обратно в том написании, какое читает `type="date"`, — напечатанная руками, она пришла
+      бы как «1 февраля 2026 г.», поле встало бы пустым, и отправивший второй раз потерял бы
+      её молча.
+    {% endcomment %}
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.issued_at.label }}</legend>
+      {{ entry.issued_at|styled:"input w-full" }}
+      {% if entry.issued_at.errors %}
+        <p class="text-sm text-error">{{ entry.issued_at.errors|join:" " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">{{ entry.scan.label }}</legend>
+      {% comment %}
+        Что принимается и сколько, приходит с самого поля и здесь не переписывается: фильтр
+        диалога, подсказка под полем и отказ отклонённому файлу — одно правило, и три его
+        изложения разошлись бы.
+
+        Файла может не быть вовсе: договор заводят, держа в руках номер и срок, а бумагу
+        сканируют потом.
+      {% endcomment %}
+      <input type="file" name="{{ entry.scan.html_name }}"
+             accept="{{ entry.scan.field.widget.attrs.accept }}" class="file-input w-full">
+      {% if entry.scan.errors %}
+        <p class="text-sm text-error">{{ entry.scan.errors|join:" " }}</p>
+      {% endif %}
+      {% comment %}
+        Файл, унесённый отказом, — единственное, чего форма вернуть не может: значения в
+        `<input type="file">` не вписать, и браузер выбранный путь разметке не отдаёт. Поэтому
+        о нём говорят словами, и только когда он был: молчание прочиталось бы как «файл на
+        месте», и договор завёлся бы без скана, который прикладывали дважды.
+      {% endcomment %}
+      {% if entry.scan_is_chosen_again %}
+        <p class="text-sm text-warning">Файл выбирают заново: отправку вернул отказ, а выбранный файл браузер не возвращает.</p>
+      {% endif %}
+      <p class="label">{{ entry.scan.help_text }}</p>
+    </fieldset>
+
+    {% comment %}
+      Поиск едет на адрес самой полки (`…/contracts/?entry-counterparty_q=пром`) — своей
+      ручки у него нет, как и у всякого отбора в этом проекте. Скан с ним не едет: файл в
+      адресе не значит ничего, а перерисовывается всё равно одна створка контрагента, так
+      что выбранный файл остаётся стоять, где стоял.
+    {% endcomment %}
+    {% url 'contracts:contract_list' as entry_address %}
+    {% include "contracts/_counterparty_choice.html" with field=entry.counterparty query=entry.counterparty_q nothing_found=entry.nothing_found slot="entry-counterparty" address=entry_address scan_name=entry.scan.html_name %}
+
+    {% include "contracts/_contract_conditions.html" with form=entry %}
+
+    {% comment %}
+      Поля может не быть вовсе — форма заводит его только тому, кто ведёт больше одной
+      организации, и довод стоит в ней же. Отсюда и условие на само поле, а не на список его
+      вариантов: наличие поля — единственное, чем разметка узнаёт, задан ли вопрос вообще.
+    {% endcomment %}
+    {% if entry.org %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{{ entry.org.label }}</legend>
+        <select name="{{ entry.org.html_name }}" required class="select w-full">
+          {% for value, label in entry.org.field.choices %}<option value="{{ value }}" {% if entry.org.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        {% if entry.org.errors %}
+          <p class="text-sm text-error">{{ entry.org.errors|join:" " }}</p>
+        {% endif %}
+      </fieldset>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary btn-sm">Завести</button>
+  </form>
+</details>

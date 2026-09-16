@@ -20,6 +20,7 @@ every other screen.
 """
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 # A date read back into `type="date"` is not this section's rule: the правка аренды reads
@@ -166,3 +167,29 @@ class DocumentParticularsForm(forms.ModelForm):
         #: поля, здесь поиск один и ответ у него один.
         self.nothing_found = bool((asked.get(SEARCH) or "").strip()) and not standing
         issuer.offer(standing, chosen=asked.get("issuer_party"))
+
+    def clean_valid_until(self):
+        """Конца срока у бессрочного договора не бывает (ADR 0031).
+
+        Состояний срока три, и два разом не бывает: полка договоров отвечает на «когда
+        кончается», а договор, у которого конца нет по соглашению и при этом заведена дата,
+        отвечает на этот вопрос дважды и по-разному. `contract_display.ending_said` такой спор
+        разрешает при чтении — прочесть его всё равно придётся, потому что в админке Django
+        его заводят, — но заводить его формой значило бы плодить то, что она же и разбирает.
+
+        Отказ отправляет туда, где стоит вторая половина пары: бессрочность правят на экране
+        договора, и здесь её не видно — «снимите галочку» о галочке, которой на экране нет,
+        отправило бы читателя её искать. Тот же приём, что и у отказа менять вид документа,
+        пока условия заполнены (ADR 0035): называется то, что надо сделать прежде.
+
+        Стоит эта проверка здесь, а не на модели, вместе со своей парой из
+        `contracts/contract_form.py`: правило о двух формах, и обе половины его держат формы.
+        """
+        valid_until = self.cleaned_data["valid_until"]
+        terms = self.instance.attached_terms()
+        if valid_until is None or terms is None or not terms.is_perpetual:
+            return valid_until
+        raise ValidationError(
+            "Договор отмечен бессрочным: конца срока у него нет. Снимите бессрочность на "
+            "экране договора, и тогда дата станет его сроком."
+        )
