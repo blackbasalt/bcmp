@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.utils.functional import cached_property
-from django.views.generic import ListView
+from django.views.generic import DetailView, ListView
 
 from bcmp.shelf import also
 from documents.models import Document
@@ -9,6 +9,7 @@ from parties.models import Org
 
 from . import gaps
 from .contract_display import contracts_shown
+from .contract_page import leases_of, particulars
 from .shelf_search import ShelfSearch
 
 
@@ -123,3 +124,44 @@ class ContractListView(LoginRequiredMixin, ListView):
         ссылка возвращается.
         """
         return also(reverse("contracts:contract_list"), self.request.GET, condition)
+
+
+class ContractDetailView(LoginRequiredMixin, DetailView):
+    """Экран одного договора — какое это обязательство и до каких пор.
+
+    Свой адрес и свой экран, а не блок на странице документа: страница документа отвечает
+    «что это за бумага» — реквизиты, близнец, связи, скан, — а этот экран отвечает «какое
+    обязательство и до каких пор». Вопросы разные, и каждый экран ссылается на другой, как
+    карточка БЦ ссылается на свои документы.
+    """
+
+    template_name = "contracts/contract_detail.html"
+    context_object_name = "contract"
+
+    def get_queryset(self):
+        """Договор чужой организации отвечает 404, а не 403, — заслон документов (ADR 0006).
+
+        Ответ не должен подтверждать, что договор существует: отличив «нельзя» от «нет
+        такого», читатель узнал бы, с кем работает другой клиент платформы.
+
+        Вид «Договор» сужает наравне с заслоном: у акта обязательства нет, и открывать его
+        на этом адресе значило бы показать пустую шапку там, где экран обещает срок.
+        """
+        return (
+            Document.objects.visible_to(self.request.user)
+            .filter(kind=Document.Kind.CONTRACT)
+            .select_related("terms__counterparty")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Шапка приходит в разметку уже собранной: какие поля в ней, в каком порядке их
+        # читают и откуда берётся каждое — правило о данных, и решается оно в `contract_page`,
+        # а не между тегами.
+        context["particulars"] = particulars(self.object)
+        # Ничего, а не пустой список, если это не договор аренды: у расходного договора блока
+        # аренд нет вовсе, а не стоит пустым (ADR 0033). Решается это в `contract_page`, где
+        # написан довод, — и там же, а не здесь, потому что «не заведено» и «не бывает» —
+        # разные ответы, и два места, их различающие, однажды ответили бы по-разному.
+        context["leases"] = leases_of(self.object)
+        return context

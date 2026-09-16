@@ -35,6 +35,27 @@
           {% endfor %}
 
           {% comment %}
+            The обязательство this paper records, on the screen kept for it: this page
+            answers «что это за бумага» — реквизиты, привязки, скан, близнец — and the
+            договор's own screen answers «какое обязательство и до каких пор» (ADR 0030).
+            Each leads to the other, and neither repeats the other.
+
+            A документ that is not a договор carries no such row at all — not even an empty
+            one: a row always reading «— нет данных» on an акт would teach the reader that an
+            акт has a договор nobody got round to entering. Whether it stands is asked of the
+            условия beside the документ rather than of the вид compared with a literal: every
+            договор carries a строка условий and nothing else does (ADR 0035), so the question
+            has one answer and the markup carries no second account of how «Договор» is
+            spelled.
+          {% endcomment %}
+          {% if terms %}
+            <dt class="opacity-60">Договор</dt>
+            <dd data-field="contract">
+              <a class="link" href="{% url 'contracts:contract_detail' document.pk %}">Вид, контрагент и срок</a>
+            </dd>
+          {% endif %}
+
+          {% comment %}
             The привязки: which BCs this paper belongs to. Each one leads to the building
             it names — the reader arrived here from the shelf, and from a договор on
             Manhattan the next question is about Manhattan. A document attached to nothing

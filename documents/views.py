@@ -164,6 +164,10 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
             # the same query as the document itself.
             "org__party",
             "issuer_party",
+            # The условия ride along too: the page asks whether this документ is a договор
+            # — the row leading to its own screen stands on that answer — and asked in the
+            # markup it would be a second query on every разворот.
+            "terms",
         )
 
     def get_context_data(self, **kwargs):
@@ -178,6 +182,10 @@ class DocumentDetailView(LoginRequiredMixin, DetailView):
         # близнецы and does not make them (ADR 0007), so the page says which of the two it
         # is. A документ the ИИ-управляющий cannot read is identifiable only if it says so.
         context["twin"] = self.twin
+        # Условия договора, или ничего: по ним страница решает, вести ли отсюда на экран
+        # обязательства. Спрошено здесь, а не в разметке, — сравнение вида с литералом между
+        # тегами было бы вторым написанием слова «Договор» (ADR 0035).
+        context["terms"] = self.object.attached_terms()
         # The forms go only to whoever may write: an action an employee cannot perform is
         # not offered to them either. A rejection brings its own already filled-in form, so
         # the empty one is only put in its place.

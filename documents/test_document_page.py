@@ -149,6 +149,32 @@ def test_a_document_without_a_file_offers_no_download_from_the_page(client, memb
     assert fields_on(page)["original"] == "— нет данных"
 
 
+def test_the_page_of_a_contract_leads_to_the_obligation_it_records(
+    client, member, downtown, make_contract
+):
+    """Договор — документ вида «Договор» (ADR 0030), и у обязательства свой экран: эта
+    страница отвечает «что это за бумага», тот — «какое обязательство и до каких пор», и
+    каждый ведёт к другому."""
+    contract = make_contract(downtown, "Договор на обслуживание лифтов")
+    client.force_login(member)
+
+    _, page = page_of(client, contract)
+
+    assert reverse("contracts:contract_detail", args=[contract.pk]) in page
+
+
+def test_a_paper_that_is_no_obligation_names_no_contract_at_all(client, member, downtown):
+    """У акта обязательства нет, и строка «Договор» на нём не стоит вовсе — ни прочерком:
+    всегда пустая строка учила бы читателя, что у акта бывает договор, которого никто не
+    завёл."""
+    document = make_document(downtown, "Акт разграничения балансовой принадлежности")
+    client.force_login(member)
+
+    _, page = page_of(client, document)
+
+    assert "contract" not in fields_on(page)
+
+
 # Who may reach the page
 
 

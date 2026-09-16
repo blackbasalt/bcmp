@@ -117,6 +117,22 @@ def test_the_contracts_item_is_highlighted_on_the_shelf_of_contracts(client, mem
     assert "aria-current" not in items["parties"]
 
 
+def test_the_contracts_item_stays_highlighted_on_a_contract(client, member, downtown, make_contract):
+    """Экран договора — тот же раздел, что и полка: подсветка держится за раздел, а не за
+    экран. Договор — документ вида «Договор» (ADR 0030), и адрес его лежит в `contracts`
+    именно затем, чтобы меню не зажгло «Документы» на обязательстве."""
+    contract = make_contract(downtown, "Договор на обслуживание лифтов")
+    client.force_login(member)
+
+    items = sidebar(client, reverse("contracts:contract_detail", args=[contract.pk]))
+
+    assert 'aria-current="page"' in items["contracts"]
+    assert "aria-current" not in items["building_passport"]
+    assert "aria-current" not in items["documents"]
+    assert "aria-current" not in items["rooms"]
+    assert "aria-current" not in items["parties"]
+
+
 def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, manhattan):
     """A further section must not break the first: inside a building, buildings are highlighted."""
     client.force_login(member)

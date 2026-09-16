@@ -21,7 +21,7 @@ from django.db import models
 
 from building_passport.models import Space
 from building_passport.period import refuse_a_period_that_ends_before_it_begins
-from documents.models import ContractTerms, Document
+from documents.models import Document
 
 # `CommonModel` is the stamp of who wrote a row and when. It is imported rather than copied
 # out a fourth time: it is abstract, so nothing about the table depends on which app the
@@ -200,6 +200,10 @@ class Lease(CommonModel):
         помещений» о нём не сказано (ADR 0035): на полке договоров пустой вид обычен, а
         аренда вешается на бумагу, про которую уже известно, что она за бумага.
 
+        Сам вопрос задан не здесь, а на условиях: тем же `about_letting_rooms` экран договора
+        решает, стоять ли на нём блоку аренд, и два написания одного условия разошлись бы
+        молча — блок обещал бы аренды там, где этот отказ их не пускает.
+
         Документ, у которого условий нет вовсе, — не договор, и отвергается он здесь же:
         отказ, стоящий следом, сличает контрагента и на пустоте сломался бы.
         """
@@ -209,7 +213,7 @@ class Lease(CommonModel):
                 f"{self.contract.get_kind_display().lower()}: "
                 "аренда висит только на договоре вида «Аренда помещений»."
             )
-        if terms.kind == ContractTerms.Kind.LEASE:
+        if terms.about_letting_rooms():
             return
         named = terms.get_kind_display() if terms.kind else "вид не заведён"
         raise ValidationError(

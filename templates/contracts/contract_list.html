@@ -56,11 +56,12 @@
                 <tr data-contract="{{ contract.pk }}">
                   {% if organisation_named %}<td class="opacity-60">{{ contract.org.name }}</td>{% endif %}
                   {% comment %}
-                    Название не ведёт никуда: свой экран договор получает отдельным тикетом,
-                    а ссылка на страницу документа отвечала бы «что это за бумага» — вопрос,
-                    про который этот раздел не заведён.
+                    Название ведёт на экран самого договора, а не на страницу документа:
+                    полка отвечает «который», экран договора — «какое обязательство и до
+                    каких пор», а «что это за бумага» отвечает уже страница документа, куда
+                    ведёт сам экран договора.
                   {% endcomment %}
-                  <td>{{ contract.title }}</td>
+                  <td><a class="link" href="{% url 'contracts:contract_detail' contract.pk %}">{{ contract.title }}</a></td>
                   <td class="whitespace-nowrap">{{ contract.doc_no|or_missing }}</td>
                   {% comment %}
                     Прочерк, пока вид не проставлен: пустовать он может (ADR 0035), но это
