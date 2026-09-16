@@ -61,6 +61,12 @@ def taken_with(document):
     the привязки go too, but they are the документ's own presence on a building's card and
     outlive it in no form at all — naming them would offer the reader something to weigh
     that weighs nothing.
+
+    Условия договора are named on the same ground the близнец is, and not on the привязки':
+    контрагент, вид договора and условия срока are written by hand and written down nowhere
+    else, so «удалить документ» over a договор destroys facts the reader is not looking at.
+    Empty условия are not named — every договор carries a строка (ADR 0035), and naming one
+    that holds nothing would report a loss on every удаление of every contract scan.
     """
     taken = []
     if document.file_uri:
@@ -68,6 +74,9 @@ def taken_with(document):
     twin = document.attached_twin()
     if twin is not None:
         taken.append(Taken("twin", twin_and_its_pictures(twin.images.count())))
+    terms = document.attached_terms()
+    if terms is not None and terms.filled():
+        taken.append(Taken("terms", "условия договора"))
     return tuple(taken)
 
 

@@ -140,6 +140,36 @@ def test_a_twin_without_pictures_is_named_on_its_own(client, administrator, down
     assert taken_on(response.content.decode()) == {"twin": "близнец"}
 
 
+def test_the_confirmation_names_the_terms_of_a_contract_somebody_filled(
+    client, administrator, downtown, alpha
+):
+    """Контрагент и срок записаны только здесь, и «удалить документ» уносит их (ADR 0013)."""
+    document = make_document(downtown, "Договор аренды №17", kind=Document.Kind.CONTRACT)
+    document.attached_terms().counterparty = alpha
+    document.attached_terms().save()
+    client.force_login(administrator)
+
+    response = ask_to_delete(client, document)
+
+    assert taken_on(response.content.decode()) == {"terms": "условия договора"}
+
+
+def test_a_contract_nobody_filled_in_names_nothing_in_the_confirmation(
+    client, administrator, downtown
+):
+    """Строка условий есть у каждого договора, и пустая она не потеря, а обычное состояние.
+
+    Названная, она сообщала бы об утрате при удалении всякого скана, залитого пачкой, —
+    и предупреждение, срабатывающее всегда, перестают читать.
+    """
+    document = make_document(downtown, "Договор без условий", kind=Document.Kind.CONTRACT)
+    client.force_login(administrator)
+
+    response = ask_to_delete(client, document)
+
+    assert taken_on(response.content.decode()) == {}
+
+
 def test_a_document_with_nothing_attached_names_nothing_in_the_confirmation(
     client, administrator, downtown
 ):

@@ -1,7 +1,8 @@
 import uuid
 
 from django.contrib.auth.models import User
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.db.models import F, Q
 from django.db.models.functions import Lower, Now
 
@@ -79,10 +80,11 @@ class DocumentQuerySet(models.QuerySet):
 class Document(CommonModel):
     """A file attached to a passport entity: an act, a certificate, a protocol, a permit.
 
-    Nothing is computed from a document: whatever has a state of its own is created as an
-    entity, and a document is merely attached to it. Hence a lease is an entity with its
-    own subject rather than a document of kind `contract`, and a floor plan is not a
-    document: a plan shows, a document attests.
+    Nothing is computed from a document: an entity is created for what a document does not
+    carry, and a document is merely attached to it. Hence a floor plan is not a document —
+    a plan shows, a document attests — while a договор is not an entity: номер, дата, срок,
+    файл and организация are on this row already, and what is missing is the контрагент and
+    the условия срока, which live in one `ContractTerms` beside it (ADR 0030).
 
     It is visible through its own organisation, not through the entity it is linked to
     (ADR 0006). The file lies in the same protected directory as the drawings, and
@@ -126,8 +128,10 @@ class Document(CommonModel):
     file_uri = models.FileField(upload_to=document_file_path, max_length=512, blank=True)
     file_hash = models.CharField(max_length=128, blank=True, null=True)
     issued_at = models.DateField(blank=True, null=True)
-    #: A field without behaviour: the deadline is stored and shown, but threatens nothing
-    #: and counts nothing — no one has ordered a register of deadlines yet.
+    #: When the paper stops being in force. Empty means nobody entered it and never means
+    #: «не кончается»: a договор that does not end says so with `ContractTerms.is_perpetual`
+    #: beside it, because one empty date holding both readings would quietly hide a договор
+    #: expiring next month (ADR 0031).
     valid_until = models.DateField(blank=True, null=True)
     issuer_party = models.ForeignKey(Party, null=True, blank=True, on_delete=models.SET_NULL, related_name="issued_documents")
     #: Also without behaviour: there is no "supersedes such-and-such" relation between
@@ -159,6 +163,98 @@ class Document(CommonModel):
 
     def __str__(self):
         return self.title
+
+    def clean(self):
+        """The reason for a refusal is named on the form, not thrown as a 500 on save."""
+        super().clean()
+        self._refuse_a_kind_that_would_orphan_its_terms(self._stored_terms())
+
+    def save(self, *args, **kwargs):
+        """A документ вида «Договор» carries its условия, and it never carries them alone.
+
+        Two halves of one rule, and they stand here rather than on a form so that a script
+        gets them in the same words (ADR 0035):
+
+        - **the строка условий is entered with the документ**, filled or not. Forty scans
+          carried across in a batch reach the полка before anybody has said what вид of
+          договор they are, and a полка kept for the sake of losing no obligation must not
+          be silent about forty of them.
+        - **the вид may not leave «Договор» while the условия are filled.** Renaming a
+          «Договор» into an «Акт» would orphan a контрагент and a срок somebody typed by
+          hand; the refusal names what to clear first.
+
+        An empty строка leaves with the вид it was entered for. There is nothing in it to
+        orphan, and a row called «условия договора» hanging off an акт would be a second
+        thing the table means.
+        """
+        stored = self._stored_terms()
+        self._refuse_a_kind_that_would_orphan_its_terms(stored)
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            self._keep_the_terms_beside_the_contract(stored)
+
+    def _stored_terms(self):
+        """The условия as the table holds them now — never as this instance remembers them.
+
+        Asked of the database rather than through `attached_terms`, and that is the whole
+        point of the method: a документ read before somebody filled its условия remembers
+        them empty, and a refusal standing on that memory would let the вид go and take a
+        контрагент with it — the very loss ADR 0035 is written against.
+
+        A документ being entered is the one case that costs nothing: nothing can be stored
+        against a row that is not there yet, and asking anyway would be a query per file in
+        a batch of two hundred.
+
+        Two ways round this remain, and they are the ways round every refusal in this
+        project: `QuerySet.update`, which calls no `save` at all, and a `Document` built by
+        hand around somebody else's ключ. Both are code writing to the table with the model
+        set aside, and neither is a path a form or a script takes by accident.
+        """
+        if self._state.adding:
+            return None
+        return ContractTerms.objects.filter(document_id=self.pk).first()
+
+    def _refuse_a_kind_that_would_orphan_its_terms(self, stored):
+        """The вид may not leave «Договор» while somebody's условия stand on it (ADR 0035)."""
+        if self.kind == self.Kind.CONTRACT or stored is None or not stored.filled():
+            return
+        raise ValidationError(
+            {
+                "kind": "Сначала очистите условия договора: "
+                + ", ".join(stored.what_is_filled())
+                + " — пока они заполнены, документ остаётся «Договором»."
+            }
+        )
+
+    def _keep_the_terms_beside_the_contract(self, stored):
+        """One строка условий for a договор, and none for anything else."""
+        if self.kind == self.Kind.CONTRACT:
+            if stored is None:
+                ContractTerms.objects.create(document=self)
+            return
+        if stored is not None:
+            # Empty by the refusal above — it is the only way the вид got this far.
+            stored.delete()
+            self._forget_any_remembered_terms()
+
+    def _forget_any_remembered_terms(self):
+        """Стереть память экземпляра об условиях, которых больше нет.
+
+        Without this `attached_terms` would keep handing back a row the table no longer
+        holds — and it is asked right after a save by whoever did the saving.
+        """
+        remembered = type(self).terms.related
+        if remembered.is_cached(self):
+            remembered.delete_cached_value(self)
+
+    def attached_terms(self):
+        """The условия of this договор, or `None` — asked as a question with two answers.
+
+        `None` is the ordinary answer for every документ that is not a договор, so it must
+        not be an attribute that raises: the same shape `attached_twin` is asked in, and for
+        the same reason.
+        """
+        return getattr(self, "terms", None)
 
     def attached_twin(self):
         """The близнец of this документ, or `None` — asked as a question with two answers.
@@ -347,3 +443,101 @@ class DocumentLink(models.Model):
             )
         ]
 
+
+class ContractTerms(CommonModel):
+    """Условия договора — контрагент, вид и условия срока, сбоку от документа вида «Договор».
+
+    A договор is not an entity of its own (ADR 0030). The документ already carries номер,
+    дата, срок, файл and организация, and the полка документов already does отбор, поиск,
+    изоляция and пакетная загрузка; a second row holding a second номер, a second дата and a
+    second скан would part from the first, as every second truth in this project does. What
+    is left over is here, and only what is left over.
+
+    **Своей организации у условий нет.** Whose договор it is, the документ says, and it says
+    it through the one chokepoint the section has had since ADR 0006. A second column
+    deciding whose data to show is a way for the two to drift apart — the same argument that
+    keeps `org` off an аренда (ADR 0018).
+
+    **Контрагент is a field of its own and never `issuer_party`.** «Кем выдан» about a
+    договор means nothing: a договор is not issued, it is signed by two. So a документ вида
+    «Договор» has two columns for a Сторона and leaves one of them empty — better an empty
+    column than a caption on the screen that lies.
+
+    **Одна таблица, а не пять по числу видов.** Five would be five guesses at fields no
+    screen reads, and this very schema already carries that mistake: four of
+    `DocumentLink.EntityType`'s ten values point at tables that have never existed. A table
+    per вид arrives when a вид has a field with a reader.
+
+    Род — доходный or расходный — is not here and is not anywhere: it is derived from the
+    вид by `contracts/genus.py`, because every вид stands on one side.
+    """
+
+    class Kind(models.TextChoices):
+        LEASE = "lease", "Аренда помещений"
+        EXTRA_SERVICES = "extra_services", "Доп услуги"
+        OPERATION = "operation", "Эксплуатация"
+        CAPITAL_WORKS = "capital_works", "Капитальные работы"
+        SUPPLY = "supply", "Поставка ТМЦ"
+
+    #: Каждое условие — своим именем, тем самым, каким отказ называет, что очистить. Порядок
+    #: тот же, в каком поля стоят на модели: читатель ищет названное сверху вниз.
+    CONDITIONS = (
+        ("counterparty_id", "контрагент"),
+        ("kind", "вид договора"),
+        ("is_perpetual", "бессрочность"),
+        ("auto_prolongs", "автопролонгация"),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.OneToOneField(
+        Document, on_delete=models.CASCADE, related_name="terms", verbose_name="документ"
+    )
+    #: The other side. Our own side needs no column — `Document.org` names it. `PROTECT`
+    #: rather than a cascade, as with an арендатор: a Сторона is entered once for the whole
+    #: system, and deleting one must not quietly take an obligation with it.
+    counterparty = models.ForeignKey(
+        Party,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="contracts",
+        verbose_name="контрагент",
+    )
+    #: Может пустовать, и это обычное состояние, а не пробел в проверке (ADR 0035): forty
+    #: scans reach the полка before anybody proves what вид they are, and a вид demanded at
+    #: entry would keep them off it.
+    kind = models.CharField(
+        max_length=16, choices=Kind.choices, null=True, blank=True, verbose_name="вид договора"
+    )
+    #: Бессрочный — конца срока нет по самому соглашению. A flag beside `valid_until` and not
+    #: an empty date: the полка answers «когда кончается», and one emptiness holding two
+    #: meanings would hide a договор expiring next month (ADR 0031).
+    is_perpetual = models.BooleanField(default=False, verbose_name="бессрочность")
+    #: Продлевается сам, пока ни одна сторона не заявила обратного. It changes what a row on
+    #: the полка says, not whether the row is there at all (ADR 0031).
+    auto_prolongs = models.BooleanField(default=False, verbose_name="автопролонгация")
+
+    class Meta:
+        verbose_name = "условия договора"
+        verbose_name_plural = "условия договоров"
+
+    def __str__(self):
+        return f"Условия: {self.document.title}"
+
+    def what_is_filled(self) -> tuple[str, ...]:
+        """Какие условия кто-то завёл — их именами, в порядке полей.
+
+        Asked by the refusal that keeps the вид документа on «Договоре»: telling somebody
+        «очистите условия» without saying which of the four are filled sends them to look
+        through all four.
+        """
+        return tuple(name for field, name in self.CONDITIONS if getattr(self, field))
+
+    def filled(self) -> bool:
+        """Завёл ли кто-нибудь хоть одно условие.
+
+        Read off the same four fields the refusal names, and from here: a second place
+        deciding what «заполнено» means would one day refuse a вид nothing was standing on,
+        or let one go that something was.
+        """
+        return bool(self.what_is_filled())
