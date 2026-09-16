@@ -213,6 +213,30 @@ def test_the_edit_form_comes_up_filled_in_with_the_lease_as_it_stands(
     }
 
 
+def test_correcting_a_lease_whose_contract_has_since_drifted_names_the_refusal(
+    entering, kab305, alpha, petrov, downtown, make_lease_contract, make_lease
+):
+    """Отказ о договоре называется на форме, а не бросается пятисоткой.
+
+    Поля «договор» на этой форме нет и не будет: прицепляют аренду на экране договора
+    (ADR 0032). Условия бумаги правят там же, и разойтись с арендой они могут когда
+    угодно — контрагента сменили, а аренда на этой бумаге уже висит. Правка ставки после
+    этого обязана сказать, что не так, и оставить аренду как была.
+    """
+    contract = make_lease_contract(downtown, alpha)
+    lease = make_lease(kab305, alpha, rate=4000, contract=contract)
+    terms = contract.attached_terms()
+    terms.counterparty = petrov
+    terms.save()
+
+    response = correct(entering, lease, area_m2="40", rate="4500")
+
+    assert response.status_code == 200
+    assert "контрагент договора" in stated(response.content.decode())
+    lease.refresh_from_db()
+    assert lease.rate == 4000
+
+
 def test_a_corrected_rate_is_saved_in_place(entering, kab305, alpha, make_lease):
     """Исправленная ставка не заводит второй аренды рядом с неправильной."""
     lease = make_lease(kab305, alpha, area_m2=40, rate=4000)

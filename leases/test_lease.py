@@ -128,21 +128,14 @@ def test_a_period_with_no_end_is_a_lease_to_this_day(kab305, alpha, make_lease):
 # Договор — необязательный, и с тремя отказами вокруг
 
 
-def lease_contract(tenant, **fields):
-    """Условия договора, на котором аренда висеть вправе: вид «Аренда помещений» и арендатор.
-
-    Both are named on every договор staged here because a договор missing either of them is
-    refused — and a test about one refusal must not trip over another.
-    """
-    return dict(kind=ContractTerms.Kind.LEASE, counterparty=tenant, **fields)
-
-
-def test_a_lease_may_hang_on_a_contract(kab305, alpha, downtown, make_contract, make_lease):
+def test_a_lease_may_hang_on_a_contract(
+    kab305, alpha, downtown, make_lease_contract, make_lease
+):
     """«По какому договору сидит ТОО «Альфа»» is answered by the аренда itself (ADR 0032).
 
     A связь and not a number: the документ already holds the номер, the дата and the скан.
     """
-    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+    contract = make_lease_contract(downtown, alpha)
 
     lease = make_lease(kab305, alpha, contract=contract)
 
@@ -174,7 +167,7 @@ def test_a_lease_no_longer_carries_a_contract_number():
 
 
 def test_a_contract_of_another_organisation_is_refused(
-    kab305, alpha, central, make_contract, make_lease
+    kab305, alpha, central, make_lease_contract, make_lease
 ):
     """Чья аренда — вопрос об одном клиенте платформы, и ответ на него один (ADR 0018).
 
@@ -182,7 +175,7 @@ def test_a_contract_of_another_organisation_is_refused(
     another организация hung on it would be a second answer — and the аренда would be читаема
     by one client and its бумага by another.
     """
-    theirs = make_contract(central, "Договор аренды №17", **lease_contract(alpha))
+    theirs = make_lease_contract(central, alpha)
 
     with pytest.raises(ValidationError) as refusal:
         make_lease(kab305, alpha, contract=theirs)
@@ -240,14 +233,14 @@ def test_a_document_that_is_not_a_contract_at_all_is_refused(
 
 
 def test_a_tenant_who_is_not_the_counterparty_of_the_contract_is_refused(
-    kab305, alpha, petrov, downtown, make_contract, make_lease
+    kab305, alpha, petrov, downtown, make_lease_contract, make_lease
 ):
     """Один факт не заводит двух записей: подписал бумагу один, сидит по ней другой.
 
     Снять этот отказ позже стоит одну миграцию; добавить позже — значит мирить строки,
     которые уже разъехались (ADR 0032).
     """
-    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(petrov))
+    contract = make_lease_contract(downtown, petrov)
 
     with pytest.raises(ValidationError) as refusal:
         make_lease(kab305, alpha, contract=contract)
@@ -272,10 +265,10 @@ def test_a_contract_with_no_counterparty_is_refused(
 
 
 def test_the_same_party_on_both_sides_is_accepted(
-    kab305, alpha, downtown, make_contract, make_lease
+    kab305, alpha, downtown, make_lease_contract, make_lease
 ):
     """И это обычный случай: договор подписан с тем, кто по нему и сидит."""
-    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+    contract = make_lease_contract(downtown, alpha)
 
     lease = make_lease(kab305, alpha, contract=contract)
 
@@ -341,7 +334,7 @@ def test_a_lease_on_a_technical_room_is_accepted(first_floor, alpha, make_lease)
 
 
 def test_a_lease_outside_the_term_of_its_contract_is_accepted(
-    kab305, alpha, downtown, make_contract, make_lease
+    kab305, alpha, downtown, make_lease_contract, make_lease
 ):
     """Сроков два, и они свободны друг от друга (ADR 0031, ADR 0032).
 
@@ -350,12 +343,7 @@ def test_a_lease_outside_the_term_of_its_contract_is_accepted(
     потому её нет — здесь это сказано именем теста, чтобы следующий читатель не завёл её как
     недостающую.
     """
-    contract = make_contract(
-        downtown,
-        "Договор аренды №17",
-        valid_until=date(2026, 6, 30),
-        **lease_contract(alpha),
-    )
+    contract = make_lease_contract(downtown, alpha, valid_until=date(2026, 6, 30))
 
     lease = make_lease(
         kab305, alpha, contract=contract, valid_from=date(2020, 1, 1), valid_to=date(2030, 1, 1)
@@ -365,7 +353,7 @@ def test_a_lease_outside_the_term_of_its_contract_is_accepted(
 
 
 def test_deleting_the_contract_leaves_its_leases_standing(
-    kab305, alpha, downtown, make_contract, make_lease
+    kab305, alpha, downtown, make_lease_contract, make_lease
 ):
     """Удаление договора аренды не уносит: ссылка обнуляется, аренды стоят (ADR 0034).
 
@@ -373,7 +361,7 @@ def test_deleting_the_contract_leaves_its_leases_standing(
     помещении, — историю, которой в бумаге нет и которую взять больше неоткуда. Уносится
     договор тем же `discard`, которым его удаляют с экрана (ADR 0013).
     """
-    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+    contract = make_lease_contract(downtown, alpha)
     lease = make_lease(kab305, alpha, area_m2=40, rate=12000, contract=contract)
 
     contract.discard()

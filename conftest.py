@@ -20,7 +20,7 @@ import pytest
 from django.utils import timezone
 
 from building_passport.models import Space
-from documents.models import Document
+from documents.models import ContractTerms, Document
 from leases.models import Lease
 from parties.models import Org, OrgMembership, Party
 
@@ -252,3 +252,21 @@ def make_contract(db):
         return document
 
     return _make_contract
+
+
+@pytest.fixture
+def make_lease_contract(make_contract):
+    """Договор, на котором аренда висеть вправе: вид «Аренда помещений» и арендатор контрагентом.
+
+    Оба условия названы на каждом таком договоре, потому что договор без любого из них аренда
+    не принимает, — и тест об одном отказе не должен спотыкаться о другой. Стоит рядом с
+    `make_contract`, а не в одном из наборов: об этом договоре спрашивают и аренда, и полка
+    помещений, считающая аренды без договора.
+    """
+
+    def _make_lease_contract(org, tenant, title="Договор аренды №17", **fields):
+        return make_contract(
+            org, title, kind=ContractTerms.Kind.LEASE, counterparty=tenant, **fields
+        )
+
+    return _make_lease_contract

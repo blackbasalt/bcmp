@@ -78,10 +78,12 @@ class RoomListView(LoginRequiredMixin, ListView):
             # condition the «свободно» отбор narrows by, hung on the row as a column so that
             # the figure under the table and the отбор its link sets are one answer.
             .annotate(**free_of_each_room(self.today))
-            # И сколько действующих аренд помещения не называют договора — снова в том же
-            # запросе. Число под таблицей считается по показанным строкам, и столбец на
-            # строке — это то, из чего оно складывается.
-            .annotate(**contractless_of_each_room(self.today))
+            # And how many of each помещение's аренды name no договор, in that same query
+            # again. The figure beneath the table is counted over the rows that are printed,
+            # and this column is what it is added up from. It asks for no день: the аренды
+            # that have ended are counted too, because a договор deleted from under them left
+            # the same gap in the record (ADR 0034).
+            .annotate(**contractless_of_each_room())
             .order_by("building__name", "building__code", "floor_number", "code")
         )
 
@@ -129,8 +131,9 @@ class RoomListView(LoginRequiredMixin, ListView):
         # «Аренд без договора: N» — the gap an optional link leaves, named on the screen that
         # holds the аренды (ADR 0032). Counted over exactly the rows that are printed, like
         # the two figures before it, and in арендах rather than in помещениях: three
-        # арендаторы in one помещение hold three papers. No link: unlike «свободно», there is
-        # no condition behind it, and a полка does not offer an отбор it cannot make.
+        # арендаторы in one помещение hold three papers between them. No link: unlike
+        # «свободно», there is no condition behind it, and a полка does not offer an отбор it
+        # cannot make (ADR 0014).
         context["leases_without_contract"] = sum(room.contractless_here for room in rooms)
         # The отбор, back on the screen it was typed into: it says both what was asked and
         # whether anything was, and the markup asks it for both. Handed over as one thing

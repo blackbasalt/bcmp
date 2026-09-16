@@ -154,16 +154,28 @@ class Lease(CommonModel):
         super().save(*args, **kwargs)
 
     def _refuse_a_contract_this_lease_cannot_hang_on(self):
-        """Три отказа вокруг необязательной связи — и все три о договоре, что на нём висит.
+        """Три отказа вокруг необязательной связи — и все три о договоре, на котором висят.
 
         Отсутствие договора не проверяется ничем: аренда без бумаги — верная запись, а не
         половина (ADR 0032), и пробел называет полка помещений числом на строке счёта.
+
+        Условия спрашиваются здесь и раздаются отказам, а не спрашиваются каждым: порядок
+        двух последних несущий — контрагента сличает тот, кто уже знает, что условия есть,
+        потому что документ без них отвергнут отказом перед ним. Общая строка делает эту
+        опору видимой: отказ, получающий условия на руки, не может оказаться первым.
+
+        Ни одно из трёх на поле не встаёт, в отличие от отказа периоду, называющего «по»:
+        поля «договор» на форме аренды нет и не будет — прицепляют аренду на экране договора,
+        — а отказ, назвавший поле, которого форма не знает, роняет карточку пятисоткой вместо
+        того, чтобы сказать, что не так. Карточка держит место под такой отказ с того дня,
+        как форма заведена.
         """
         if self.contract_id is None:
             return
+        terms = self.contract.attached_terms()
         self._refuse_a_contract_of_another_organisation()
-        self._refuse_a_contract_that_is_not_about_letting_rooms()
-        self._refuse_a_tenant_who_did_not_sign_it()
+        self._refuse_a_contract_that_is_not_about_letting_rooms(terms)
+        self._refuse_a_tenant_who_did_not_sign_it(terms)
 
     def _refuse_a_contract_of_another_organisation(self):
         """Договор ведёт та же организация, чьё помещение (ADR 0018).
@@ -175,15 +187,11 @@ class Lease(CommonModel):
         if self.contract.org_id == self.space.org_id:
             return
         raise ValidationError(
-            {
-                "contract": (
-                    f"Договор ведёт другая организация — «{self.contract.org.name}», "
-                    f"а помещение принадлежит «{self.space.org.name}»."
-                )
-            }
+            f"Договор ведёт другая организация — «{self.contract.org.name}», "
+            f"а помещение принадлежит «{self.space.org.name}»."
         )
 
-    def _refuse_a_contract_that_is_not_about_letting_rooms(self):
+    def _refuse_a_contract_that_is_not_about_letting_rooms(self, terms):
         """Вид договора — «Аренда помещений», и никакой другой.
 
         Аренда под поставкой ТМЦ — это опечатка выпадающего списка, и поймать её можно
@@ -191,31 +199,25 @@ class Lease(CommonModel):
         вида ещё не проставили, отвергается тем же отказом и по той же причине — «Аренда
         помещений» о нём не сказано (ADR 0035): на полке договоров пустой вид обычен, а
         аренда вешается на бумагу, про которую уже известно, что она за бумага.
+
+        Документ, у которого условий нет вовсе, — не договор, и отвергается он здесь же:
+        отказ, стоящий следом, сличает контрагента и на пустоте сломался бы.
         """
-        terms = self.contract.attached_terms()
         if terms is None:
             raise ValidationError(
-                {
-                    "contract": (
-                        f"«{self.contract.title}» — не договор, а "
-                        f"{self.contract.get_kind_display().lower()}: "
-                        "аренда висит только на договоре вида «Аренда помещений»."
-                    )
-                }
+                f"«{self.contract.title}» — не договор, а "
+                f"{self.contract.get_kind_display().lower()}: "
+                "аренда висит только на договоре вида «Аренда помещений»."
             )
         if terms.kind == ContractTerms.Kind.LEASE:
             return
         named = terms.get_kind_display() if terms.kind else "вид не заведён"
         raise ValidationError(
-            {
-                "contract": (
-                    "Аренда висит только на договоре вида «Аренда помещений», "
-                    f"а у «{self.contract.title}» — {named}."
-                )
-            }
+            "Аренда висит только на договоре вида «Аренда помещений», "
+            f"а у «{self.contract.title}» — {named}."
         )
 
-    def _refuse_a_tenant_who_did_not_sign_it(self):
+    def _refuse_a_tenant_who_did_not_sign_it(self, terms):
         """Арендатор аренды и контрагент договора — одна Сторона (ADR 0032).
 
         Расхождение здесь — это два ответа на «кто сидит по этой бумаге», и разъехавшиеся
@@ -223,26 +225,17 @@ class Lease(CommonModel):
         пустота — не «любой», сойтись с арендатором ей пока нечем.
 
         Спрашивается ключ, а не Сторона: сравнение объектов стоило бы запроса на каждую
-        сторону, а ключ уже лежит в обеих строках.
+        сторону, а ключ уже лежит в обеих строках. Условия приходят на руки заполненными
+        хотя бы видом: документ без них отвергнут отказом перед этим.
         """
-        terms = self.contract.attached_terms()
         if terms.counterparty_id == self.tenant_id:
             return
         if terms.counterparty_id is None:
             raise ValidationError(
-                {
-                    "contract": (
-                        f"У договора «{self.contract.title}» контрагент не заведён — "
-                        "заведите его, и это будет арендатор аренды."
-                    )
-                }
+                f"У договора «{self.contract.title}» контрагент не заведён — "
+                "заведите его, и это будет арендатор аренды."
             )
         raise ValidationError(
-            {
-                "contract": (
-                    f"Арендатор аренды — «{self.tenant.name}», а контрагент договора — "
-                    f"«{terms.counterparty.name}»: "
-                    "по одной бумаге сидит тот, кто её подписал."
-                )
-            }
+            f"Арендатор аренды — «{self.tenant.name}», а контрагент договора — "
+            f"«{terms.counterparty.name}»: по одной бумаге сидит тот, кто её подписал."
         )
