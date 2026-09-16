@@ -134,13 +134,19 @@
           арендопригодных помещений stand inside another one and metres would count them
           twice by an unknown amount (ADR 0019).
 
-          Each is said only when there is something to say: «свободно 0» and «площадь не
-          заведена у 0» are lines about nothing, and their links would lead to an empty
-          полка.
+          «Аренд без договора: K» stands third and is not a link: the two figures before it
+          each set a condition of the отбор, and this one has none to set — a полка does not
+          offer to narrow by a question it cannot ask (ADR 0014). It is counted in арендах
+          and not in помещениях, because three арендаторы in one помещение hold three papers
+          between them (ADR 0032).
+
+          Each is said only when there is something to say: «свободно 0», «площадь не
+          заведена у 0» and «аренд без договора: 0» are lines about nothing, and the links
+          of the first two would lead to an empty полка.
         {% endcomment %}
         {# `data-count` is the screen's contract: the line that says how much of the полка is on screen. #}
         <p class="text-sm opacity-70" data-count="rooms">
-          {{ shown }}{% if free_rooms %} · свободно <a class="link" href="{{ free_rooms_url }}">{{ free_rooms }}</a>{% endif %}{% if without_area %} · площадь не заведена у <a class="link" href="{{ without_area_url }}">{{ without_area }}</a>{% endif %}
+          {{ shown }}{% if free_rooms %} · свободно <a class="link" href="{{ free_rooms_url }}">{{ free_rooms }}</a>{% endif %}{% if without_area %} · площадь не заведена у <a class="link" href="{{ without_area_url }}">{{ without_area }}</a>{% endif %}{% if leases_without_contract %} · аренд без договора: {{ leases_without_contract }}{% endif %}
         </p>
       </div>
     </div>

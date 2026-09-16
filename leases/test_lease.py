@@ -24,7 +24,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 
-from documents.models import Document, DocumentLink
+from documents.models import ContractTerms, Document, DocumentLink
 from leases.models import Lease
 from parties.models import PartyRole
 
@@ -42,14 +42,13 @@ def test_a_lease_says_who_sits_where_on_what_terms_and_until_when(kab305, alpha,
         landlord=petrov,
         area_m2=40,
         rate=12000,
-        contract_no="№17",
         valid_from=date(2026, 1, 1),
         valid_to=date(2026, 12, 31),
     )
 
     lease.refresh_from_db()
     assert (lease.space, lease.tenant, lease.landlord) == (kab305, alpha, petrov)
-    assert (lease.area_m2, lease.rate, lease.contract_no) == (40, 12000, "№17")
+    assert (lease.area_m2, lease.rate) == (40, 12000)
     assert (lease.valid_from, lease.valid_to) == (date(2026, 1, 1), date(2026, 12, 31))
 
 
@@ -61,7 +60,7 @@ def test_only_the_room_the_tenant_and_the_beginning_of_the_period_are_required(k
     """
     lease = Lease.objects.create(space=kab305, tenant=alpha, valid_from=date(2026, 1, 1))
 
-    assert (lease.landlord, lease.area_m2, lease.rate, lease.contract_no) == (None,) * 4
+    assert (lease.landlord, lease.area_m2, lease.rate, lease.contract) == (None,) * 4
     assert lease.valid_to is None
 
 
@@ -126,6 +125,163 @@ def test_a_period_with_no_end_is_a_lease_to_this_day(kab305, alpha, make_lease):
     assert make_lease(kab305, alpha, valid_to=None).valid_to is None
 
 
+# Договор — необязательный, и с тремя отказами вокруг
+
+
+def lease_contract(tenant, **fields):
+    """Условия договора, на котором аренда висеть вправе: вид «Аренда помещений» и арендатор.
+
+    Both are named on every договор staged here because a договор missing either of them is
+    refused — and a test about one refusal must not trip over another.
+    """
+    return dict(kind=ContractTerms.Kind.LEASE, counterparty=tenant, **fields)
+
+
+def test_a_lease_may_hang_on_a_contract(kab305, alpha, downtown, make_contract, make_lease):
+    """«По какому договору сидит ТОО «Альфа»» is answered by the аренда itself (ADR 0032).
+
+    A связь and not a number: the документ already holds the номер, the дата and the скан.
+    """
+    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+
+    lease = make_lease(kab305, alpha, contract=contract)
+
+    lease.refresh_from_db()
+    assert lease.contract == contract
+    assert list(contract.leases.all()) == [lease]
+
+
+def test_a_lease_without_a_contract_is_a_complete_record(kab305, alpha, make_lease):
+    """Не обязана: in the УК's own export not one of the 36 аренды names a бумага (ADR 0032).
+
+    The арендатор, the арендодатель and the срок stay on the аренда, so an аренда with no
+    договор is a whole record and not a half of one.
+    """
+    lease = make_lease(kab305, alpha, area_m2=40, rate=12000)
+
+    lease.refresh_from_db()
+    assert lease.contract is None
+    assert (lease.tenant, lease.area_m2, lease.rate) == (alpha, 40, 12000)
+
+
+def test_a_lease_no_longer_carries_a_contract_number():
+    """Свободный «номер договора» ушёл: beside a real link it is a second truth (ADR 0032).
+
+    It was a note while nothing held the договор, and its only values were the eighteen
+    fictional ones — the very eighteen the наполнение now turns into договоры.
+    """
+    assert "contract_no" not in {field.name for field in Lease._meta.get_fields()}
+
+
+def test_a_contract_of_another_organisation_is_refused(
+    kab305, alpha, central, make_contract, make_lease
+):
+    """Чья аренда — вопрос об одном клиенте платформы, и ответ на него один (ADR 0018).
+
+    The аренда has no `org` of its own: who sees the помещение sees its аренды. A договор of
+    another организация hung on it would be a second answer — and the аренда would be читаема
+    by one client and its бумага by another.
+    """
+    theirs = make_contract(central, "Договор аренды №17", **lease_contract(alpha))
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=theirs)
+
+    assert re.search(r"другая организация", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_a_contract_of_another_kind_is_refused(kab305, alpha, downtown, make_contract, make_lease):
+    """Аренда под поставкой ТМЦ ловится при заведении, а не читается потом как правда."""
+    supply = make_contract(
+        downtown,
+        "Договор поставки расходных материалов",
+        kind=ContractTerms.Kind.SUPPLY,
+        counterparty=alpha,
+    )
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=supply)
+
+    assert re.search(r"Аренда помещений", str(refusal.value))
+    assert re.search(r"Поставка ТМЦ", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_a_contract_whose_kind_nobody_entered_is_refused(
+    kab305, alpha, downtown, make_contract, make_lease
+):
+    """Скан из пачки — ещё не договор аренды: вид у него не заведён, и это не «Аренда
+    помещений» (ADR 0035).
+
+    Пустой вид на полке договоров — обычное состояние и находка на строке счёта; аренда же
+    вешается на бумагу, про которую уже сказано, что она за бумага.
+    """
+    unclassified = make_contract(downtown, "Скан договора из пачки", counterparty=alpha)
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=unclassified)
+
+    assert re.search(r"вид не заведён", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_a_document_that_is_not_a_contract_at_all_is_refused(
+    kab305, alpha, downtown, make_lease
+):
+    """Акт договором не становится оттого, что на него сослались: условий у него нет вовсе."""
+    act = Document.objects.create(org=downtown, kind=Document.Kind.ACT, title="Акт №5")
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=act)
+
+    assert re.search(r"не договор", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_a_tenant_who_is_not_the_counterparty_of_the_contract_is_refused(
+    kab305, alpha, petrov, downtown, make_contract, make_lease
+):
+    """Один факт не заводит двух записей: подписал бумагу один, сидит по ней другой.
+
+    Снять этот отказ позже стоит одну миграцию; добавить позже — значит мирить строки,
+    которые уже разъехались (ADR 0032).
+    """
+    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(petrov))
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=contract)
+
+    assert re.search(r"контрагент", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_a_contract_with_no_counterparty_is_refused(
+    kab305, alpha, downtown, make_contract, make_lease
+):
+    """Незаведённый контрагент — не «любой»: сойтись с арендатором ему пока нечем."""
+    nameless = make_contract(
+        downtown, "Договор аренды №17", kind=ContractTerms.Kind.LEASE
+    )
+
+    with pytest.raises(ValidationError) as refusal:
+        make_lease(kab305, alpha, contract=nameless)
+
+    assert re.search(r"контрагент не заведён", str(refusal.value))
+    assert Lease.objects.count() == 0
+
+
+def test_the_same_party_on_both_sides_is_accepted(
+    kab305, alpha, downtown, make_contract, make_lease
+):
+    """И это обычный случай: договор подписан с тем, кто по нему и сидит."""
+    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+
+    lease = make_lease(kab305, alpha, contract=contract)
+
+    assert lease.contract == contract
+
+
 # The checks that are absent, and that is the decision
 
 
@@ -184,6 +340,49 @@ def test_a_lease_on_a_technical_room_is_accepted(first_floor, alpha, make_lease)
     assert make_lease(itp, alpha).space == itp
 
 
+def test_a_lease_outside_the_term_of_its_contract_is_accepted(
+    kab305, alpha, downtown, make_contract, make_lease
+):
+    """Сроков два, и они свободны друг от друга (ADR 0031, ADR 0032).
+
+    Договор с автопролонгацией переживает свой конец срока, а арендатор одного помещения из
+    четырёх съезжает раньше договора. Проверка отвергала бы верные данные в обе стороны, и
+    потому её нет — здесь это сказано именем теста, чтобы следующий читатель не завёл её как
+    недостающую.
+    """
+    contract = make_contract(
+        downtown,
+        "Договор аренды №17",
+        valid_until=date(2026, 6, 30),
+        **lease_contract(alpha),
+    )
+
+    lease = make_lease(
+        kab305, alpha, contract=contract, valid_from=date(2020, 1, 1), valid_to=date(2030, 1, 1)
+    )
+
+    assert (lease.valid_from, lease.valid_to) == (date(2020, 1, 1), date(2030, 1, 1))
+
+
+def test_deleting_the_contract_leaves_its_leases_standing(
+    kab305, alpha, downtown, make_contract, make_lease
+):
+    """Удаление договора аренды не уносит: ссылка обнуляется, аренды стоят (ADR 0034).
+
+    Каскад унёс бы вместе с одним сканом записи о том, кто и по какой ставке сидел в
+    помещении, — историю, которой в бумаге нет и которую взять больше неоткуда. Уносится
+    договор тем же `discard`, которым его удаляют с экрана (ADR 0013).
+    """
+    contract = make_contract(downtown, "Договор аренды №17", **lease_contract(alpha))
+    lease = make_lease(kab305, alpha, area_m2=40, rate=12000, contract=contract)
+
+    contract.discard()
+
+    lease.refresh_from_db()
+    assert lease.contract is None
+    assert (lease.tenant, lease.area_m2, lease.rate) == (alpha, 40, 12000)
+
+
 def test_letting_a_room_does_not_let_the_rooms_inside_it(first_floor, alpha, make_lease):
     """Занятость is not read from the дерево (ADR 0019): «каб101» sits inside «каб101вход».
 
@@ -208,7 +407,7 @@ def lease_form(space, tenant, valid_from=date(2026, 1, 1), valid_to=None, **fiel
         "landlord": "",
         "area_m2": "",
         "rate": "",
-        "contract_no": "",
+        "contract": "",
         "valid_from": valid_from.isoformat(),
         "valid_to": valid_to.isoformat() if valid_to else "",
         **fields,

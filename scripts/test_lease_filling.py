@@ -23,6 +23,7 @@ from datetime import date
 import pytest
 
 from building_passport.space_kind import COMMON, LEASABLE, kind_of
+from documents.models import ContractTerms, Document
 from leases.models import Lease
 from parties.models import Party
 
@@ -284,6 +285,105 @@ def test_filling_twice_doubles_neither_the_leases_nor_the_parties(filled):
     assert Party.objects.filter(external_id__startswith=load_real_data.FILLING_MARK).count() == (
         len(tenants())
     )
+
+
+# Договоры аренды, в которые наполнение превращает свои номера
+
+
+def numbers():
+    """Восемнадцать номеров файла — по одному на договор, и один из них на двух арендах."""
+    return {row["contract_no"] for row in leases() if row["contract_no"]}
+
+
+def lease_of(row):
+    """Аренда строки файла — по паре «помещение + арендатор», которая в файле одна."""
+    return Lease.objects.get(
+        space__code=row["space"],
+        tenant__external_id=load_real_data.FILLING_MARK + row["tenant"],
+    )
+
+
+def test_every_contract_number_becomes_a_contract_of_its_own(filled):
+    """Восемнадцать номеров — восемнадцать договоров вида «Аренда помещений» (ADR 0032).
+
+    Номер, стоявший свободным полем, ушёл со столбца вместе с появлением связи: рядом с ней
+    он был бы второй правдой о том, к какой бумаге аренда относится. Здесь он становится
+    номером документа — тем самым полем, которое документ и без того держит.
+    """
+    entered = Document.objects.filter(kind=Document.Kind.CONTRACT)
+
+    assert {contract.doc_no for contract in entered} == numbers()
+    assert all(
+        contract.attached_terms().kind == ContractTerms.Kind.LEASE for contract in entered
+    )
+
+
+def test_every_lease_with_a_number_hangs_on_its_contract(filled):
+    """«По какому договору сидит» отвечает сама аренда, а не строка в свободном поле."""
+    with_a_number = [row for row in leases() if row["contract_no"]]
+
+    assert with_a_number
+    for row in with_a_number:
+        assert lease_of(row).contract.doc_no == row["contract_no"], row["space"]
+
+
+def test_one_contract_carries_two_leases(filled):
+    """Ради этого договор и стоит над арендой: одна бумага, два помещения, один срок.
+
+    Аренда всегда об одном помещении, а договор охватывает несколько сразу — и пока на
+    договоре висит одна аренда, разницы между ними не видно.
+    """
+    carrying = [
+        contract
+        for contract in Document.objects.filter(kind=Document.Kind.CONTRACT)
+        if contract.leases.count() >= 2
+    ]
+
+    assert carrying
+
+
+def test_the_leases_without_a_number_hang_on_nothing(filled):
+    """Аренда без договора — верная запись, а не половина (ADR 0032), и наполнение её держит.
+
+    Без неё «аренд без договора: N» на полке помещений нечем было бы увидеть работающим.
+    """
+    without = [row for row in leases() if not row["contract_no"]]
+
+    assert without
+    assert all(lease_of(row).contract is None for row in without)
+
+
+def test_the_contract_is_signed_with_the_tenant_who_sits_by_it(filled):
+    """Арендатор аренды и контрагент договора — одна Сторона: модель откажет иначе."""
+    for row in leases():
+        if not row["contract_no"]:
+            continue
+        lease = lease_of(row)
+        assert lease.contract.attached_terms().counterparty == lease.tenant
+
+
+def test_filling_twice_doubles_neither_the_contracts_nor_their_leases(filled):
+    """Повторный прогон заводит поверх себя: договоров столько же, и аренды на тех же."""
+    load_real_data.fill_leases(ANCHOR)
+
+    assert Document.objects.filter(kind=Document.Kind.CONTRACT).count() == len(numbers())
+    assert Lease.objects.exclude(contract=None).count() == len(
+        [row for row in leases() if row["contract_no"]]
+    )
+
+
+def test_the_expense_filling_beside_it_leaves_these_contracts_standing(filled):
+    """Наполняют двое, и каждый сносит только своё (ADR 0026).
+
+    `fill_contracts` метёт свои расходные договоры и по той же метке могло бы вымести эти —
+    а аренды остались бы стоять с пустой ссылкой (ADR 0034), то есть тихо.
+    """
+    load_real_data.fill_contracts(ANCHOR)
+
+    assert Document.objects.filter(terms__kind=ContractTerms.Kind.LEASE).count() == len(
+        numbers()
+    )
+    assert Lease.objects.exclude(contract=None).exists()
 
 
 def test_the_filling_leaves_the_real_parties_alone(filled, landlords):

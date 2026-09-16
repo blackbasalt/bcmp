@@ -7,18 +7,21 @@ ground: аренда is a subject area with rules of its own, and `building_pass
 already holds the паспорт, the план, the контур and seven dictionaries. `rooms` is not an
 option — its `models.py` carries a comment explaining precisely why it is empty.
 
-The import goes one way only: `leases` takes `Space`, `Party` and the период rule the way
-`documents` and `rooms` take what they need, and nothing in `building_passport.models`
-reaches back. It stays one-way when the screens arrive: the occupancy rule they read will
-live here, so they will import from `leases` rather than the other way round.
+The import goes one way only: `leases` takes `Space`, `Party`, the период rule and the
+`Document` an аренда hangs on the way `documents` and `rooms` take what they need, and
+neither `building_passport.models` nor `documents.models` reaches back. It stays one-way
+when the screens arrive: the occupancy rule they read lives here, so they import from
+`leases` rather than the other way round.
 """
 
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from building_passport.models import Space
 from building_passport.period import refuse_a_period_that_ends_before_it_begins
+from documents.models import ContractTerms, Document
 
 # `CommonModel` is the stamp of who wrote a row and when. It is imported rather than copied
 # out a fourth time: it is abstract, so nothing about the table depends on which app the
@@ -29,9 +32,10 @@ from parties.models import CommonModel, Party
 class Lease(CommonModel):
     """One арендатор, one помещение, a number of metres, a срок and a ставка.
 
-    Flat: there is no договор above the аренды (ADR 0017). A договор is a piece of paper
-    that may cover several помещения with one срок, and BCMP does not hold it — the номер
-    договора is a free field here and the скан is attached as a документ.
+    Flat: the аренда may hang on a договор and is not held up by one (ADR 0032). A договор
+    is a piece of paper covering several помещения with one срок, and an аренда is always
+    about one — so the арендатор, the арендодатель and the срок stay here, and an аренда
+    with no договор is a whole record rather than half of one.
 
     A помещение carries as many аренды as it has арендаторы sitting in it, and their
     периоды overlap freely: a часть is a number of metres and not a piece of the building,
@@ -79,10 +83,23 @@ class Lease(CommonModel):
     rate = models.DecimalField(
         max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="ставка за м² в месяц"
     )
-    #: A free field: «по договору №17» is written down without BCMP pretending to hold the
-    #: договор itself.
-    contract_no = models.CharField(
-        max_length=128, blank=True, null=True, verbose_name="номер договора"
+    #: Бумага, на которой аренда висит, — документ вида «Договор» с условиями сбоку
+    #: (ADR 0030). Необязательная: в выгрузке УК колонки с номером договора нет вовсе, и
+    #: требовать бумагу значило бы выдумать тридцать шесть неподписанных (ADR 0032).
+    #: Свободный «номер договора» ушёл вместе с появлением связи — рядом с ней он стал бы
+    #: второй правдой о том, к какой бумаге аренда относится.
+    #:
+    #: `SET_NULL`, а не каскад: удаление одного скана унесло бы записи о том, кто и по какой
+    #: ставке сидел в помещении, — историю, которой в бумаге нет и которую взять больше
+    #: неоткуда (ADR 0034). Аренда после этого стоит ровно в том состоянии, которое
+    #: ADR 0032 объявил верным, а пробел называет полка помещений.
+    contract = models.ForeignKey(
+        Document,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="leases",
+        verbose_name="договор",
     )
     valid_from = models.DateField(verbose_name="действует с")
     #: An empty end reads «по сей день» — the same reading the поэтажный план already gives
@@ -107,13 +124,16 @@ class Lease(CommonModel):
         """The reason for a refusal is named on the form, not thrown as a 500 on save."""
         super().clean()
         refuse_a_period_that_ends_before_it_begins(self.valid_from, self.valid_to)
+        self._refuse_a_contract_this_lease_cannot_hang_on()
 
     def save(self, *args, **kwargs):
-        """The refusal sits on the model, so a script gets it in the same words as the form.
+        """The refusals sit on the model, so a script gets them in the same words as the form.
 
-        A период that ends before it begins is the one thing checked, and it is checked by
-        the rule the план already rejects by — one refusal in one wording. Everything that
-        is *not* checked is a decision rather than an omission:
+        Four things are checked. A период that ends before it begins is checked by the rule
+        the план already rejects by — one refusal in one wording — and the other three are
+        about the договор an аренда hangs on, each stated beside itself below.
+
+        Everything that is *not* checked is a decision rather than an omission:
 
         - **пересечение периодов** is not checked at all: overlap is the normal case
           (ADR 0017), and the same арендатор twice on one помещение is how taking another
@@ -123,7 +143,106 @@ class Lease(CommonModel):
           correct data;
         - **арендопригодность of the помещение** is not checked: the банкомат in the лобби
           is a real аренда, and a венткамера let by mistake surfaces as a находка on the
-          полка rather than as a refusal at the moment of entry.
+          полка rather than as a refusal at the moment of entry;
+        - **that the срок of the аренда lies inside the срок of its договор** is not checked
+          and must not be: a договор on автопролонгация outlives its stated end (ADR 0031),
+          and a tenant leaving one помещение of four ends early. Both directions are correct
+          data, and a check would refuse them both (ADR 0032).
         """
         refuse_a_period_that_ends_before_it_begins(self.valid_from, self.valid_to)
+        self._refuse_a_contract_this_lease_cannot_hang_on()
         super().save(*args, **kwargs)
+
+    def _refuse_a_contract_this_lease_cannot_hang_on(self):
+        """Три отказа вокруг необязательной связи — и все три о договоре, что на нём висит.
+
+        Отсутствие договора не проверяется ничем: аренда без бумаги — верная запись, а не
+        половина (ADR 0032), и пробел называет полка помещений числом на строке счёта.
+        """
+        if self.contract_id is None:
+            return
+        self._refuse_a_contract_of_another_organisation()
+        self._refuse_a_contract_that_is_not_about_letting_rooms()
+        self._refuse_a_tenant_who_did_not_sign_it()
+
+    def _refuse_a_contract_of_another_organisation(self):
+        """Договор ведёт та же организация, чьё помещение (ADR 0018).
+
+        Своей `org` у аренды нет, и второго ответа на «чья аренда» быть не должно: кто видит
+        помещение, видит его аренды, а договор приносит свою организацию с собой (ADR 0006).
+        Разойдись они — и аренду читал бы один клиент платформы, а её бумагу другой.
+        """
+        if self.contract.org_id == self.space.org_id:
+            return
+        raise ValidationError(
+            {
+                "contract": (
+                    f"Договор ведёт другая организация — «{self.contract.org.name}», "
+                    f"а помещение принадлежит «{self.space.org.name}»."
+                )
+            }
+        )
+
+    def _refuse_a_contract_that_is_not_about_letting_rooms(self):
+        """Вид договора — «Аренда помещений», и никакой другой.
+
+        Аренда под поставкой ТМЦ — это опечатка выпадающего списка, и поймать её можно
+        только здесь: прочитанная потом, она читается уверенно и неверно. Скан, которому
+        вида ещё не проставили, отвергается тем же отказом и по той же причине — «Аренда
+        помещений» о нём не сказано (ADR 0035): на полке договоров пустой вид обычен, а
+        аренда вешается на бумагу, про которую уже известно, что она за бумага.
+        """
+        terms = self.contract.attached_terms()
+        if terms is None:
+            raise ValidationError(
+                {
+                    "contract": (
+                        f"«{self.contract.title}» — не договор, а "
+                        f"{self.contract.get_kind_display().lower()}: "
+                        "аренда висит только на договоре вида «Аренда помещений»."
+                    )
+                }
+            )
+        if terms.kind == ContractTerms.Kind.LEASE:
+            return
+        named = terms.get_kind_display() if terms.kind else "вид не заведён"
+        raise ValidationError(
+            {
+                "contract": (
+                    "Аренда висит только на договоре вида «Аренда помещений», "
+                    f"а у «{self.contract.title}» — {named}."
+                )
+            }
+        )
+
+    def _refuse_a_tenant_who_did_not_sign_it(self):
+        """Арендатор аренды и контрагент договора — одна Сторона (ADR 0032).
+
+        Расхождение здесь — это два ответа на «кто сидит по этой бумаге», и разъехавшиеся
+        строки потом мирят руками. Незаведённый контрагент отвергается тем же отказом:
+        пустота — не «любой», сойтись с арендатором ей пока нечем.
+
+        Спрашивается ключ, а не Сторона: сравнение объектов стоило бы запроса на каждую
+        сторону, а ключ уже лежит в обеих строках.
+        """
+        terms = self.contract.attached_terms()
+        if terms.counterparty_id == self.tenant_id:
+            return
+        if terms.counterparty_id is None:
+            raise ValidationError(
+                {
+                    "contract": (
+                        f"У договора «{self.contract.title}» контрагент не заведён — "
+                        "заведите его, и это будет арендатор аренды."
+                    )
+                }
+            )
+        raise ValidationError(
+            {
+                "contract": (
+                    f"Арендатор аренды — «{self.tenant.name}», а контрагент договора — "
+                    f"«{terms.counterparty.name}»: "
+                    "по одной бумаге сидит тот, кто её подписал."
+                )
+            }
+        )

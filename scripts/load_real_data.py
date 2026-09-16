@@ -30,7 +30,7 @@ from django.utils import timezone
 
 from dictionary.models import *
 from building_passport.models import *
-from documents.models import Document
+from documents.models import ContractTerms, Document
 from leases.models import Lease
 from parties.models import *
 
@@ -44,6 +44,14 @@ from .load_dict_data import DATA, rows
 #: its own leavings when it clears them, so a repeat run replaces them instead of laying a
 #: second наполнение on top.
 FILLING_MARK = "наполнение:"
+
+#: Чем помечен договор наполнения аренд — тем же `FILLING_MARK`, но своим продолжением.
+#: Наполняют двое, и каждый сносит только своё: `fill_contracts` метёт расходную половину по
+#: метке и без этого продолжения вымело бы и доходную, а аренды остались бы стоять с пустой
+#: ссылкой (ADR 0034), то есть молча. Продолжение стоит у младшего из двух: расходные договоры
+#: лежат с меткой без него с того дня, как наполнение завелось, и переименовывать их значило
+#: бы оставить прежние в базе навсегда.
+LEASE_CONTRACT_MARK = FILLING_MARK + "аренда:"
 
 #: Кем ведётся база, из которой приехала строка выгрузки, — и БИН той организации, если она
 #: в системе есть. Колонка `date_base` зовёт базу её названием, а система знает организации
@@ -210,7 +218,14 @@ def term(row, day):
 
 
 def fill_leases(day=None):
-    """Наполнение: вымышленные арендаторы и их аренды на Manhattan.
+    """Наполнение: вымышленные арендаторы, их аренды на Manhattan и бумаги под ними.
+
+    Восемнадцать номеров файла становятся восемнадцатью договорами вида «Аренда помещений» —
+    доходной половиной полки договоров, — и аренды висят на них (ADR 0032). Пять строк файла
+    номера не называют, и договора у них нет: аренда без бумаги — верная запись, а не
+    половина, и ровно её считает полка помещений строкой «аренд без договора: N». Одна бумага
+    при этом держит две аренды: аренда всегда об одном помещении, а договор охватывает
+    несколько сразу, и пока на договоре висит одна аренда, разницы между ними не видно.
 
     Настоящих Сторон это не касается. 699 Сторон из `party.csv` пришли из настоящего списка
     контрагентов; сделать «Центр крепежных систем ТОО» арендатором значило бы положить в
@@ -228,9 +243,14 @@ def fill_leases(day=None):
     которых экран считает как попало.
     """
     day = day or timezone.localdate()
+    org = Org.objects.get(party__bin_iin=BASES[DOWNTOWN_BASE])
 
     # Прежнее наполнение — и только оно: аренду, заведённую УК в админке, посев не трогает.
+    # Аренды уходят первыми: договор, снесённый раньше их, обнулил бы ссылку на строках,
+    # которые сносятся следом, — работа, которую никто не увидит.
     Lease.objects.filter(tenant__external_id__startswith=FILLING_MARK).delete()
+    for stale in Document.objects.filter(attrs__source__startswith=LEASE_CONTRACT_MARK):
+        stale.discard()
 
     tenants = {}
     for row in rows("tenant.csv"):
@@ -243,6 +263,38 @@ def fill_leases(day=None):
             },
         )
 
+    contracts = {}
+    for row in rows("lease.csv"):
+        # Строка без номера договор не заводит: аренда без бумаги — верная запись, а не
+        # половина (ADR 0032), и ровно её считает полка помещений строкой «аренд без
+        # договора: N». Наполнение, выдумавшее бумагу всем, скрыло бы эту находку.
+        number = row["contract_no"]
+        if not number or number in contracts:
+            continue
+        # Срок бумаги — срок аренды, с которой она заводится: сочинять ему свои смещения
+        # значило бы завести восемнадцать дат, которых ни в одном файле нет. Две аренды под
+        # одним номером стоят в файле одним сроком, и какая из них заводит договор — не
+        # решает ничего.
+        signed_from, signed_to = term(row, day)
+        contract = Document.objects.create(
+            org=org,
+            kind=Document.Kind.CONTRACT,
+            title=f"Договор аренды помещений {number}",
+            # Номер уходит туда, где документ его и без того держит: свободное поле аренды
+            # рядом с настоящей связью было бы второй правдой о той же бумаге (ADR 0032).
+            doc_no=number,
+            issued_at=signed_from,
+            valid_until=signed_to,
+            attrs={"source": LEASE_CONTRACT_MARK + number},
+        )
+        terms = contract.attached_terms()
+        # Контрагент — тот самый арендатор: аренду на договоре с другой Стороной модель не
+        # примет, и это тот же отказ, который ловит опечатку выпадающего списка на экране.
+        terms.counterparty = tenants[row["tenant"]]
+        terms.kind = ContractTerms.Kind.LEASE
+        terms.save()
+        contracts[number] = contract
+
     for row in rows("lease.csv"):
         valid_from, valid_to = term(row, day)
         Lease.objects.create(
@@ -251,7 +303,7 @@ def fill_leases(day=None):
             landlord=Party.objects.get(bin_iin=row["landlord"]) if row["landlord"] else None,
             area_m2=Decimal(row["area_m2"]) if row["area_m2"] else None,
             rate=Decimal(row["rate"]) if row["rate"] else None,
-            contract_no=row["contract_no"] or None,
+            contract=contracts.get(row["contract_no"]),
             valid_from=valid_from,
             valid_to=valid_to,
         )
@@ -287,11 +339,16 @@ def fill_contracts(day=None):
     day = day or timezone.localdate()
     org = Org.objects.get(party__bin_iin=BASES[DOWNTOWN_BASE])
 
-    # Прежнее наполнение — и только оно. Тем же `discard`, которым документ удаляют с экрана:
-    # у наполнения файлов нет, но второй способ удалить документ — это второе место, где о
-    # его файлах однажды забудут (ADR 0013).
-    for stale in Document.objects.filter(attrs__source__startswith=FILLING_MARK):
-        stale.discard()
+    # Прежнее наполнение — и только оно, и только своё: договоры аренды помечены
+    # `LEASE_CONTRACT_MARK` и принадлежат `fill_leases`, а снесённые отсюда унесли бы с собой
+    # ссылки восемнадцати аренд, оставив их стоять с пустой (ADR 0034). Тем же `discard`,
+    # которым документ удаляют с экрана: у наполнения файлов нет, но второй способ удалить
+    # документ — это второе место, где о его файлах однажды забудут (ADR 0013).
+    stale = Document.objects.filter(attrs__source__startswith=FILLING_MARK).exclude(
+        attrs__source__startswith=LEASE_CONTRACT_MARK
+    )
+    for contract in stale:
+        contract.discard()
 
     suppliers = {}
     for row in rows("supplier.csv"):

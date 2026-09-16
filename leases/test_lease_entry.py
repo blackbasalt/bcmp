@@ -155,7 +155,7 @@ def test_an_empty_area_is_recorded_as_not_entered_and_never_as_the_whole_room(
 
 
 def test_everything_entered_is_written_down(entering, kab305, alpha, petrov, today):
-    """Арендодатель, площадь, ставка и номер договора — необязательны, но записываются."""
+    """Арендодатель, площадь, ставка и конец срока — необязательны, но записываются."""
     enter(
         entering,
         kab305,
@@ -163,13 +163,24 @@ def test_everything_entered_is_written_down(entering, kab305, alpha, petrov, tod
         landlord=str(petrov.pk),
         area_m2="40",
         rate="4500",
-        contract_no="№17",
         valid_to=(today + timedelta(days=300)).isoformat(),
     )
 
     lease = Lease.objects.get()
     assert (lease.landlord, lease.area_m2, lease.rate) == (petrov, 40, 4500)
-    assert (lease.contract_no, lease.valid_to) == ("№17", today + timedelta(days=300))
+    assert lease.valid_to == today + timedelta(days=300)
+
+
+def test_the_form_asks_for_no_contract(entering, kab305):
+    """Прицепляют аренду к договору на экране договора, а не здесь (ADR 0032).
+
+    The связь exists and the карточка помещения does not offer it: somebody who came here to
+    write down a ставка would be handed a list of every договор of the организация.
+    """
+    _, page = open_card(entering, kab305)
+
+    assert "Номер договора" not in stated(page)
+    assert 'name="contract"' not in page
 
 
 def test_a_lease_without_a_tenant_is_refused(entering, kab305):
@@ -212,7 +223,6 @@ def test_a_refusal_comes_back_on_the_card_and_keeps_what_was_typed(
         alpha,
         area_m2="40",
         rate="4500",
-        contract_no="№17",
         valid_to=(today - timedelta(days=1)).isoformat(),
     )
     page = response.content.decode()
@@ -222,7 +232,6 @@ def test_a_refusal_comes_back_on_the_card_and_keeps_what_was_typed(
     assert offered(page, "tenant") == {str(alpha.pk): f"{alpha.name} — {alpha.bin_iin}"}
     assert 'value="40"' in page
     assert 'value="4500"' in page
-    assert 'value="№17"' in page
 
 
 def test_a_successful_entry_answers_with_the_card_redrawn_around_the_new_lease(

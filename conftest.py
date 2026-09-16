@@ -9,7 +9,9 @@ than a ready-made object.
 The Стороны that sit in помещения and the factory for an аренда stand here for the same
 reason `both_clients` does: the карточка помещения and the полка помещений both ask who
 sits where, and two definitions of ТОО «Альфа» would let the two screens be checked against
-different арендаторы.
+different арендаторы. The factory for a договор stands here for that reason too: the полка
+договоров, the аренда hanging on one and the полка помещений counting the аренды without
+one all ask for the same документ вида «Договор».
 """
 
 from datetime import date
@@ -18,6 +20,7 @@ import pytest
 from django.utils import timezone
 
 from building_passport.models import Space
+from documents.models import Document
 from leases.models import Lease
 from parties.models import Org, OrgMembership, Party
 
@@ -223,3 +226,29 @@ def make_lease(db):
         )
 
     return _make_lease
+
+
+@pytest.fixture
+def make_contract(db):
+    """Договор организации: документ вида «Договор» и его условия, заполненные или нет.
+
+    Условия строкой заводит сама модель (ADR 0035), а тест называет лишь те, что кто-то
+    завёл: `kind`, `counterparty`, `is_perpetual`, `auto_prolongs` приходят сюда наравне с
+    полями документа и раскладываются по двум таблицам здесь, потому что читатель полки
+    держит в руках договор, а не его половину.
+    """
+    conditions = {"kind", "counterparty", "is_perpetual", "auto_prolongs"}
+
+    def _make_contract(org, title, **fields):
+        terms_fields = {name: fields.pop(name) for name in conditions & fields.keys()}
+        document = Document.objects.create(
+            org=org, kind=Document.Kind.CONTRACT, title=title, **fields
+        )
+        if terms_fields:
+            terms = document.attached_terms()
+            for name, value in terms_fields.items():
+                setattr(terms, name, value)
+            terms.save()
+        return document
+
+    return _make_contract

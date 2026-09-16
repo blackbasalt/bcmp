@@ -200,14 +200,13 @@ def test_the_edit_form_comes_up_filled_in_with_the_lease_as_it_stands(
     entering, kab305, alpha, make_lease, today
 ):
     """Исправляют то, что записано: форма, пришедшая пустой, стёрла бы остальную аренду."""
-    lease = make_lease(kab305, alpha, area_m2=40, rate=4500, contract_no="№17")
+    lease = make_lease(kab305, alpha, area_m2=40, rate=4500)
 
     _, page = open_card(entering, kab305)
     form = row_markup(page, lease)
 
     assert 'value="40.00"' in form
     assert 'value="4500.00"' in form
-    assert 'value="№17"' in form
     assert f'value="{lease.valid_from:%Y-%m-%d}"' in form
     assert offered_on(page, lease, "tenant") == {
         str(alpha.pk): f"{alpha.name} — {alpha.bin_iin}"

@@ -8,6 +8,7 @@ from django.views.generic import ListView
 from bcmp.shelf import also
 from building_passport.models import Space
 from dictionary.models import DictSpaceType
+from leases.gaps import contractless_of_each_room
 from leases.occupancy import free_of_each_room, tenants_of_each_room
 from parties.models import Org
 
@@ -25,9 +26,9 @@ class RoomListView(LoginRequiredMixin, ListView):
     этажа, which answers «где» once the полка has answered «которое».
 
     It also counts what it has not got. «Показано 47 из 583 помещений · площадь не заведена
-    у 5» — the same device as «нанесено 47 из 82» beneath a план, applied to a полка that
-    is full rather than empty: the gap is not missing rows but missing fields in the rows
-    that are there.
+    у 5 · аренд без договора: 12» — the same device as «нанесено 47 из 82» beneath a план,
+    applied to a полка that is full rather than empty: the gap is not missing rows but
+    missing fields in the rows that are there, and аренды that name no бумага.
     """
 
     template_name = "rooms/room_list.html"
@@ -77,6 +78,10 @@ class RoomListView(LoginRequiredMixin, ListView):
             # condition the «свободно» отбор narrows by, hung on the row as a column so that
             # the figure under the table and the отбор its link sets are one answer.
             .annotate(**free_of_each_room(self.today))
+            # И сколько действующих аренд помещения не называют договора — снова в том же
+            # запросе. Число под таблицей считается по показанным строкам, и столбец на
+            # строке — это то, из чего оно складывается.
+            .annotate(**contractless_of_each_room(self.today))
             .order_by("building__name", "building__code", "floor_number", "code")
         )
 
@@ -121,6 +126,12 @@ class RoomListView(LoginRequiredMixin, ListView):
         # A link, like the figure beside it: the отбор it sets leads to the work rather than
         # reporting it, and the rest of the question is kept.
         context["free_rooms_url"] = self.also_free
+        # «Аренд без договора: N» — the gap an optional link leaves, named on the screen that
+        # holds the аренды (ADR 0032). Counted over exactly the rows that are printed, like
+        # the two figures before it, and in арендах rather than in помещениях: three
+        # арендаторы in one помещение hold three papers. No link: unlike «свободно», there is
+        # no condition behind it, and a полка does not offer an отбор it cannot make.
+        context["leases_without_contract"] = sum(room.contractless_here for room in rooms)
         # The отбор, back on the screen it was typed into: it says both what was asked and
         # whether anything was, and the markup asks it for both. Handed over as one thing
         # rather than unpacked here, because the two answers must not drift — an empty

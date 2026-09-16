@@ -23,6 +23,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from building_passport.models import Space
+from documents.models import ContractTerms
 from parties.models import Party
 
 pytestmark = pytest.mark.django_db
@@ -792,6 +793,86 @@ def test_the_free_figure_is_counted_in_rooms_and_not_in_metres(client, member, f
 
     assert "свободно 2" in count_line(page)
     assert "м²" not in count_line(page)
+
+
+def test_the_count_says_how_many_leases_hang_on_no_contract(
+    client, member, first_floor, alpha, downtown, make_contract, make_lease
+):
+    """Пробел, который оставляет необязательная связь, назван на экране, который держит
+    аренды (ADR 0032, ADR 0034).
+
+    Полка договоров назвать его не может: таких аренд на ней нет. Считается в арендах и не
+    в помещениях — одно помещение несёт столько аренд, сколько в нём сидит арендаторов, и
+    бумаги у них разные.
+    """
+    contract = make_contract(
+        downtown,
+        "Договор аренды №17",
+        kind=ContractTerms.Kind.LEASE,
+        counterparty=alpha,
+    )
+    make_lease(Space.objects.get(code="man-f1-a"), alpha, contract=contract)
+    make_lease(Space.objects.get(code="man-f1-b"), alpha)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "аренд без договора: 1" in count_line(page)
+
+
+def test_the_leases_with_no_contract_are_counted_over_what_is_on_screen(
+    client, member, first_floor, alpha, make_lease
+):
+    """Число под таблицей не противоречит таблице над ним: сузили полку — сузилось и оно."""
+    make_lease(Space.objects.get(code="man-f1-a"), alpha)
+    make_lease(Space.objects.get(code="man-f1-b"), alpha)
+    client.force_login(member)
+
+    response = client.get(reverse("rooms:room_list"), {"q": "ИТП"})
+    page = response.content.decode()
+
+    assert len(rooms_on(page)) == 1
+    assert "аренд без договора: 1" in count_line(page)
+
+
+def test_a_shelf_whose_leases_all_name_a_contract_says_nothing_about_them(
+    client, member, first_floor, alpha, downtown, make_contract, make_lease
+):
+    """«Аренд без договора: 0» is a line about nothing — the rule both figures beside it
+    follow."""
+    contract = make_contract(
+        downtown,
+        "Договор аренды №17",
+        kind=ContractTerms.Kind.LEASE,
+        counterparty=alpha,
+    )
+    make_lease(Space.objects.get(code="man-f1-a"), alpha, contract=contract)
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "аренд без договора" not in count_line(page)
+
+
+def test_a_lease_that_is_over_is_not_counted_as_missing_a_contract(
+    client, member, first_floor, alpha, make_lease, today
+):
+    """Считаются действующие: бумагу заводят той аренде, по которой сегодня сидят.
+
+    Прошлая аренда без договора — это работа, которой уже не будет сделано, и число, её
+    считающее, звало бы на неё каждый день.
+    """
+    make_lease(
+        Space.objects.get(code="man-f1-a"),
+        alpha,
+        valid_from=today - timedelta(days=400),
+        valid_to=today - timedelta(days=30),
+    )
+    client.force_login(member)
+
+    _, page = shelf(client)
+
+    assert "аренд без договора" not in count_line(page)
 
 
 # Empty states

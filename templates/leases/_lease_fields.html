@@ -3,7 +3,7 @@
   Поля аренды — одни и те же и когда её заводят, и когда её правят.
 
   Included by both forms rather than written out twice: «ставка не та» is answered by the
-  same six fields as «сюда сел арендатор», and two copies of them would drift the day one
+  same five fields as «сюда сел арендатор», and two copies of them would drift the day one
   gains a field the other keeps quiet about. What differs between the two — the fold they
   stand in, the address they name and the word on the button — stays in the two templates
   around this one.
@@ -87,29 +87,14 @@
 </fieldset>
 
 {% comment %}
-  Тоже парой и тоже с переносом. Легенды здесь разной высоты — «Ставка за м² в месяц» в узкой
-  колонке набирается в две строки, «Номер договора» в одну, — и бок о бок поля встали бы
-  уступом; на своих строках им ровняться не по чему.
+  Ставка стоит одна и во всю ширину: рядом с ней стоял «Номер договора», а он ушёл вместе с
+  появлением настоящей связи с договором (ADR 0032). Прицепляют аренду к договору на экране
+  договора, где бумага перед читателем, а не здесь.
 {% endcomment %}
-<div class="flex flex-wrap gap-2">
-  <fieldset class="fieldset grow basis-40">
-    <legend class="fieldset-legend">{{ form.rate.label }}</legend>
-    {{ form.rate|styled:"input w-full" }}
-    {% if form.rate.errors %}
-      <p class="text-sm text-error">{{ form.rate.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
-
-  <fieldset class="fieldset grow basis-40">
-    <legend class="fieldset-legend">{{ form.contract_no.label }}</legend>
-    {% comment %}
-      A free field: «по договору №17» is written down without BCMP pretending to hold
-      the договор. The скан is attached as a документ, and the договор itself is not an
-      entity here.
-    {% endcomment %}
-    {{ form.contract_no|styled:"input w-full" }}
-    {% if form.contract_no.errors %}
-      <p class="text-sm text-error">{{ form.contract_no.errors|join:" " }}</p>
-    {% endif %}
-  </fieldset>
-</div>
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">{{ form.rate.label }}</legend>
+  {{ form.rate|styled:"input w-full" }}
+  {% if form.rate.errors %}
+    <p class="text-sm text-error">{{ form.rate.errors|join:" " }}</p>
+  {% endif %}
+</fieldset>

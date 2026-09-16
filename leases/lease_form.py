@@ -1,7 +1,7 @@
 """Форма аренды — то, что спрашивают на карточке помещения, и то, чего не спрашивают.
 
 One form for two writes. Аренда is entered by it empty and corrected by it filled in with
-the аренда as it stands: «ставка не та» is answered by the same six fields as «сюда сел
+the аренда as it stands: «ставка не та» is answered by the same five fields as «сюда сел
 арендатор», and a second form for правка would be a second wording of one аренда — the day
 a field was added to one of them, the other would quietly stop asking for it.
 
@@ -17,8 +17,13 @@ purpose rather than by omission:
 - **арендуемая площадь** — so that «весь кабинет, метраж в бумаге не указан» is recordable.
   An empty площадь means «не заведено» and never «всё помещение»: one empty field must not
   carry two opposite meanings, and the карточка prints a dash for it and counts it nowhere;
-- **ставка** — so that an аренда whose бумага is lost still reaches the system;
-- **номер договора** — a free field, and BCMP holds no договор to fill it from.
+- **ставка** — so that an аренда whose бумага is lost still reaches the system.
+
+**Договора здесь нет вовсе.** The аренда may hang on one (ADR 0032), and it is attached on
+the экран договора rather than here: «по какому договору сидит ТОО «Альфа»» is asked from
+the договор's own side, where the бумага is in front of the reader. A field here would offer
+a list of every договор of the организация to somebody who came to the карточка помещения to
+write down a ставка.
 
 The помещение is not a field: it is the карточка the form stands on, and the right to write
 is checked on that помещение. A field would put a second answer to «куда» beside the address.
@@ -63,7 +68,7 @@ def carried_back(address) -> dict:
 
 class LeaseForm(forms.ModelForm):
     """Аренда as it is entered and as it is corrected: a Сторона found by поиск, a срок and
-    three optional terms."""
+    two optional terms."""
 
     #: The Стороны are searched for, not scrolled to: the реестр holds 699 of them, mostly
     #: поставщики. What may be chosen is the whole реестр and what is offered is what the
@@ -80,13 +85,12 @@ class LeaseForm(forms.ModelForm):
 
     class Meta:
         model = Lease
-        fields = ("tenant", "landlord", "area_m2", "rate", "contract_no", "valid_from", "valid_to")
+        fields = ("tenant", "landlord", "area_m2", "rate", "valid_from", "valid_to")
         labels = {
             # «Арендуемая площадь» and not «Площадь»: a term of an agreement is not a
             # measurement of the building, and the карточка prints both a few lines apart.
             "area_m2": "Арендуемая площадь, м²",
             "rate": "Ставка за м² в месяц",
-            "contract_no": "Номер договора",
             "valid_from": "Действует с",
             "valid_to": "Действует по",
         }

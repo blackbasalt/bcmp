@@ -13,7 +13,8 @@ class LeaseAdmin(admin.ModelAdmin):
 
     list_display = ("space", "tenant", "area_m2", "rate", "valid_from", "valid_to")
     list_filter = ("space__building",)
-    search_fields = ("space__code", "space__name", "tenant__name", "contract_no")
-    # A помещение is picked out of some six hundred and a Сторона out of the registry of
-    # the whole system: both are searched for rather than scrolled to.
-    autocomplete_fields = ("space", "tenant", "landlord")
+    search_fields = ("space__code", "space__name", "tenant__name", "contract__title")
+    # A помещение is picked out of some six hundred, a Сторона out of the registry of the
+    # whole system and a договор out of the организация's documents: all of them are
+    # searched for rather than scrolled to.
+    autocomplete_fields = ("space", "tenant", "landlord", "contract")
