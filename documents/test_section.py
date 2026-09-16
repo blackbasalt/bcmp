@@ -217,6 +217,26 @@ def test_eleven_documents_are_counted_by_the_tens_rather_than_by_the_last_digit(
     assert "Показано 11\u00a0документов" in page
 
 
+def test_a_contract_stays_on_the_shelf_of_documents_and_is_counted_by_it(
+    client, member, downtown
+):
+    """A договор got a полка of its own, and it did not leave this one: it is a документ
+    вида «Договор» and nothing else (ADR 0030), so «Показано 2 документа» would start lying
+    about the table it counts if the second полка took its rows away.
+    """
+    make_document(downtown, "Акт разграничения балансовой принадлежности")
+    contract = make_document(
+        downtown, "Договор на обслуживание лифтов", kind=Document.Kind.CONTRACT
+    )
+    client.force_login(member)
+
+    _, page = section(client)
+
+    assert str(contract.pk) in documents_on(page)
+    assert "Договор на обслуживание лифтов" in page
+    assert "Показано 2\u00a0документа" in page
+
+
 def test_an_empty_section_states_its_emptiness_rather_than_showing_an_empty_table(
     client, member, downtown, central
 ):

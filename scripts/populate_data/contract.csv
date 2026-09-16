@@ -1,0 +1,8 @@
+slug,title,doc_no,supplier,kind,is_perpetual,auto_prolongs,issued_days,until_days
+lifts,Договор на техническое обслуживание лифтов,ЭКС-2026/04,alatau-lift,operation,,,-320,61
+cleaning,Договор на уборку помещений и прилегающей территории,ЭКС-2025/19,taza-service,operation,,TRUE,-400,28
+security,Договор на охрану объектов,ЭКС-2024/77,qorgau-security,operation,,TRUE,-700,-15
+roof,Договор подряда на капитальный ремонт кровли,КР-2026/02,esil-remont,capital_works,,,-90,195
+supplies,Договор поставки расходных материалов,ПТ-2025/33,arai-snab,supply,TRUE,,-520,
+water,Договор поставки питьевой воды,,su-market,supply,,,-150,
+scan,Скан договора из пачки,,,,,,,

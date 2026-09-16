@@ -9,11 +9,34 @@ neighbour whose domain they have no part in.
 Held in each раздел instead they would be three copies, and copies drift quietly: a полка
 that silently dropped an unreadable condition looks like it is working (ADR 0014).
 
+`also` stands here for the same reason: a figure under a table that sets a condition is a
+полка's device and not one раздел's — the полка помещений and the полка договоров both build
+such a link, and the third полка that wants one would be the copy that quietly goes wrong.
+
 `BuildingChoice` is deliberately not here. It is about a domain field — which БЦ — and stays
 in `documents`, where the four forms that offer it take it from today.
 """
 
 from django import forms
+
+
+def also(address, asked, condition):
+    """Адрес полки с одним лишним взведённым условием — то, на что ведёт число под таблицей.
+
+    Числа под таблицей — ссылки, и каждая добавляет своё условие к уже заданному вопросу, а
+    не заменяет его: спросивший, где не заведена площадь, сузив полку до Tokyo, имеет в виду
+    «в Tokyo», и адрес, обронивший БЦ, ответил бы обо всём портфеле.
+
+    Присвоено, а не `update`: `QueryDict` держит список значений на имя, и `update` этот
+    список продлевает, так что ссылка на полке, уже суженной этим самым условием, несла бы
+    его дважды, а каждое следующее нажатие добавляло бы ещё копию.
+
+    Адрес передают, а не собирают здесь: чей это экран, знает сам экран, а полка, ходившая
+    бы за своим адресом сама, была бы вторым местом, решающим, где она стоит.
+    """
+    asked = asked.copy()
+    asked[condition] = "1"
+    return f"{address}?{asked.urlencode()}"
 
 
 class Search(forms.Form):

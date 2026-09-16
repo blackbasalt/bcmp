@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'documents',
     'rooms',
     'leases',
+    'contracts',
 ]
 
 # django-extensions (runscript, shell_plus) is a dev dependency and is not

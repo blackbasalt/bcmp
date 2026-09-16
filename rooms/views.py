@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import ListView
 
+from bcmp.shelf import also
 from building_passport.models import Space
 from dictionary.models import DictSpaceType
 from leases.occupancy import free_of_each_room, tenants_of_each_room
@@ -179,7 +180,7 @@ class RoomListView(LoginRequiredMixin, ListView):
         asks where the площадь is missing means "in Tokyo", and an address that dropped the
         БЦ would answer about the whole portfolio.
         """
-        return self.also("no_area")
+        return self.with_one_more("no_area")
 
     @cached_property
     def also_free(self):
@@ -189,17 +190,14 @@ class RoomListView(LoginRequiredMixin, ListView):
         Someone who narrowed the полка to Tokyo and then asks what stands empty means "in
         Tokyo", exactly as they do about the помещения with no площадь.
         """
-        return self.also("free")
+        return self.with_one_more("free")
 
-    def also(self, condition):
+    def with_one_more(self, condition):
         """This screen's address with one more condition ticked on it.
 
-        The figures under the table are links, and each adds its own condition to the
-        question already being asked rather than replacing it. Assigned and not `update`d: a
-        `QueryDict` holds a list of values per name and its `update` extends that list, so
-        the link on a полка already narrowed by this very condition would carry it twice, and
-        every further click would add another copy.
+        What such a link is made of is `bcmp.shelf.also`'s: a figure that sets a condition is
+        a полка's device rather than this one's, and the полка договоров builds its links the
+        same way. What stands here is the only part that is this screen's own — which address
+        the link goes back to.
         """
-        asked = self.request.GET.copy()
-        asked[condition] = "1"
-        return f"{reverse('rooms:room_list')}?{asked.urlencode()}"
+        return also(reverse("rooms:room_list"), self.request.GET, condition)

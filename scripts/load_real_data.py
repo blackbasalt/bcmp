@@ -30,6 +30,7 @@ from django.utils import timezone
 
 from dictionary.models import *
 from building_passport.models import *
+from documents.models import Document
 from leases.models import Lease
 from parties.models import *
 
@@ -184,20 +185,28 @@ def load_leases(day=None):
     return LeaseReport(entered=entered, skipped=skipped, missing=len(missing))
 
 
-def term(row, day):
-    """Срок аренды на этот день: смещения из файла — датами.
+def offset_day(value, day):
+    """Смещение наполнения — датой на этот день. Пустая клетка остаётся пустой.
 
-    The периоды are held as offsets rather than as dates because absolute ones would mean
-    that half a year after the file was written the наполнение stops showing what it exists
-    for: the прошлые аренды stop being прошлые, and «по сей день» stops being today's
-    answer. Offsets give the same shapes from whatever day the посев is run.
+    The сроки of the наполнение are held as offsets rather than as dates because absolute
+    ones would mean that half a year after the file was written the наполнение stops showing
+    what it exists for: the прошлые аренды stop being прошлыми, «кончается через месяц»
+    stops being true of the договор written to show it, and «по сей день» stops being
+    today's answer. Offsets give the same shapes from whatever day the посев is run.
+
+    Написано одним местом на оба наполнения: у аренды и у договора один и тот же довод
+    держать срок смещением, и второе его изложение разошлось бы с первым на первой же
+    пустой клетке.
+    """
+    return day + timedelta(days=int(value)) if value else None
+
+
+def term(row, day):
+    """Срок аренды на этот день: два смещения из файла — двумя датами.
 
     Пустой конец остаётся пустым — он и означает «по сей день».
     """
-    return (
-        day + timedelta(days=int(row["from_days"])),
-        day + timedelta(days=int(row["to_days"])) if row["to_days"] else None,
-    )
+    return offset_day(row["from_days"], day), offset_day(row["to_days"], day)
 
 
 def fill_leases(day=None):
@@ -246,6 +255,78 @@ def fill_leases(day=None):
             valid_from=valid_from,
             valid_to=valid_to,
         )
+
+
+def fill_contracts(day=None):
+    """Наполнение: вымышленные поставщики и расходные договоры с ними.
+
+    Настоящих Сторон это не касается, и это тот же отказ, которым живёт `fill_leases`. 699
+    Сторон из `party.csv` приехали из настоящего списка контрагентов, и 698 из них помечены
+    в выгрузке ролью «Поставщики»; приписать «Центру крепежных систем ТОО» договор, которого
+    он не подписывал, значило бы положить в данные ложь, которую кто-нибудь потом прочитает
+    как правду (ADR 0026). Поэтому вымышленные приходят своим файлом рядом, помечены
+    `FILLING_MARK`, и БИН у них невозможный, с месяцем 99: он не помечает, он не даёт занять
+    номер настоящей Стороны.
+
+    Расходные и только расходные: доходную половину полки наполняет `fill_leases`, чьи
+    восемнадцать номеров становятся договорами вида «Аренда помещений». Здесь — эксплуатация,
+    капитальные работы и поставка ТМЦ, то есть те виды, у которых нет ни помещения, ни
+    арендатора, и без которых полка договоров видна только с одной стороны.
+
+    Собраны строки так, чтобы полку было на чём увидеть работающей: договор, кончающийся
+    через месяц, договор на автопролонгации, переживший свой конец срока, бессрочный, договор
+    без срока и скан из пачки, которому не проставили ещё и вида (ADR 0031, ADR 0035). Каждая
+    из этих строк выглядит плохими данными тому, кто станет наводить в файле порядок, — и
+    каждая названа здесь именно поэтому.
+
+    Своё наполнение находится по метке в `attrs` — поле документа, куда кладут то, чему
+    отдельной колонки не завели. Метка та же, `FILLING_MARK`, и довод тот же, по какому она
+    стоит в `external_id` у Стороны: второе место, говорящее «это наполнение», однажды
+    разошлось бы с первым. Договор, заведённый УК руками, повторный прогон не трогает.
+    """
+    day = day or timezone.localdate()
+    org = Org.objects.get(party__bin_iin=BASES[DOWNTOWN_BASE])
+
+    # Прежнее наполнение — и только оно. Тем же `discard`, которым документ удаляют с экрана:
+    # у наполнения файлов нет, но второй способ удалить документ — это второе место, где о
+    # его файлах однажды забудут (ADR 0013).
+    for stale in Document.objects.filter(attrs__source__startswith=FILLING_MARK):
+        stale.discard()
+
+    suppliers = {}
+    for row in rows("supplier.csv"):
+        suppliers[row["slug"]], _ = Party.objects.update_or_create(
+            external_id=FILLING_MARK + row["slug"],
+            defaults={
+                "kind": row["kind"],
+                "name": row["name"],
+                "bin_iin": row["bin_iin"],
+            },
+        )
+
+    for row in rows("contract.csv"):
+        # Обычным путём, `Document.objects.create()`, то есть через то же правило, которым
+        # живут форма и пакетная загрузка: строку условий документ заводит себе сам
+        # (ADR 0035), и скрипт, писавший бы её мимо модели, завёл бы договор, о котором полка
+        # считает как попало.
+        contract = Document.objects.create(
+            org=org,
+            kind=Document.Kind.CONTRACT,
+            title=row["title"],
+            doc_no=row["doc_no"] or None,
+            issued_at=offset_day(row["issued_days"], day),
+            valid_until=offset_day(row["until_days"], day),
+            attrs={"source": FILLING_MARK + row["slug"]},
+        )
+        terms = contract.attached_terms()
+        terms.counterparty = suppliers[row["supplier"]] if row["supplier"] else None
+        # Пустой вид остаётся пустым: скан из пачки попадает на полку раньше, чем
+        # кто-нибудь проставит ему вид, и наполнение, проставившее вид всем, скрыло бы
+        # находку «вид не заведён у N», ради которой строка счёта и заведена.
+        terms.kind = row["kind"] or None
+        terms.is_perpetual = row["is_perpetual"] == "TRUE"
+        terms.auto_prolongs = row["auto_prolongs"] == "TRUE"
+        terms.save()
 
 
 def run():
@@ -403,3 +484,4 @@ def run():
     )
 
     fill_leases()
+    fill_contracts()

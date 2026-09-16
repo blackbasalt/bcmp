@@ -37,5 +37,11 @@ urlpatterns = [
     # highlights «Стороны» while the reader stands on it (ADR 0016). The app already existed
     # and held the models; this is the day it acquires addresses.
     path("parties/", include("parties.urls")),
+    # The договоры section, beside the passports rather than inside them: «что мы подписали
+    # и до каких пор» is asked of the whole portfolio, and a расходный договор names no
+    # building at all (ADR 0033). It needs its own namespace so that the menu highlights
+    # «Договоры» while the reader stands on it (ADR 0016) — an app with no models of its
+    # own, over rows the documents section owns.
+    path("contracts/", include("contracts.urls")),
     path("", include("building_passport.urls")),
 ]

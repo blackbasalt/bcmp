@@ -40,9 +40,11 @@ def sidebar(client, url):
 
 
 def test_every_section_is_offered_without_going_through_a_building(client, member):
-    """Документы, Помещения and Стороны are all reached without opening a building: one
-    holds papers attached to no БЦ at all, one spans every БЦ at once, and the third answers
-    «с кем мы имеем дело», where 637 of the 699 Стороны are tied to no building either."""
+    """Документы, Помещения, Стороны and Договоры are all reached without opening a
+    building: one holds papers attached to no БЦ at all, one spans every БЦ at once, the
+    third answers «с кем мы имеем дело», where 637 of the 699 Стороны are tied to no
+    building either, and the fourth holds договоры of which four виды out of five name no
+    building at all (ADR 0033)."""
     client.force_login(member)
 
     items = sidebar(client, reverse("building_passport:bc_list"))
@@ -51,6 +53,7 @@ def test_every_section_is_offered_without_going_through_a_building(client, membe
     assert reverse("documents:document_list") in items["documents"]
     assert reverse("rooms:room_list") in items["rooms"]
     assert reverse("parties:party_list") in items["parties"]
+    assert reverse("contracts:contract_list") in items["contracts"]
 
 
 def test_the_documents_item_is_highlighted_inside_the_section(client, member):
@@ -63,6 +66,7 @@ def test_the_documents_item_is_highlighted_inside_the_section(client, member):
     assert "aria-current" not in items["building_passport"]
     assert "aria-current" not in items["rooms"]
     assert "aria-current" not in items["parties"]
+    assert "aria-current" not in items["contracts"]
 
 
 def test_the_rooms_item_is_highlighted_on_the_shelf_of_rooms(client, member):
@@ -77,6 +81,7 @@ def test_the_rooms_item_is_highlighted_on_the_shelf_of_rooms(client, member):
     assert "aria-current" not in items["building_passport"]
     assert "aria-current" not in items["documents"]
     assert "aria-current" not in items["parties"]
+    assert "aria-current" not in items["contracts"]
 
 
 def test_the_parties_item_is_highlighted_on_the_shelf_of_parties(client, member):
@@ -92,6 +97,24 @@ def test_the_parties_item_is_highlighted_on_the_shelf_of_parties(client, member)
     assert "aria-current" not in items["building_passport"]
     assert "aria-current" not in items["documents"]
     assert "aria-current" not in items["rooms"]
+    assert "aria-current" not in items["contracts"]
+
+
+def test_the_contracts_item_is_highlighted_on_the_shelf_of_contracts(client, member):
+    """The fifth раздел obeys the rule the third and the fourth obey: a раздел is a Django
+    app, and the menu lights the item whose `app_name` the open address carries (ADR 0016).
+    `contracts` holds no models of its own — the договор is a `Document` with its условия
+    beside it (ADR 0030) — and whoever tidies the полка back into `documents` lights
+    «Документы» here and breaks not one test about the полка itself."""
+    client.force_login(member)
+
+    items = sidebar(client, reverse("contracts:contract_list"))
+
+    assert 'aria-current="page"' in items["contracts"]
+    assert "aria-current" not in items["building_passport"]
+    assert "aria-current" not in items["documents"]
+    assert "aria-current" not in items["rooms"]
+    assert "aria-current" not in items["parties"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, manhattan):
@@ -104,6 +127,7 @@ def test_the_buildings_item_stays_highlighted_inside_a_building(client, member, 
     assert "aria-current" not in items["documents"]
     assert "aria-current" not in items["rooms"]
     assert "aria-current" not in items["parties"]
+    assert "aria-current" not in items["contracts"]
 
 
 def test_the_buildings_item_stays_highlighted_inside_a_floor(client, member, first_floor):
